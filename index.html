@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Neon Survivors - Balanced Waves</title>
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <div id="game-container">
+    <canvas id="gameCanvas"></canvas>
+    <div id="ui-layer">
+      <div class="level-badge" id="hudLevel">LVL 1</div>
+      <div class="xp-container">
+        <div class="xp-bar" id="hudXpBar"></div>
+      </div>
+      <div class="stats-hud">
+        <div class="stat-box">⏱️ <span id="hudTime">00:00</span></div>
+        <div class="stat-box">💀 <span id="hudKills">0</span></div>
+      </div>
+      <div class="hp-container">
+        <div class="hp-title">
+          <span>SISTEMA INTEGRAL</span>
+          <span id="hudHpText">100 / 100</span>
+        </div>
+        <div class="hp-bar-bg">
+          <div class="hp-bar-fill" id="hudHpBar"></div>
+        </div>
+      </div>
+
+      <!-- Multi-Boss Health Bars Overlay -->
+      <div id="boss-hud-container"></div>
+    </div>
+
+    <!-- Upgrade Modal -->
+    <div class="modal-overlay" id="levelModal">
+      <div class="modal-title">⚡ MEJORA DISPONIBLE ⚡</div>
+      <div class="cards-container" id="cardsContainer"></div>
+      <button class="btn-reroll" id="btnReroll">🎲 REROLL DISPONIBLE (1)</button>
+    </div>
+
+    <!-- Game Over Modal -->
+    <div class="modal-overlay" id="gameOverModal">
+      <div class="gameover-box">
+        <h1 style="color: #ff2255; font-size: 30px; font-weight: 900; text-shadow: 0 0 20px #ff2255; margin-bottom: 15px;">SISTEMA COMPROMETIDO</h1>
+        <p style="color: #cbd5e0; margin-bottom: 8px;">Tiempo de supervivencia: <span id="finalTime" style="color: #00ffff; font-weight: 700;">00:00</span></p>
+        <p style="color: #cbd5e0; margin-bottom: 20px;">Enemigos erradicados: <span id="finalKills" style="color: #ff00ff; font-weight: 700;">0</span></p>
+        <button class="btn-restart" id="btnRestart">REINICIAR PROTOCOLO</button>
+      </div>
+    </div>
+
+    <!-- Admin Button -->
+    <div id="admin-btn">⚙️ ADMIN</div>
+
+    <!-- Admin Modal -->
+    <div class="modal-overlay" id="adminModal">
+      <div class="admin-box">
+        <h2>🛠️ PANEL DE ADMIN</h2>
+        <div class="admin-section">
+          <h3>Switches</h3>
+          <label><input type="checkbox" id="adminGodMode"> God Mode (Sin Daño)</label><br>
+          <label><input type="checkbox" id="adminDisableSpawns"> Desactivar Spawns Enemigos</label><br>
+          <label><input type="checkbox" id="adminDisableBossSpawns"> Desactivar Spawn Bosses</label>
+        </div>
+        <div class="admin-section">
+          <h3>Botones Rápidos</h3>
+          <button id="adminKillAll" class="admin-action-btn">💀 Eliminar Todos los Enemigos</button>
+        </div>
+        <div class="admin-section">
+          <h3>Menús de Spawn</h3>
+          <button id="adminBtnSpawnBoss" class="admin-action-btn">Spawnear Boss</button>
+          <button id="adminBtnSpawnEnemy" class="admin-action-btn">Spawnear Enemigo</button>
+          <button id="adminBtnUpgrades" class="admin-action-btn">Recibir Mejora</button>
+        </div>
+        <button id="adminBtnClose" class="admin-action-btn close-btn">CERRAR</button>
+      </div>
+    </div>
+
+    <!-- Admin Sub-Modals -->
+    <div class="modal-overlay" id="adminSubModal" style="z-index: 60;">
+      <div class="admin-box">
+        <h2 id="adminSubModalTitle">...</h2>
+        <div id="adminSubModalContent" class="admin-sub-content"></div>
+        <button id="adminSubBtnClose" class="admin-action-btn close-btn" style="margin-top: 15px;">VOLVER</button>
+      </div>
+    </div>
+
+  </div>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
+
