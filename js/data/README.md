@@ -25,3 +25,7 @@ Cada mejora tiene la siguiente estructura que puedes modificar fácilmente:
 - **Modificar estadísticas:** Cambiar porcentajes de daño (`p.damageMult`), radio de recolección (`p.pickupRadius`), velocidad, etc., ajustando los números dentro de cada función `apply()`.
 - **Limitar mejoras:** Modificar la función `isAvailable` para aumentar o reducir la cantidad de veces que una mejora puede ser adquirida.
 
+
+**Nuevas Propiedades Añadidas:**
+- `rarity`: Define la probabilidad de aparición de la carta (`common`: 60%, `uncommon`: 20%, `rare`: 15%, `legendary`: 5%).
+- `isInfinite`: Bandera (`true` o `false`) que indica si la mejora no tiene un tope máximo. El botón de Test Rápido ignora estas cartas para evitar congelar el juego.

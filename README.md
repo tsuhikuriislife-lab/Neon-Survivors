@@ -18,7 +18,8 @@ The game uses a modular, layered architecture to maintain clean separation of co
 ### JS Layers
 1. **Engine (`js/engine/`)**
    - `Game.js`: The core loop, updating entities and rendering them.
-   - `gameState.js`: The central state container holding all game objects (player, enemies, etc.).
+   - `gameState.js`: The central state container holding all game objects.
+   - `AudioManager.js`: Centralized Web Audio API manager for BGM and SFX.
    - `Input.js`: Tracks keyboard input state.
    - `Utils.js`: Common math and drawing functions.
 
@@ -39,3 +40,9 @@ The game uses a modular, layered architecture to maintain clean separation of co
 5. **Data (`js/data/`)**
    - `upgrades.js`: The database of all available player upgrades.
 
+## Key Features
+- **Centralized Audio**: Web Audio API manages independent channels, dynamic muffling, and throttling.
+- **Scaling Difficulty**: Enemies spawn faster over time. Bosses appear randomly and their HP permanently scales by +70% each time they are defeated.
+- **RNG Upgrade System**: Upgrades are sorted into 4 rarities with weighted drops (60%, 20%, 15%, 5%). Once core upgrades max out, infinite stat boosts take over.
+- **Boss Rewards**: Defeating a boss yields a hidden 5-card choice system with chances for double-picks and Jackpots.
+- **Critical Hits**: Advanced RNG engine calculates critical strikes that multiply damage and spawn unique visual effects.

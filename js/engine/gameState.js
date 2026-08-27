@@ -11,7 +11,19 @@ export const state = {
   godMode: false,
   disableSpawns: false,
   disableBossSpawns: false,
+  spawnRateMultiplier: 1.0,
   
+  bossScaling: {},
+  lastBossName: null,
+  
+  damageStats: {
+    blaster: 0,
+    orbitals: 0,
+    nova: 0,
+    shockwave: 0,
+    missiles: 0
+  },
+
   width: window.innerWidth,
   height: window.innerHeight,
 
@@ -51,6 +63,22 @@ export const state = {
     this.isPaused = false;
     this.isGameOver = false;
     this.hasRerolledCurrentLevel = false;
+    this.bossScaling = {};
+    this.lastBossName = null;
+    this.spawnRateMultiplier = 1.0;
+
+    this.damageStats = {
+      blaster: 0,
+      orbitals: 0,
+      nova: 0,
+      shockwave: 0,
+      missiles: 0
+    };
+  },
+  recordDamage(weapon, amount) {
+    if (this.damageStats[weapon] !== undefined) {
+      this.damageStats[weapon] += amount;
+    }
   }
 };
 

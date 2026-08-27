@@ -1,4 +1,4 @@
-import { dist, drawPolygon } from '../engine/Utils.js';
+import { dist, drawPolygon } from '../../engine/Utils.js';
 
 export class Gem {
   constructor(x, y, value) {

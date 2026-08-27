@@ -1,9 +1,9 @@
 import { state } from './gameState.js';
-import { Player } from '../entities/Player.js';
+import { Player } from '../entities/player/Player.js';
 import { updateHUD } from '../ui/UIManager.js';
 import { handleSpawning, spawnRandomBoss } from '../systems/WaveManager.js';
 import { dist } from './Utils.js';
-import { spawnExplosion } from '../entities/Effects.js';
+import { spawnExplosion } from '../entities/effects/spawnExplosion.js';
 
 export function initGame() {
   state.reset();
@@ -72,6 +72,14 @@ export function loop(timestamp, ctx) {
 
           spawnExplosion(p.x, p.y, "#00ffff", 4, 2);
           
+          import('./AudioManager.js').then(({ audioManager }) => {
+            if (p.constructor.name === 'NovaProjectile') {
+                audioManager.playSound('hit_nova', { volume: 0.5, throttleMs: 60 });
+            } else if (p.constructor.name === 'Projectile') {
+                audioManager.playSound('hit_main_gun', { volume: 0.4, throttleMs: 40 });
+            }
+          });
+
           // Ligero retroceso (knockback) para Nova
           if (p.constructor.name === 'NovaProjectile') {
             const ang = Math.atan2(e.y - p.y, e.x - p.x);
@@ -81,6 +89,12 @@ export function loop(timestamp, ctx) {
 
           if (p.constructor.name === 'MissileProjectile') {
             p.onHit();
+          }
+
+          if (p.constructor.name === 'NovaProjectile') {
+            state.recordDamage('nova', p.damage);
+          } else if (p.constructor.name === 'Projectile') {
+            state.recordDamage('blaster', p.damage);
           }
 
           if (!e.takeDamage(p.damage, p.color)) {
@@ -104,8 +118,22 @@ export function loop(timestamp, ctx) {
 
             spawnExplosion(p.x, p.y, "#00ffff", 5, 2.5);
 
+            import('./AudioManager.js').then(({ audioManager }) => {
+              if (p.constructor.name === 'NovaProjectile') {
+                  audioManager.playSound('hit_nova', { volume: 0.5, throttleMs: 60 });
+              } else if (p.constructor.name === 'Projectile') {
+                  audioManager.playSound('hit_main_gun', { volume: 0.4, throttleMs: 40 });
+              }
+            });
+
             if (p.constructor.name === 'MissileProjectile') {
               p.onHit();
+            }
+
+            if (p.constructor.name === 'NovaProjectile') {
+              state.recordDamage('nova', p.damage);
+            } else if (p.constructor.name === 'Projectile') {
+              state.recordDamage('blaster', p.damage);
             }
 
             target.takeDamage(p.damage, p.color);
@@ -176,7 +204,11 @@ export function loop(timestamp, ctx) {
     for (let i = state.bosses.length - 1; i >= 0; i--) {
       state.bosses[i].update(state.player);
       if (state.bosses[i].getTargetables().length === 0) {
+        const bossName = state.bosses[i].constructor.name;
         state.bosses.splice(i, 1);
+        import('../ui/UIManager.js').then(({ showBossRewardMenu }) => {
+          showBossRewardMenu(bossName);
+        });
       }
     }
 
@@ -195,6 +227,17 @@ export function loop(timestamp, ctx) {
       state.floatingTexts[i].update();
       if (state.floatingTexts[i].alpha <= 0) state.floatingTexts.splice(i, 1);
     }
+
+    import('./AudioManager.js').then(({ audioManager }) => {
+      let desiredMusic = 'music_main';
+      if (state.bosses.length > 0) {
+        const bossName = state.bosses[0].constructor.name;
+        if (bossName === 'AmalgamBossRoot') desiredMusic = 'music_boss_amalgam';
+        else if (bossName === 'DevourerOfTaxBoss') desiredMusic = 'music_boss_devourer';
+        else if (bossName === 'KyrenBoss') desiredMusic = 'music_boss_kyren';
+      }
+      audioManager.playMusic(desiredMusic);
+    });
 
     updateHUD();
   }

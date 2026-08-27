@@ -1,7 +1,8 @@
-import { state } from '../engine/gameState.js';
-import { dist, drawPolygon } from '../engine/Utils.js';
-import { spawnExplosion, FloatingText } from './Effects.js';
-import { Gem } from './Collectibles.js';
+import { state } from '../../engine/gameState.js';
+import { dist, drawPolygon } from '../../engine/Utils.js';
+import { spawnExplosion } from '../effects/spawnExplosion.js';
+import { FloatingText } from '../effects/FloatingText.js';
+import { Gem } from '../collectibles/Gem.js';
 
 export class Enemy {
   constructor(type) {
@@ -54,10 +55,27 @@ export class Enemy {
   }
 
   takeDamage(amount, damageColor = "#fff") {
-    this.hp -= amount;
+    if (this.hp <= 0) return false;
+    let finalAmount = amount;
+
+    let isCrit = false;
+
+    if (state.player && Math.random() < (state.player.critChance || 0)) {
+
+        finalAmount *= (state.player.critDamage || 1.5);
+
+        isCrit = true;
+
+    }
+
+    this.hp -= finalAmount;
     const offsetX = (Math.random() * 2 - 1) * (this.radius * 0.8);
     const offsetY = (Math.random() * 2 - 1) * (this.radius * 0.8);
-    state.floatingTexts.push(new FloatingText(this.x + offsetX, this.y + offsetY, Math.round(amount), damageColor, 12));
+    const dmgColor = isCrit ? "#ffff00" : damageColor;
+
+    const fontSize = isCrit ? parseInt(12) + 6 : 12;
+
+    state.floatingTexts.push(new FloatingText(this.x + offsetX, this.y + offsetY, Math.round(finalAmount), dmgColor, fontSize));
     if (this.hp <= 0) {
       this.die();
       return false;
@@ -68,11 +86,26 @@ export class Enemy {
   die() {
     state.killCount++;
     spawnExplosion(this.x, this.y, this.color, 14, 3);
-    state.gems.push(new Gem(this.x, this.y, this.xpValue));
+    
+    const dropGem = () => {
+      const offsetX = (Math.random() * 2 - 1) * this.radius;
+      const offsetY = (Math.random() * 2 - 1) * this.radius;
+      state.gems.push(new Gem(this.x + offsetX, this.y + offsetY, this.xpValue));
+    };
+    
+    dropGem();
+    if (Math.random() < (state.player.doubleGemChance || 0)) {
+      dropGem();
+    }
+    import('../../engine/AudioManager.js').then(({ audioManager }) => {
+      let soundKey = 'enemy_death_small';
+      if (this.type === 'medium') soundKey = 'enemy_death_medium';
+      if (this.type === 'large') soundKey = 'enemy_death_big';
+      audioManager.playSound(soundKey, { volume: 0.5, throttleMs: 80 });
+    });
   }
 
   draw(ctx) {
     drawPolygon(ctx, this.x, this.y, this.radius, this.sides, this.angle, this.color, 8, "rgba(20,0,30,0.3)");
   }
 }
-

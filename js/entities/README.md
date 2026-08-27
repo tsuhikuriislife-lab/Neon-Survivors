@@ -49,3 +49,7 @@ Maneja partículas decorativas, zonas de peligro y textos flotantes (números de
 **¿Qué puedo cambiar aquí?**
 - La velocidad a la que la gema es atraída hacia el jugador (`speed = 7.5;` en `update`) y los colores dependiendo de su valor de XP.
 
+
+**Modificaciones Recientes:**
+- **Armas y Proyectiles (`Player.js` & `Projectiles.js`)**: El disparo de `Missiles` fue actualizado para que utilice un sistema de colas (`missilesQueue`) que permite disparar un misil a la vez con un pequeño retraso (`missileFireTimer`), generando ráfagas en lugar de lanzamientos simultáneos. Además, cada disparo de onda de choque y misil emite ahora su respectivo sonido SFX configurado.
+- **Jefes y Efectos de Audio (`Bosses.js`)**: Jefes como Kyren y Devourer of Tax ahora sincronizan efectos de audio para sus embestidas (Dash). De forma unificada, todas las instancias de muerte de jefes principales o subdivisiones reproducen ahora la pista sci-fi estipulada como `enemy_death_boss`.

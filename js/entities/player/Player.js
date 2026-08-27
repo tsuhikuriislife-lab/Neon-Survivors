@@ -1,9 +1,13 @@
-import { state } from '../engine/gameState.js';
-import { keys } from '../engine/Input.js';
-import { dist, drawPolygon } from '../engine/Utils.js';
-import { spawnExplosion, FloatingText } from './Effects.js';
-import { Projectile, Shockwave, NovaProjectile, MissileProjectile } from './Projectiles.js';
-import { showUpgradeMenu, triggerGameOver, updateHUD } from '../ui/UIManager.js';
+import { state } from '../../engine/gameState.js';
+import { keys } from '../../engine/Input.js';
+import { dist, drawPolygon } from '../../engine/Utils.js';
+import { spawnExplosion } from '../effects/spawnExplosion.js';
+import { FloatingText } from '../effects/FloatingText.js';
+import { Projectile } from '../projectiles/Projectile.js';
+import { Shockwave } from '../projectiles/Shockwave.js';
+import { NovaProjectile } from '../projectiles/NovaProjectile.js';
+import { MissileProjectile } from '../projectiles/MissileProjectile.js';
+import { showUpgradeMenu, triggerGameOver, updateHUD } from '../../ui/UIManager.js';
 
 export class Player {
   constructor() {
@@ -20,6 +24,9 @@ export class Player {
     this.nextXp = 10;
     this.pickupRadius = 130;
     this.angle = 0;
+    
+    this.missilesQueue = 0;
+    this.missileFireTimer = 0;
 
     this.invulnerabilityMaxTime = 1.5;
     this.invulnerabilityTimer = 0;
@@ -28,13 +35,20 @@ export class Player {
     this.slowTimer = 0;
     this.damageMult = 1.0;
     this.cooldownMult = 1.0;
+    this.critChance = 0.0;
+    this.critDamage = 1.5; // Base 150% crit damage
+    this.xpMultiplier = 1.0;
+    
+    this.doubleGemChance = 0;
+    this.doubleGemUpgradesCount = 0;
+    this.acquiredUpgrades = {};
 
     this.weapons = {
       blaster: { level: 1, timer: 0, cooldown: 60, projectileCount: 1, damage: 22, range: 500, speed: 12, homing: 0, homingUpgrades: 0 },
-      orbitals: { level: 0, count: 2, radius: 120, angle: 0, speed: 0.05, damage: 45, tickTimer: 0, tickInterval: 12, size: 12 },
+      orbitals: { level: 0, count: 2, radius: 120, angle: 0, speed: 0.05, damage: 35, tickTimer: 0, tickInterval: 10, size: 12 },
       nova: { level: 0, count: 6, timer: 0, cooldown: 400, speed: 6, spiral: false },
       shockwave: { level: 0, timer: 0, cooldown: 230, radius: 175, damage: 150 },
-      missiles: { level: 0, count: 6, timer: 0, cooldown: 90, speed: 7, homing: 0.05, aoe: 70, damage: 23 }
+      missiles: { level: 0, count: 6, timer: 0, cooldown: 220, speed: 7, homing: 0.05, aoe: 70, damage: 23 }
     };
   }
 
@@ -77,7 +91,7 @@ export class Player {
       if (Math.random() < 0.35) {
         // We do not directly use state.particles here to avoid circular imports 
         // if not needed, but spawnExplosion works fine. Actually, we can just push.
-        import('./Effects.js').then(({ Particle }) => {
+        import('../effects/Particle.js').then(({ Particle }) => {
           state.particles.push(new Particle(this.x, this.y, "#00f0ff", 1, 0.05, 2));
         });
       }
@@ -131,17 +145,27 @@ export class Player {
         w.homing || 0
       ));
     }
+    
+    import('../../engine/AudioManager.js').then(({ audioManager }) => {
+        audioManager.playSound('fire_main_gun', { volume: 0.3, throttleMs: 100 });
+    });
   }
 
   updateOrbitals() {
     const w = this.weapons.orbitals;
     if (w.level <= 0) return;
     w.angle += w.speed;
-    w.tickTimer++;
+    
+    if (!w.timers) w.timers = [];
 
-    if (w.tickTimer >= w.tickInterval) {
-      w.tickTimer = 0;
-      for (let i = 0; i < w.count; i++) {
+    for (let i = 0; i < w.count; i++) {
+      if (w.timers[i] === undefined) {
+        w.timers[i] = Math.floor((i / w.count) * w.tickInterval);
+      }
+      w.timers[i]++;
+
+      if (w.timers[i] >= w.tickInterval) {
+        w.timers[i] = 0;
         const curAng = w.angle + (i * 2 * Math.PI) / w.count;
         const ox = this.x + Math.cos(curAng) * w.radius;
         const oy = this.y + Math.sin(curAng) * w.radius;
@@ -150,7 +174,11 @@ export class Player {
         for (let e of state.enemies) {
           if (dist(ox, oy, e.x, e.y) < orbRadius + e.radius) {
             e.takeDamage(w.damage * this.damageMult, "#ff00ff");
+            state.recordDamage('orbitals', w.damage * this.damageMult);
             spawnExplosion(ox, oy, "#ff00ff", 3, 1.5);
+            import('../../engine/AudioManager.js').then(({ audioManager }) => {
+                audioManager.playSound('hit_satellite', { volume: 0.5, throttleMs: 50 });
+            });
           }
         }
 
@@ -162,8 +190,12 @@ export class Player {
 
             if (dist(ox, oy, t.x, t.y) < orbRadius + t.radius) {
               t.takeDamage(w.damage * this.damageMult, "#ff00ff");
+              state.recordDamage('orbitals', w.damage * this.damageMult);
               spawnExplosion(ox, oy, "#ff00ff", 3, 1.5);
               damagedParents.add(actualTarget);
+              import('../../engine/AudioManager.js').then(({ audioManager }) => {
+                  audioManager.playSound('hit_satellite', { volume: 0.5, throttleMs: 50 });
+              });
             }
           }
         }
@@ -178,6 +210,9 @@ export class Player {
     if (w.timer >= w.cooldown * this.cooldownMult) {
       w.timer = 0;
       state.shockwaves.push(new Shockwave(this.x, this.y, w.radius, w.damage * this.damageMult));
+      import('../../engine/AudioManager.js').then(({ audioManager }) => {
+          audioManager.playSound('fire_shockwave', { volume: 0.7, throttleMs: 100 });
+      });
     }
   }
 
@@ -205,32 +240,47 @@ export class Player {
         w.spiral
       ));
     }
+    import('../../engine/AudioManager.js').then(({ audioManager }) => {
+        audioManager.playSound('fire_nova', { volume: 0.6, throttleMs: 100 });
+    });
   }
 
   updateMissiles() {
     const w = this.weapons.missiles;
     if (w.level <= 0) return;
+    
     w.timer++;
     if (w.timer >= w.cooldown * this.cooldownMult) {
       w.timer = 0;
-      this.fireMissiles();
+      this.missilesQueue = w.count;
+    }
+
+    if (this.missilesQueue > 0) {
+      if (this.missileFireTimer <= 0) {
+        this.fireSingleMissile();
+        this.missilesQueue--;
+        this.missileFireTimer = 12; // 0.2s * 60fps = 12 frames
+      } else {
+        this.missileFireTimer--;
+      }
     }
   }
 
-  fireMissiles() {
+  fireSingleMissile() {
     const w = this.weapons.missiles;
-    for (let i = 0; i < w.count; i++) {
-      const angle = Math.random() * Math.PI * 2;
-      state.projectiles.push(new MissileProjectile(
-        this.x,
-        this.y,
-        Math.cos(angle) * w.speed,
-        Math.sin(angle) * w.speed,
-        w.damage * this.damageMult,
-        w.homing,
-        w.aoe
-      ));
-    }
+    const angle = Math.random() * Math.PI * 2;
+    state.projectiles.push(new MissileProjectile(
+      this.x,
+      this.y,
+      Math.cos(angle) * w.speed,
+      Math.sin(angle) * w.speed,
+      w.damage * this.damageMult,
+      w.homing,
+      w.aoe
+    ));
+    import('../../engine/AudioManager.js').then(({ audioManager }) => {
+        audioManager.playSound('fire_missile', { volume: 0.5, throttleMs: 50 });
+    });
   }
 
   takeDamage(amount, damageColor = "#ff2255") {
@@ -252,8 +302,9 @@ export class Player {
   }
 
   gainXP(val) {
-    this.xp += val;
-    state.floatingTexts.push(new FloatingText(this.x + (Math.random() * 20 - 10), this.y - 15, `+${val} XP`, "#00ffcc", 11));
+    const finalVal = Math.round(val * (this.xpMultiplier || 1.0));
+    this.xp += finalVal;
+    state.floatingTexts.push(new FloatingText(this.x + (Math.random() * 20 - 10), this.y - 15, `+${finalVal} XP`, "#00ffcc", 11));
     if (this.xp >= this.nextXp) {
       this.levelUp();
     }
@@ -278,6 +329,9 @@ export class Player {
     this.iFrameUpgradesCount = 0;
     this.damageMult = 1.0;
     this.cooldownMult = 1.0;
+    this.doubleGemChance = 0;
+    this.doubleGemUpgradesCount = 0;
+    this.acquiredUpgrades = {};
     this.maxHp = 100;
     this.hp = Math.min(this.hp, 100);
     this.weapons = {
@@ -304,7 +358,7 @@ export class Player {
         const curAng = orb.angle + (i * 2 * Math.PI) / orb.count;
         const ox = this.x + Math.cos(curAng) * orb.radius;
         const oy = this.y + Math.sin(curAng) * orb.radius;
-        drawPolygon(ctx, ox, oy, 7, 6, curAng * 2, "#ff00ff", 12, "rgba(255, 0, 255, 0.4)");
+        drawPolygon(ctx, ox, oy, orb.size, 6, curAng * 2, "#ff00ff", 12, "rgba(255, 0, 255, 0.4)");
       }
     }
   }

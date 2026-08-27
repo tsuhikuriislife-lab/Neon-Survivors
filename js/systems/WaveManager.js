@@ -1,13 +1,21 @@
 import { state } from '../engine/gameState.js';
-import { FloatingText } from '../entities/Effects.js';
-import { Enemy } from '../entities/Enemy.js';
-import { KyrenBoss, DevourerOfTaxBoss, AmalgamBossRoot } from '../entities/Bosses.js';
+import { FloatingText } from '../entities/effects/FloatingText.js';
+import { Enemy } from '../entities/enemies/Enemy.js';
+import { KyrenBoss } from '../entities/bosses/KyrenBoss.js';
+import { DevourerOfTaxBoss } from '../entities/bosses/DevourerOfTaxBoss.js';
+import { AmalgamBossRoot } from '../entities/bosses/AmalgamBossRoot.js';
 
 export function spawnRandomBoss() {
-  const choice = Math.floor(Math.random() * 3);
-  if (choice === 0) {
+  let bosses = ['KyrenBoss', 'DevourerOfTaxBoss', 'AmalgamBossRoot'];
+  if (state.lastBossName) {
+    bosses = bosses.filter(b => b !== state.lastBossName);
+  }
+  const choice = bosses[Math.floor(Math.random() * bosses.length)];
+  state.lastBossName = choice;
+
+  if (choice === 'KyrenBoss') {
     state.bosses.push(new KyrenBoss());
-  } else if (choice === 1) {
+  } else if (choice === 'DevourerOfTaxBoss') {
     state.bosses.push(new DevourerOfTaxBoss());
   } else {
     state.currentAmalgamBoss = new AmalgamBossRoot();
@@ -24,11 +32,11 @@ export function handleSpawning() {
 
   let baseInterval;
   if (state.gameTime < 180) {
-    baseInterval = Math.max(65, 95 - Math.floor((state.gameTime / 180) * 30));
+    baseInterval = Math.max(40, 65 - Math.floor((state.gameTime / 180) * 25));
   } else if (state.gameTime < 480) {
-    baseInterval = Math.max(35, 65 - Math.floor(((state.gameTime - 180) / 300) * 30));
+    baseInterval = Math.max(20, 40 - Math.floor(((state.gameTime - 180) / 300) * 20));
   } else {
-    baseInterval = Math.max(14, 35 - Math.floor(((state.gameTime - 480) / 300) * 20));
+    baseInterval = Math.max(10, 20 - Math.floor(((state.gameTime - 480) / 300) * 10));
   }
 
   if (hasActiveBoss) {

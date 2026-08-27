@@ -1,6 +1,8 @@
+import { state } from "../engine/gameState.js";
 export const upgradeDatabase = [
   {
     id: 'blaster_count',
+    rarity: 'uncommon',
     name: 'Cadencia Multi-Láser',
     icon: '🔫',
     desc: '+1 Proyectil focalizado por disparo al mismo objetivo (Máx. 4).',
@@ -9,6 +11,7 @@ export const upgradeDatabase = [
   },
   {
     id: 'blaster_rate',
+    rarity: 'common',
     name: 'Sobrecarga de Fuego',
     icon: '⚡',
     desc: '+25% Velocidad de recarga del Cañón Neón (Máx. 4).',
@@ -20,13 +23,19 @@ export const upgradeDatabase = [
   },
   {
     id: 'hp_regen',
+    rarity: 'legendary',
     name: 'Nanobots Reparadores',
     icon: '💉',
-    desc: '+3.0 Regeneración de HP por segundo.',
-    apply: (p) => { p.hpRegen += 3.0; }
+    desc: '+3.0 Regeneración de HP por segundo (Máx. 3).',
+    isAvailable: (p) => (p.regenUpgradesCount || 0) < 3,
+    apply: (p) => { 
+        p.hpRegen += 3.0; 
+        p.regenUpgradesCount = (p.regenUpgradesCount || 0) + 1;
+    }
   },
   {
     id: 'iframe_extend',
+    rarity: 'rare',
     name: 'Blindaje Cuántico',
     icon: '🛡️',
     desc: '+0.25s Duración de inmunidad tras recibir impacto (Máx. 3).',
@@ -38,13 +47,19 @@ export const upgradeDatabase = [
   },
   {
     id: 'speed_boost',
+    rarity: 'uncommon',
     name: 'Propulsores Vectoriales',
     icon: '👟',
-    desc: '+20% Velocidad de movimiento del núcleo.',
-    apply: (p) => { p.baseSpeed *= 1.20; }
+    desc: '+20% Velocidad de movimiento del núcleo (Máx. 4).',
+    isAvailable: (p) => (p.speedUpgradesCount || 0) < 4,
+    apply: (p) => { 
+        p.baseSpeed *= 1.20; 
+        p.speedUpgradesCount = (p.speedUpgradesCount || 0) + 1;
+    }
   },
   {
     id: 'magnet_boost',
+    rarity: 'rare',
     name: 'Atracción Magnética',
     icon: '🧲',
     desc: '+50% Radio de recolección de energía XP (Máx. 4).',
@@ -56,23 +71,32 @@ export const upgradeDatabase = [
   },
   {
     id: 'damage_boost',
+    rarity: 'common',
     name: 'Amplificador Cuántico',
     icon: '⚔️',
-    desc: '+25% Daño general de todas las armas.',
-    apply: (p) => { p.damageMult *= 1.25; }
+    desc: '+25% Daño general de todas las armas (Máx. 5).',
+    isAvailable: (p) => (p.damageUpgradesCount || 0) < 5,
+    apply: (p) => { 
+        p.damageMult += 0.25; 
+        p.damageUpgradesCount = (p.damageUpgradesCount || 0) + 1;
+    }
   },
   {
     id: 'repair_hull',
+    rarity: 'uncommon',
     name: 'Refuerzo de Casco',
     icon: '❤️',
-    desc: 'Restaura 50 HP y aumenta la salud máxima en +25.',
+    desc: 'Restaura 50 HP y aumenta la salud máxima en +25 (Máx. 5).',
+    isAvailable: (p) => (p.hullUpgradesCount || 0) < 5,
     apply: (p) => { 
       p.maxHp += 25; 
       p.hp = Math.min(p.maxHp, p.hp + 50);
+      p.hullUpgradesCount = (p.hullUpgradesCount || 0) + 1;
     }
   },
   {
     id: 'nova_unlock',
+    rarity: 'common',
     name: 'Desbloqueo Nova',
     icon: '🌀',
     desc: 'Dispara periódicamente una salva radial de 8 proyectiles.',
@@ -84,6 +108,7 @@ export const upgradeDatabase = [
   },
   {
     id: 'nova_up',
+    rarity: 'uncommon',
     name: '+ Proyectiles Nova',
     icon: '✨',
     desc: '+2 Proyectiles a la salva Nova (Máx. 3).',
@@ -95,6 +120,7 @@ export const upgradeDatabase = [
   },
   {
     id: 'nova_spiral',
+    rarity: 'legendary',
     name: 'Vórtice Angular',
     icon: '🌪️',
     desc: 'Los proyectiles Nova conservan su expansión pero giran en espiral continua.',
@@ -105,6 +131,7 @@ export const upgradeDatabase = [
   },
   {
     id: 'orbital_unlock',
+    rarity: 'common',
     name: 'Escudo Orbital Plasma',
     icon: '🔮',
     desc: 'Desbloquea 2 orbes rotatorios que causan daño al contacto.',
@@ -116,6 +143,7 @@ export const upgradeDatabase = [
   },
   {
     id: 'orbital_count',
+    rarity: 'uncommon',
     name: '+ Satélites',
     icon: '🪐',
     desc: 'Añade +2 satélites al escudo orbital (Máx. 2).',
@@ -127,10 +155,11 @@ export const upgradeDatabase = [
   },
   {
     id: 'orbital_size',
+    rarity: 'rare',
     name: 'Expansión Orbital',
     icon: '🌌',
-    desc: '+20% Tamaño de los satélites (Máx. 4).',
-    isAvailable: (p) => p.weapons.orbitals.level > 0 && (p.weapons.orbitals.sizeUpgrades || 0) < 4,
+    desc: '+20% Tamaño de los satélites (Máx. 3).',
+    isAvailable: (p) => p.weapons.orbitals.level > 0 && (p.weapons.orbitals.sizeUpgrades || 0) < 3,
     apply: (p) => {
       p.weapons.orbitals.size = (p.weapons.orbitals.size || 8) * 1.2;
       p.weapons.orbitals.sizeUpgrades = (p.weapons.orbitals.sizeUpgrades || 0) + 1;
@@ -138,10 +167,11 @@ export const upgradeDatabase = [
   },
   {
     id: 'orbital_speed',
+    rarity: 'rare',
     name: 'Giro Acelerado',
     icon: '🔄',
-    desc: '+15% Velocidad de rotación orbital (Máx. 10).',
-    isAvailable: (p) => p.weapons.orbitals.level > 0 && (p.weapons.orbitals.speedUpgrades || 0) < 10,
+    desc: '+15% Velocidad de rotación orbital (Máx. 3).',
+    isAvailable: (p) => p.weapons.orbitals.level > 0 && (p.weapons.orbitals.speedUpgrades || 0) < 3,
     apply: (p) => {
       p.weapons.orbitals.speed *= 1.15;
       p.weapons.orbitals.speedUpgrades = (p.weapons.orbitals.speedUpgrades || 0) + 1;
@@ -149,6 +179,7 @@ export const upgradeDatabase = [
   },
   {
     id: 'shockwave_unlock',
+    rarity: 'common',
     name: 'Pulso Radial Sísmico',
     icon: '💥',
     desc: 'Desbloquea una onda expansiva periódica.',
@@ -159,6 +190,7 @@ export const upgradeDatabase = [
   },
   {
     id: 'shockwave_range',
+    rarity: 'uncommon',
     name: 'Amplitud Sísmica',
     icon: '🌊',
     desc: '+30% Rango de la onda expansiva (Máx. 3).',
@@ -170,6 +202,7 @@ export const upgradeDatabase = [
   },
   {
     id: 'shockwave_rate',
+    rarity: 'rare',
     name: 'Frecuencia Sísmica',
     icon: '⏱️',
     desc: '+25% Velocidad de disparo de la onda expansiva (Máx. 4).',
@@ -181,6 +214,7 @@ export const upgradeDatabase = [
   },
   {
     id: 'missiles_unlock',
+    rarity: 'common',
     name: 'Batería de Misiles',
     icon: '🚀',
     desc: 'Lanza 6 misiles en direcciones aleatorias con rastreo leve y daño en área.',
@@ -191,6 +225,7 @@ export const upgradeDatabase = [
   },
   {
     id: 'missiles_count',
+    rarity: 'uncommon',
     name: '+ Misiles',
     icon: '🎆',
     desc: '+2 Misiles por salva (Máx. 3).',
@@ -202,6 +237,7 @@ export const upgradeDatabase = [
   },
   {
     id: 'missiles_speed',
+    rarity: 'rare',
     name: 'Propulsión de Misiles',
     icon: '☄️',
     desc: '+20% Velocidad de misiles (Máx. 4).',
@@ -213,6 +249,7 @@ export const upgradeDatabase = [
   },
   {
     id: 'missiles_homing',
+    rarity: 'legendary',
     name: 'Rastreo Avanzado',
     icon: '📡',
     desc: 'Mejora drásticamente el rastreo de los misiles (Único).',
@@ -224,6 +261,7 @@ export const upgradeDatabase = [
   },
   {
     id: 'missiles_aoe',
+    rarity: 'uncommon',
     name: 'Carga Explosiva',
     icon: '💣',
     desc: '+30% Área de daño de los misiles (Máx. 3).',
@@ -232,5 +270,158 @@ export const upgradeDatabase = [
       p.weapons.missiles.aoe *= 1.30;
       p.weapons.missiles.aoeUpgrades = (p.weapons.missiles.aoeUpgrades || 0) + 1;
     }
+  },
+  {
+    id: 'double_gem',
+    rarity: 'legendary',
+    name: 'Experiencia Duplicada',
+    icon: '💎',
+    desc: '5% de probabilidad de que los enemigos suelten 2 orbes de experiencia (Máx. 2).',
+    isAvailable: (p) => (p.doubleGemUpgradesCount || 0) < 2,
+    apply: (p) => {
+      p.doubleGemChance = (p.doubleGemChance || 0) + 0.05;
+      p.doubleGemUpgradesCount = (p.doubleGemUpgradesCount || 0) + 1;
+    }
+  },
+
+  // NUEVAS MEJORAS INFINITAS
+  {
+    id: 'damage_small',
+    isInfinite: true,
+    rarity: 'common',
+    name: 'Ajuste de Disparo',
+    icon: '🔧',
+    desc: '+5% Daño general.',
+    isAvailable: (p) => (p.damageUpgradesCount || 0) >= 5, // Only if max dmg upgrades reached
+    apply: (p) => { p.damageMult += 0.05; }
+  },
+  {
+    id: 'heal_small',
+    isInfinite: true,
+    rarity: 'common',
+    name: 'Reparación de Emergencia',
+    icon: '🩹',
+    desc: 'Restaura un 10% de tu salud máxima.',
+    isAvailable: (p) => p.hp < p.maxHp,
+    apply: (p) => { p.hp = Math.min(p.maxHp, p.hp + (p.maxHp * 0.10)); }
+  },
+  {
+    id: 'crit_chance',
+    isInfinite: true,
+    rarity: 'common',
+    name: 'Precisión Letal',
+    icon: '🎯',
+    desc: '+1% Probabilidad de Golpe Crítico.',
+    apply: (p) => { p.critChance = (p.critChance || 0) + 0.01; }
+  },
+  {
+    id: 'damage_med',
+    isInfinite: true,
+    rarity: 'uncommon',
+    name: 'Optimización de Plasma',
+    icon: '🔋',
+    desc: '+10% Daño general.',
+    isAvailable: (p) => (p.damageUpgradesCount || 0) >= 5, // Only if max dmg upgrades reached
+    apply: (p) => { p.damageMult += 0.10; }
+  },
+  {
+    id: 'heal_med',
+    isInfinite: true,
+    rarity: 'uncommon',
+    name: 'Kit Médico Avanzado',
+    icon: '💊',
+    desc: 'Restaura un 25% de tu salud máxima.',
+    isAvailable: (p) => p.hp < p.maxHp,
+    apply: (p) => { p.hp = Math.min(p.maxHp, p.hp + (p.maxHp * 0.25)); }
+  },
+  {
+    id: 'xp_boost',
+    isInfinite: true,
+    rarity: 'rare',
+    name: 'Extracción de Datos',
+    icon: '💾',
+    desc: '+5% Ganancia de experiencia.',
+    isAvailable: (p) => p.level >= 40,
+    apply: (p) => { p.xpMultiplier = (p.xpMultiplier || 1.0) + 0.05; }
+  },
+  {
+    id: 'crit_damage',
+    isInfinite: true,
+    rarity: 'rare',
+    name: 'Impacto Devastador',
+    icon: '💥',
+    desc: '+10% Daño Crítico.',
+    apply: (p) => { p.critDamage = (p.critDamage || 1.5) + 0.10; }
+  },
+  {
+    id: 'spawn_more_xp_less',
+    isInfinite: true,
+    rarity: 'rare',
+    name: 'Señal de Atracción',
+    icon: '📡',
+    desc: '+10% Enemigos, pero -5% Experiencia.',
+    apply: (p) => { 
+        import('../../engine/gameState.js').then(({ state }) => {
+            state.spawnRateMultiplier = (state.spawnRateMultiplier || 1.0) + 0.10;
+        });
+        p.xpMultiplier = (p.xpMultiplier || 1.0) - 0.05;
+    }
+  },
+  {
+    id: 'spawn_less_xp_more',
+    isInfinite: true,
+    rarity: 'rare',
+    name: 'Camuflaje Activo',
+    icon: '👻',
+    desc: '-5% Enemigos, pero +10% Experiencia.',
+    apply: (p) => { 
+        import('../../engine/gameState.js').then(({ state }) => {
+            state.spawnRateMultiplier = (state.spawnRateMultiplier || 1.0) - 0.05;
+        });
+        p.xpMultiplier = (p.xpMultiplier || 1.0) + 0.10;
+    }
+  },
+  {
+    id: 'regen_small',
+    isInfinite: true,
+    rarity: 'legendary',
+    name: 'Regeneración Pasiva',
+    icon: '🌱',
+    desc: '+0.4 Regeneración de HP por segundo.',
+    apply: (p) => { p.hpRegen += 0.4; }
+  },
+  {
+    id: 'boss_hp_cut',
+    isInfinite: true,
+    rarity: 'legendary',
+    name: 'Hackeo de Núcleo',
+    icon: '💻',
+    desc: 'Reduce a la mitad la vida actual de todos los jefes activos.',
+    isAvailable: (p) => state.bosses.length > 0,
+    apply: (p) => {
+        import('../../engine/gameState.js').then(({ state }) => {
+            if (state.bosses.length > 0) {
+                state.bosses.forEach(b => {
+                    b.getTargetables().forEach(t => {
+                        const target = t.parent || t;
+                        target.hp = Math.floor(target.hp / 2);
+                        import('../entities/effects/FloatingText.js').then(({ FloatingText }) => {
+                            state.floatingTexts.push(new FloatingText(target.x, target.y - 40, "HP HALVED!", "#ffaa00", 20));
+                        });
+                    });
+                });
+            }
+        });
+    }
+  },
+  {
+    id: 'iframe_small',
+    isInfinite: true,
+    rarity: 'legendary',
+    name: 'Fase Temporal',
+    icon: '⏳',
+    desc: '+0.1s de Inmunidad tras recibir daño.',
+    apply: (p) => { p.invulnerabilityMaxTime += 0.1; }
   }
+
 ];

@@ -22,3 +22,13 @@ Actualiza dinámicamente la barra de experiencia, la barra de vida del jugador y
 - **Opciones al subir de nivel:** En `showUpgradeMenu()`, el método `.slice(0, 3)` define cuántas opciones le aparecen al usuario (por defecto 3). Puedes aumentar este número para ofrecer más alternativas.
 - **Herramientas de Admin:** Si creas nuevos enemigos o mejoras en el futuro, debes venir a la función `initUIListeners()` para añadirlos a los menús desplegables del modo administrador para poder probarlos.
 
+
+**Modificaciones Recientes:**
+- El **Panel de Opciones** (`⚙️ OPCIONES`) reemplaza el botón principal de Admin, agregando controles interactivos de volumen BGM y SFX que se conectan con el `AudioManager.js`.
+- El **Panel de Administrador** ahora está alojado de manera interna dentro del panel de opciones (Opciones de Desarrollador).
+- Cada vez que se abre cualquier menú superpuesto (Opciones, Mejoras o Game Over), el BGM actual del juego se atenúa.
+- Al interactuar o pasar el mouse sobre cartas de mejoras, casillas y botones, se ejecutan sonidos de IU globales gestionados automáticamente a través de escuchas genéricas de eventos (click, mouseover).
+
+### Interfaz de Jefes y Recompensas Ocultas (`showBossRewardMenu`)
+- El UIManager también controla la generación y despliegue del modal de Recompensa de Jefe (5 cartas ocultas).
+- Esta UI utiliza CSS 3D Transforms para voltear las cartas y controla las probabilidades de obtener 2 selecciones (20%) o hacer un Jackpot (5%) con generación de partículas en el HTML.

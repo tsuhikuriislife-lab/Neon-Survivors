@@ -45,3 +45,15 @@ Contiene funciones auxiliares de uso general.
 **¿Qué puedo cambiar aquí?**
 - **Estilo Neon Base:** Si deseas que todo el juego tenga más o menos brillo general, puedes alterar cómo `drawPolygon` aplica el `shadowBlur` (brillo de neón).
 
+
+### 5. `AudioManager.js`
+Gestor centralizado de audio que interactúa nativamente con la Web Audio API.
+
+**Qué hace:** Pre-carga, decodifica y administra la reproducción de todos los efectos de sonido (SFX) y música de fondo (BGM).
+**Funciones:**
+- `init()`: Pre-carga y decodifica todos los archivos de sonido en la memoria.
+- `playSound(key, options)`: Reproduce un sonido. Soporta control dinámico de `volume`, `pitch`, variaciones de tono (`randomPitch`) y agrupamiento/debouncing para superposiciones (`throttleMs`).
+- `playMusic(key, volume)`: Cambia la música de fondo de manera reactiva (usado en `Game.js` para los combates contra jefes).
+- `setMusicMuffled(muffled)`: Permite atenuar la música dinámicamente al 20% de su volumen (utilizado al abrir menús).
+**¿Qué puedo cambiar aquí?**
+- Modificar el diccionario `this.sounds` para añadir nuevas canciones o efectos, o alterar los volúmenes en `bgmVolume` y `sfxVolume`.

@@ -209,6 +209,42 @@
       from { transform: scale(1); opacity: 0.9; }
       to { transform: scale(1.04); opacity: 1; }
     }
+    .current-upgrades-panel {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 25px;
+      padding: 10px 15px;
+      background: rgba(10, 15, 30, 0.6);
+      border: 1px solid rgba(0, 255, 255, 0.3);
+      border-radius: 8px;
+      max-width: 90%;
+      overflow-x: auto;
+      justify-content: center;
+      flex-wrap: wrap;
+      min-height: 50px;
+    }
+    .current-upgrade-icon {
+      font-size: 24px;
+      position: relative;
+      cursor: help;
+      transition: transform 0.2s;
+    }
+    .current-upgrade-icon:hover {
+      transform: scale(1.2);
+    }
+    .current-upgrade-icon .badge {
+      position: absolute;
+      bottom: -4px;
+      right: -4px;
+      background: #ff00ff;
+      color: white;
+      font-size: 11px;
+      font-weight: bold;
+      padding: 1px 4px;
+      border-radius: 50%;
+      border: 1px solid #1a1a2e;
+      box-shadow: 0 0 5px #ff00ff;
+    }
     .cards-container {
       display: flex;
       gap: 20px;
@@ -308,8 +344,31 @@
       box-shadow: 0 0 30px rgba(255, 0, 128, 0.8);
     }
 
+    /* QUICK TEST BTN */
+    #quick-test-btn {
+      position: absolute;
+      bottom: 135px;
+      left: 25px;
+      background: rgba(40, 40, 60, 0.8);
+      border: 1px solid #ff00ff;
+      color: #ff00ff;
+      padding: 8px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: bold;
+      z-index: 40;
+      box-shadow: 0 0 10px rgba(255, 0, 255, 0.5);
+      transition: all 0.2s;
+    }
+    #quick-test-btn:hover {
+      background: rgba(60, 60, 90, 0.9);
+      transform: scale(1.05);
+      box-shadow: 0 0 15px rgba(255, 0, 255, 0.8);
+      color: #fff;
+    }
+
     /* ADMIN PANEL */
-    #admin-btn {
+    #options-btn {
       position: absolute;
       bottom: 85px;
       left: 25px;
@@ -324,7 +383,7 @@
       box-shadow: 0 0 10px rgba(121, 40, 202, 0.5);
       transition: all 0.2s;
     }
-    #admin-btn:hover {
+    #options-btn:hover {
       background: rgba(60, 60, 90, 0.9);
       transform: scale(1.05);
       box-shadow: 0 0 15px rgba(0, 255, 255, 0.6);
@@ -429,3 +488,109 @@
       max-width: none;
       padding: 15px 10px;
     }
+
+/* Rarity Colors */
+.card.rarity-common { border-color: #a0aec0; box-shadow: 0 0 15px rgba(160, 174, 192, 0.2); }
+.card.rarity-common:hover { border-color: #e2e8f0; box-shadow: 0 0 25px rgba(226, 232, 240, 0.5); }
+.card.rarity-common .card-name { color: #e2e8f0; }
+
+.card.rarity-uncommon { border-color: #39ff14; box-shadow: 0 0 15px rgba(57, 255, 20, 0.25); }
+.card.rarity-uncommon:hover { border-color: #66ff4d; box-shadow: 0 0 25px rgba(57, 255, 20, 0.6); }
+.card.rarity-uncommon .card-name { color: #39ff14; }
+
+.card.rarity-rare { border-color: #00ffff; box-shadow: 0 0 15px rgba(0, 255, 255, 0.25); }
+.card.rarity-rare:hover { border-color: #66ffff; box-shadow: 0 0 25px rgba(0, 255, 255, 0.6); }
+.card.rarity-rare .card-name { color: #00ffff; }
+
+.card.rarity-legendary { border-color: #ffaa00; box-shadow: 0 0 15px rgba(255, 170, 0, 0.4); }
+.card.rarity-legendary:hover { border-color: #ffcc00; box-shadow: 0 0 35px rgba(255, 170, 0, 0.8); }
+.card.rarity-legendary .card-name { color: #ffcc00; }
+
+/* Boss Reward Modals & Flipping Cards */
+.card-container-3d {
+  perspective: 1000px;
+  flex: 1;
+  max-width: 200px; /* Make them slightly thinner to fit 5 */
+  height: 280px;
+}
+
+.card-3d {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  transition: transform 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  transform-style: preserve-3d;
+  cursor: pointer;
+}
+
+.card-3d.flipped {
+  transform: rotateY(180deg);
+}
+
+.card-front, .card-back {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  backface-visibility: hidden;
+  border-radius: 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 24px 10px;
+}
+
+.card-front {
+  background: linear-gradient(135deg, rgba(20, 25, 45, 0.95), rgba(10, 12, 22, 0.98));
+  border: 2px solid #ff00ff;
+  transform: rotateY(180deg);
+  box-shadow: 0 0 20px rgba(255, 0, 255, 0.25);
+  justify-content: center;
+}
+
+.card-back {
+  background: repeating-linear-gradient(45deg, #101220, #101220 10px, #1a1c2e 10px, #1a1c2e 20px);
+  border: 2px solid #555;
+  box-shadow: inset 0 0 20px #000;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: #ffaa00;
+  font-size: 40px;
+}
+
+.card-back:hover {
+  border-color: #ffaa00;
+  box-shadow: 0 0 15px rgba(255,170,0,0.5), inset 0 0 20px #000;
+}
+
+/* Inherit rarity classes for .card-front */
+.card-container-3d.rarity-common .card-front { border-color: #a0aec0; box-shadow: 0 0 15px rgba(160, 174, 192, 0.2); }
+.card-container-3d.rarity-uncommon .card-front { border-color: #39ff14; box-shadow: 0 0 15px rgba(57, 255, 20, 0.25); }
+.card-container-3d.rarity-rare .card-front { border-color: #00ffff; box-shadow: 0 0 15px rgba(0, 255, 255, 0.25); }
+.card-container-3d.rarity-legendary .card-front { border-color: #ffaa00; box-shadow: 0 0 15px rgba(255, 170, 0, 0.4); }
+
+.card-container-3d.rarity-common:hover .card-front { border-color: #e2e8f0; box-shadow: 0 0 25px rgba(226, 232, 240, 0.5); }
+.card-container-3d.rarity-uncommon:hover .card-front { border-color: #66ff4d; box-shadow: 0 0 25px rgba(57, 255, 20, 0.6); }
+.card-container-3d.rarity-rare:hover .card-front { border-color: #66ffff; box-shadow: 0 0 25px rgba(0, 255, 255, 0.6); }
+.card-container-3d.rarity-legendary:hover .card-front { border-color: #ffcc00; box-shadow: 0 0 35px rgba(255, 170, 0, 0.8); }
+
+/* Confetti particles */
+#particlesContainer {
+  position: absolute;
+  top: 0; left: 0; width: 100%; height: 100%;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 1;
+}
+
+.confetti {
+  position: absolute;
+  width: 10px; height: 20px;
+  background: #ffaa00;
+  animation: fall linear forwards;
+}
+
+@keyframes fall {
+  to { transform: translateY(110vh) rotate(720deg); }
+}
