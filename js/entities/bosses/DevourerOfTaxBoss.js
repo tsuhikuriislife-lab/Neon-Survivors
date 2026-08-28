@@ -28,7 +28,7 @@ export class DevourerOfTaxBoss extends Boss {
 
     // Físicas y Mecánicas Estilo Eater of Worlds
     this.outsideSpeed = 14.0;       // Velocidad máxima incrementada para embestidas
-    this.minSpeed = 2.8;            // Velocidad mínima de inercia dentro de la arena
+    this.minSpeed = 3.6;            // Velocidad mínima de inercia dentro de la arena
     this.friction = 0.045;          // Tasa de desaceleración por frame dentro del mapa
     this.outsideAccel = 0.22;       // Aceleración rápida fuera del mapa hacia outsideSpeed
     this.speed = this.outsideSpeed; // Inicia a máxima velocidad

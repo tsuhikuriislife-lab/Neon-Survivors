@@ -1,7 +1,19 @@
 import { state } from './gameState.js';
+import { audioManager } from './AudioManager.js';
 
 export const keys = {};
-export const mouse = { x: 0, y: 0, down: false, justReleased: false };
+export const mouse = { 
+  clientX: typeof window !== 'undefined' ? window.innerWidth / 2 : 0, 
+  clientY: typeof window !== 'undefined' ? window.innerHeight / 2 : 0, 
+  down: false, 
+  justReleased: false,
+  get x() {
+    return screenToWorld(this.clientX, this.clientY).x;
+  },
+  get y() {
+    return screenToWorld(this.clientX, this.clientY).y;
+  }
+};
 
 export const joystick = {
   active: false,
@@ -25,7 +37,9 @@ export const aimInput = {
   angle: 0,
   norm: 0,
   justReleased: false,
-  hasDragged: false
+  hasDragged: false,
+  hasTestedAimJoystick: false,
+  isOverCancelZone: false
 };
 
 export function getVirtualCoords(clientX, clientY) {
@@ -110,14 +124,31 @@ export function updateJoystickUI() {
 export function updateAimJoystickUI() {
   const base = document.getElementById('virtual-aim-joystick-base');
   const knob = document.getElementById('virtual-aim-joystick-knob');
+  const cancelZone = document.getElementById('laser-cancel-zone');
   if (!base || !knob) return;
 
   const cam = state.camera || { screenWidth: 1920, screenHeight: 1080 };
   const sw = cam.screenWidth || 1920;
   const sh = cam.screenHeight || 1080;
 
+  const hasLaser = state.player && state.player.weapons && state.player.weapons.laserCannon && state.player.weapons.laserCannon.level > 0;
+  const isTouchDevice = ('ontouchstart' in window) || (navigator && navigator.maxTouchPoints > 0);
+
+  if (state.isInMenu || !hasLaser) {
+    base.style.display = 'none';
+    knob.style.display = 'none';
+    base.classList.remove('guide-prompt');
+    if (cancelZone) {
+      cancelZone.style.display = 'none';
+      cancelZone.classList.remove('active-hover');
+    }
+    return;
+  }
+
+  // Laser Cannon is unlocked:
   if (aimInput.id !== null && aimInput.hasDragged) {
     base.style.display = 'block';
+    base.classList.remove('guide-prompt');
     base.style.left = `${(aimInput.startX / sw) * 100}%`;
     base.style.top = `${(aimInput.startY / sh) * 100}%`;
     knob.style.display = 'block';
@@ -125,10 +156,73 @@ export function updateAimJoystickUI() {
     const offsetY = Math.sin(aimInput.angle) * (aimInput.norm || 1) * 35;
     knob.style.left = `calc(50% + ${offsetX}%)`;
     knob.style.top = `calc(50% + ${offsetY}%)`;
+
+    if (cancelZone && isTouchDevice) {
+      cancelZone.style.display = 'flex';
+    }
+  } else if (!aimInput.hasTestedAimJoystick && isTouchDevice) {
+    // Show static guide prompt so mobile player sees that aiming joystick is available
+    base.style.display = 'block';
+    base.classList.add('guide-prompt');
+    base.style.left = '80%';
+    base.style.top = '68%';
+    knob.style.display = 'block';
+    knob.style.left = '50%';
+    knob.style.top = '50%';
+
+    if (cancelZone) {
+      cancelZone.style.display = 'none';
+      cancelZone.classList.remove('active-hover');
+    }
   } else {
     base.style.display = 'none';
     knob.style.display = 'none';
+    base.classList.remove('guide-prompt');
+
+    if (cancelZone) {
+      cancelZone.style.display = 'none';
+      cancelZone.classList.remove('active-hover');
+    }
   }
+}
+
+export function cancelAiming() {
+  mouse.down = false;
+  mouse.justReleased = false;
+
+  aimInput.active = false;
+  aimInput.justReleased = false;
+  aimInput.id = null;
+  aimInput.hasDragged = false;
+  aimInput.norm = 0;
+  aimInput.isOverCancelZone = false;
+
+  if (state.camera && typeof state.camera.setAimOffset === 'function') {
+    state.camera.setAimOffset(0, 0);
+  }
+
+  const cancelZone = document.getElementById('laser-cancel-zone');
+  if (cancelZone) {
+    cancelZone.classList.remove('active-hover');
+    cancelZone.style.display = 'none';
+  }
+
+  updateAimJoystickUI();
+}
+
+export function resetInputState() {
+  cancelAiming();
+  mouse.clientX = typeof window !== 'undefined' ? window.innerWidth / 2 : 0;
+  mouse.clientY = typeof window !== 'undefined' ? window.innerHeight / 2 : 0;
+  aimInput.hasTestedAimJoystick = false;
+
+  joystick.active = false;
+  joystick.id = null;
+  joystick.dx = 0;
+  joystick.dy = 0;
+
+  updateJoystickUI();
+  updateAimJoystickUI();
 }
 
 export function initInput() {
@@ -142,10 +236,17 @@ export function initInput() {
   });
 
   // --- MOUSE (DESKTOP) ---
+  window.addEventListener("contextmenu", (e) => {
+    e.preventDefault();
+    if (mouse.down) {
+      cancelAiming();
+      audioManager.playSound('click', { volume: 0.4, throttleMs: 50 });
+    }
+  });
+
   window.addEventListener("mousemove", (e) => {
-    const worldPos = screenToWorld(e.clientX, e.clientY);
-    mouse.x = worldPos.x;
-    mouse.y = worldPos.y;
+    mouse.clientX = e.clientX;
+    mouse.clientY = e.clientY;
   });
 
   window.addEventListener("mousedown", (e) => {
@@ -153,10 +254,17 @@ export function initInput() {
     if (e.target.closest('#pause-btn, .pause-btn, #options-btn, #quick-test-btn, .modal-overlay, #start-screen-overlay, button, input, .card, #activeSkillHud, #testing-panel')) {
       return;
     }
+    if (e.button === 2) {
+      // Right Click: Cancel aiming immediately
+      if (mouse.down) {
+        cancelAiming();
+        audioManager.playSound('click', { volume: 0.4, throttleMs: 50 });
+      }
+      return;
+    }
     if (e.button === 0) {
-      const worldPos = screenToWorld(e.clientX, e.clientY);
-      mouse.x = worldPos.x;
-      mouse.y = worldPos.y;
+      mouse.clientX = e.clientX;
+      mouse.clientY = e.clientY;
       mouse.down = true;
     }
   });
@@ -164,6 +272,8 @@ export function initInput() {
   window.addEventListener("mouseup", (e) => {
     if (state.isInMenu) return;
     if (e.button === 0) {
+      mouse.clientX = e.clientX;
+      mouse.clientY = e.clientY;
       if (mouse.down) {
         mouse.justReleased = true;
       }
@@ -198,8 +308,13 @@ export function initInput() {
         joystick.active = true;
         updateJoystickUI();
       } 
-      // Right half (Relative Swipe Aiming & Firing)
+      // Right half (Relative Swipe Aiming & Firing - Requires Laser Cannon)
       else if (v.x >= screenMidX && aimInput.id === null) {
+        const hasLaser = state.player && state.player.weapons && state.player.weapons.laserCannon && state.player.weapons.laserCannon.level > 0;
+        if (!hasLaser) {
+          continue;
+        }
+
         aimInput.id = touch.identifier;
         aimInput.startX = v.x;
         aimInput.startY = v.y;
@@ -208,6 +323,7 @@ export function initInput() {
         aimInput.norm = 0;
         aimInput.active = false;
         aimInput.hasDragged = false;
+        aimInput.isOverCancelZone = false;
         updateAimJoystickUI();
       }
     }
@@ -242,6 +358,30 @@ export function initInput() {
 
       // Update Aiming Joystick via relative drag vector
       if (touch.identifier === aimInput.id) {
+        const hasLaser = state.player && state.player.weapons && state.player.weapons.laserCannon && state.player.weapons.laserCannon.level > 0;
+        if (!hasLaser) {
+          cancelAiming();
+          continue;
+        }
+
+        // Check distance to cancel zone
+        const cancelZone = document.getElementById('laser-cancel-zone');
+        if (cancelZone && cancelZone.style.display !== 'none') {
+          const rect = cancelZone.getBoundingClientRect();
+          const czCenterX = (rect.left + rect.right) / 2;
+          const czCenterY = (rect.top + rect.bottom) / 2;
+          const czRadius = Math.max(rect.width, rect.height) / 2 + 18;
+          const distToCancel = Math.hypot(touch.clientX - czCenterX, touch.clientY - czCenterY);
+
+          if (distToCancel <= czRadius) {
+            cancelZone.classList.add('active-hover');
+            aimInput.isOverCancelZone = true;
+          } else {
+            cancelZone.classList.remove('active-hover');
+            aimInput.isOverCancelZone = false;
+          }
+        }
+
         const deltaX = v.x - aimInput.startX;
         const deltaY = v.y - aimInput.startY;
         const distance = Math.hypot(deltaX, deltaY);
@@ -249,6 +389,7 @@ export function initInput() {
         if (distance >= 8) {
           aimInput.active = true;
           aimInput.hasDragged = true;
+          aimInput.hasTestedAimJoystick = true;
           aimInput.angle = Math.atan2(deltaY, deltaX);
           aimInput.norm = Math.min(1.0, distance / 60);
           const clampedDist = Math.min(distance, 60);
@@ -279,8 +420,25 @@ export function initInput() {
       }
 
       if (touch.identifier === aimInput.id) {
+        const wasOverCancel = aimInput.isOverCancelZone;
+        aimInput.isOverCancelZone = false;
+
+        const cancelZone = document.getElementById('laser-cancel-zone');
+        if (cancelZone) {
+          cancelZone.classList.remove('active-hover');
+          cancelZone.style.display = 'none';
+        }
+
+        if (wasOverCancel) {
+          // Cancel shot completely
+          cancelAiming();
+          audioManager.playSound('click', { volume: 0.4, throttleMs: 50 });
+          continue;
+        }
+
         if (aimInput.hasDragged && aimInput.active) {
           aimInput.justReleased = true;
+          aimInput.hasTestedAimJoystick = true;
         }
         aimInput.active = false;
         aimInput.id = null;

@@ -1,5 +1,5 @@
 import { state } from '../../engine/gameState.js';
-import { keys, mouse, getMovementVector, aimInput } from '../../engine/Input.js';
+import { keys, mouse, getMovementVector, aimInput, updateAimJoystickUI } from '../../engine/Input.js';
 import { dist } from '../../engine/Utils.js';
 import { spawnExplosion } from '../effects/spawnExplosion.js';
 import { Projectile } from '../projectiles/Projectile.js';
@@ -98,7 +98,7 @@ export class Player {
     this.x = Math.max(this.radius, Math.min(state.width - this.radius, this.x));
     this.y = Math.max(this.radius, Math.min(state.height - this.radius, this.y));
 
-    if (aimInput.active) {
+    if (aimInput.active && this.weapons.laserCannon && this.weapons.laserCannon.level > 0) {
       this.angle = aimInput.angle;
     } else if (mouse.down && this.weapons.laserCannon && this.weapons.laserCannon.level > 0 && this.weapons.laserCannon.fullyCharged) {
       this.angle = Math.atan2(mouse.y - this.y, mouse.x - this.x);
@@ -592,7 +592,7 @@ export class Player {
     let isAiming = false;
     let aimAngle = 0;
 
-    if (aimInput.active) {
+    if (aimInput.active && this.weapons.laserCannon.level > 0) {
       isAiming = true;
       aimAngle = aimInput.angle;
     } else if (this.weapons.laserCannon.level > 0 && this.weapons.laserCannon.fullyCharged && mouse.down) {
@@ -661,5 +661,92 @@ export class Player {
         }
       }
     }
+
+    // Draw Laser Cannon charge bar under player
+    this.drawLaserChargeBar(ctx);
+  }
+
+  drawLaserChargeBar(ctx) {
+    const w = this.weapons.laserCannon;
+    if (!w || w.level <= 0) return;
+
+    const barWidth = 36;
+    const barHeight = 4;
+    const barX = this.x - barWidth / 2;
+    const barY = this.y + 24;
+    const radius = 2;
+
+    const chargeRatio = w.fullyCharged ? 1.0 : Math.min(1.0, Math.max(0.0, w.chargeTimer / w.maxCharge));
+
+    ctx.save();
+
+    if (w.fullyCharged) {
+      // Slow pulse when fully charged (breathing neon glow)
+      const t = performance.now() * 0.003;
+      const pulse = 0.5 + 0.5 * Math.sin(t);
+
+      // Outer glow and container
+      ctx.shadowColor = "#00ff88";
+      ctx.shadowBlur = 8 + pulse * 10;
+      ctx.fillStyle = "rgba(0, 30, 15, 0.75)";
+      ctx.strokeStyle = `rgba(0, 255, 136, ${0.7 + pulse * 0.3})`;
+      ctx.lineWidth = 1.2;
+
+      ctx.beginPath();
+      if (ctx.roundRect) {
+        ctx.roundRect(barX, barY, barWidth, barHeight, radius);
+      } else {
+        ctx.rect(barX, barY, barWidth, barHeight);
+      }
+      ctx.fill();
+      ctx.stroke();
+
+      // Pulsing full bar fill
+      ctx.fillStyle = `rgba(0, 255, 136, ${0.85 + pulse * 0.15})`;
+      ctx.beginPath();
+      if (ctx.roundRect) {
+        ctx.roundRect(barX, barY, barWidth, barHeight, radius);
+      } else {
+        ctx.rect(barX, barY, barWidth, barHeight);
+      }
+      ctx.fill();
+
+      // Crisp inner bright line
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = `rgba(255, 255, 255, ${0.5 + pulse * 0.4})`;
+      ctx.fillRect(barX + 2, barY + 1, barWidth - 4, 1.5);
+    } else {
+      // Charging state
+      ctx.shadowColor = "#00ff66";
+      ctx.shadowBlur = 4;
+      ctx.fillStyle = "rgba(10, 20, 15, 0.7)";
+      ctx.strokeStyle = "rgba(0, 255, 100, 0.4)";
+      ctx.lineWidth = 1;
+
+      ctx.beginPath();
+      if (ctx.roundRect) {
+        ctx.roundRect(barX, barY, barWidth, barHeight, radius);
+      } else {
+        ctx.rect(barX, barY, barWidth, barHeight);
+      }
+      ctx.fill();
+      ctx.stroke();
+
+      // Progressive fill
+      const fillW = Math.max(0, barWidth * chargeRatio);
+      if (fillW > 0) {
+        ctx.fillStyle = "#00ff66";
+        ctx.shadowBlur = 6;
+        ctx.beginPath();
+        if (ctx.roundRect) {
+          ctx.roundRect(barX, barY, fillW, barHeight, radius);
+        } else {
+          ctx.rect(barX, barY, fillW, barHeight);
+        }
+        ctx.fill();
+      }
+    }
+
+    ctx.restore();
   }
 }

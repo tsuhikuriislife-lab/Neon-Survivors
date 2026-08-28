@@ -1,4 +1,5 @@
 import { state } from '../engine/gameState.js';
+import { cancelAiming } from '../engine/Input.js';
 import { formatTime, drawPolygon } from '../engine/Utils.js';
 import { upgradeDatabase } from '../data/upgrades.js';
 import { initGame } from '../engine/Game.js';
@@ -56,6 +57,7 @@ export function renderBossBars() {
 
 export function showUpgradeMenu() {
   state.isPaused = true;
+  cancelAiming();
   const modal = document.getElementById("levelModal");
   const container = document.getElementById("cardsContainer");
   const btnReroll = document.getElementById("btnReroll");
@@ -311,6 +313,7 @@ export function initUIListeners() {
   if (pauseBtn) {
     pauseBtn.onclick = () => {
       state.isPaused = true;
+      cancelAiming();
       optionsModal.style.display = "flex";
       audioManager.setMusicMuffled(true);
       
@@ -344,6 +347,10 @@ export function initUIListeners() {
       document.getElementById("adminGodMode").checked = state.godMode;
       document.getElementById("adminDisableSpawns").checked = state.disableSpawns;
       document.getElementById("adminDisableBossSpawns").checked = state.disableBossSpawns;
+      const disableEnemyCollisionsElem = document.getElementById("adminDisableEnemyCollisions");
+      if (disableEnemyCollisionsElem) {
+        disableEnemyCollisionsElem.checked = state.disableEnemyCollisions;
+      }
       const testPanelElem = document.getElementById("testing-panel");
       const testToggleElem = document.getElementById("adminToggleTestingPanel");
       if (testPanelElem && testToggleElem) {
@@ -361,6 +368,10 @@ export function initUIListeners() {
   document.getElementById("adminGodMode").onchange = (e) => state.godMode = e.target.checked;
   document.getElementById("adminDisableSpawns").onchange = (e) => state.disableSpawns = e.target.checked;
   document.getElementById("adminDisableBossSpawns").onchange = (e) => state.disableBossSpawns = e.target.checked;
+  const adminDisableEnemyCollisions = document.getElementById("adminDisableEnemyCollisions");
+  if (adminDisableEnemyCollisions) {
+    adminDisableEnemyCollisions.onchange = (e) => state.disableEnemyCollisions = e.target.checked;
+  }
 
   const adminToggleTestingPanel = document.getElementById("adminToggleTestingPanel");
   if (adminToggleTestingPanel) {
@@ -590,6 +601,7 @@ export function initUIListeners() {
 export function triggerGameOver() {
   state.isGameOver = true;
   state.isPaused = true;
+  cancelAiming();
   document.getElementById("finalTime").innerText = formatTime(state.gameTime);
   document.getElementById("finalKills").innerText = state.killCount;
 
@@ -713,6 +725,7 @@ export function updateHUD() {
 
 export function showBossRewardMenu(bossName) {
   state.isPaused = true;
+  cancelAiming();
   audioManager.setMusicMuffled(true);
 
   if (!state.bossScaling) state.bossScaling = {};

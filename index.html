@@ -23,6 +23,11 @@
       <div id="virtual-aim-joystick-knob" class="virtual-aim-joystick-knob"></div>
     </div>
 
+    <!-- Laser Cancel Zone (Mobile) -->
+    <div id="laser-cancel-zone" class="laser-cancel-zone" style="display: none;" title="Arrastra aquí para cancelar disparo">
+      <span class="laser-cancel-icon">✕</span>
+    </div>
+
     <div id="ui-layer" style="display: none;">
       <div class="level-badge" id="hudLevel">LVL 1</div>
       <div class="xp-container">
@@ -155,6 +160,7 @@
           <label><input type="checkbox" id="adminGodMode"> God Mode (Sin Daño)</label><br>
           <label><input type="checkbox" id="adminDisableSpawns"> Desactivar Spawns Enemigos</label><br>
           <label><input type="checkbox" id="adminDisableBossSpawns"> Desactivar Spawn Bosses</label><br>
+          <label><input type="checkbox" id="adminDisableEnemyCollisions"> Desactivar Colisiones Enemigos</label><br>
           <label><input type="checkbox" id="adminToggleTestingPanel"> Panel de DPS / Daño en Pantalla</label>
         </div>
         <div class="admin-section">

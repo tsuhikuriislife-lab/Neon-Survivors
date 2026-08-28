@@ -1,4 +1,5 @@
 import { state } from './gameState.js';
+import { resetInputState } from './Input.js';
 import { Player } from '../entities/player/Player.js';
 import { updateHUD, updateActiveSkillHUD, showBossRewardMenu } from '../ui/UIManager.js';
 import { handleSpawning, spawnRandomBoss, updatePendingBossSpawn } from '../systems/WaveManager.js';
@@ -13,6 +14,7 @@ export const vectorTitle = new VectorTitleRenderer("NEON SURVIVORS");
 export function initGame() {
   state.isInMenu = false;
   state.reset();
+  resetInputState();
   state.player = new Player();
   if (state.camera) {
     state.camera.reset();
@@ -413,12 +415,27 @@ export function loop(timestamp, ctx) {
     // Update Environment Transitions (Background, Lines, Borders)
     state.environment.update(dt, state.gameTime);
 
-    // 1. Update Spatial Hash Grid with all current enemies
+    // 1. Update Enemies & Cleanup Dead Enemies via Swap-and-Pop
+    for (let i = state.enemies.length - 1; i >= 0; i--) {
+      const e = state.enemies[i];
+      e.update(state.player);
+      if (e.hp <= 0) {
+        state.enemies[i] = state.enemies[state.enemies.length - 1];
+        state.enemies.pop();
+      }
+    }
+
+    // 2. Update Spatial Hash Grid with all current enemies
     state.spatialGrid.clear();
     const currentEnemies = state.enemies;
     const enemyLen = currentEnemies.length;
     for (let i = 0; i < enemyLen; i++) {
       state.spatialGrid.insert(currentEnemies[i]);
+    }
+
+    // 3. Resolve Enemy-Enemy and Enemy-Boss soft-body collision separation
+    if (!state.disableEnemyCollisions) {
+      state.spatialGrid.resolveSeparation(state.enemies, state.bosses);
     }
 
     if (state.player) {
@@ -625,11 +642,9 @@ export function loop(timestamp, ctx) {
       }
     }
 
-    // Update Enemies & Cleanup Dead Enemies via Swap-and-Pop
+    // Cleanup any dead enemies from projectile hits
     for (let i = state.enemies.length - 1; i >= 0; i--) {
-      const e = state.enemies[i];
-      e.update(state.player);
-      if (e.hp <= 0) {
+      if (state.enemies[i].hp <= 0) {
         state.enemies[i] = state.enemies[state.enemies.length - 1];
         state.enemies.pop();
       }
@@ -745,9 +760,15 @@ export function loop(timestamp, ctx) {
   }
 
   // 3. Enemies & Bosses
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(0, 0, state.width, state.height);
+  ctx.clip();
   for (let i = 0; i < state.enemies.length; i++) {
     state.enemies[i].draw(ctx);
   }
+  ctx.restore();
+
   for (let i = 0; i < state.bosses.length; i++) {
     state.bosses[i].draw(ctx);
   }

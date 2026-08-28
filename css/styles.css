@@ -825,6 +825,24 @@
   z-index: 45;
 }
 
+@keyframes aimGuidePulse {
+  0%, 100% {
+    transform: translate(-50%, -50%) scale(1);
+    box-shadow: 0 0 15px rgba(0, 255, 0, 0.4), inset 0 0 15px rgba(0, 255, 0, 0.2);
+    border-color: rgba(0, 255, 0, 0.6);
+  }
+  50% {
+    transform: translate(-50%, -50%) scale(1.08);
+    box-shadow: 0 0 28px rgba(0, 255, 0, 0.75), inset 0 0 22px rgba(0, 255, 0, 0.35);
+    border-color: rgba(180, 255, 200, 0.9);
+  }
+}
+
+.virtual-aim-joystick-base.guide-prompt {
+  animation: aimGuidePulse 1.8s ease-in-out infinite;
+  opacity: 0.9;
+}
+
 .virtual-aim-joystick-knob {
   position: absolute;
   left: 50%;
@@ -838,6 +856,50 @@
   transform: translate(-50%, -50%);
   pointer-events: none;
   z-index: 46;
+}
+
+/* LASER CANCEL ZONE (MOBILE) */
+.laser-cancel-zone {
+  position: absolute;
+  top: clamp(62px, 8.5cqh, 85px);
+  right: clamp(65px, 8.5cqw, 110px);
+  width: clamp(52px, 6.5cqw, 72px);
+  height: clamp(52px, 6.5cqw, 72px);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 0, 51, 0.25) 0%, rgba(255, 0, 51, 0.08) 70%, transparent 100%);
+  border: 2px solid rgba(255, 0, 51, 0.8);
+  box-shadow: 0 0 16px rgba(255, 0, 51, 0.45), inset 0 0 12px rgba(255, 0, 51, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 44;
+  transform: translate(50%, -50%);
+  transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+}
+
+.laser-cancel-icon {
+  font-size: clamp(24px, 3.2cqw, 36px);
+  font-weight: 900;
+  color: #ff0033;
+  text-shadow: 0 0 10px #ff0033, 0 0 20px #ff0033;
+  line-height: 1;
+  user-select: none;
+  pointer-events: none;
+}
+
+.laser-cancel-zone.active-hover {
+  transform: translate(50%, -50%) scale(1.22);
+  background: radial-gradient(circle, rgba(255, 0, 51, 0.6) 0%, rgba(255, 0, 51, 0.2) 70%, transparent 100%);
+  border-color: #ffffff;
+  box-shadow: 0 0 28px #ff0033, 0 0 45px rgba(255, 0, 51, 0.9), inset 0 0 20px #ff0033;
+}
+
+.laser-cancel-zone.active-hover .laser-cancel-icon {
+  color: #ffffff;
+  text-shadow: 0 0 12px #ffffff, 0 0 25px #ff0033;
 }
 
 /* ACTIVE SKILL HUD */

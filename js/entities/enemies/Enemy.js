@@ -7,11 +7,21 @@ import { textures, drawCachedTexture, getOrCachePolygon } from '../../engine/Tex
 export class Enemy {
   constructor(x, y) {
     if (x === undefined || y === undefined) {
+      const margin = 100;
       const edge = Math.floor(Math.random() * 4);
-      if (edge === 0) { this.x = Math.random() * state.width; this.y = -30; }
-      else if (edge === 1) { this.x = state.width + 30; this.y = Math.random() * state.height; }
-      else if (edge === 2) { this.x = Math.random() * state.width; this.y = state.height + 30; }
-      else { this.x = -30; this.y = Math.random() * state.height; }
+      if (edge === 0) { 
+        this.x = Math.random() * state.width; 
+        this.y = -margin; 
+      } else if (edge === 1) { 
+        this.x = state.width + margin; 
+        this.y = Math.random() * state.height; 
+      } else if (edge === 2) { 
+        this.x = Math.random() * state.width; 
+        this.y = state.height + margin; 
+      } else { 
+        this.x = -margin; 
+        this.y = Math.random() * state.height; 
+      }
     } else {
       this.x = x;
       this.y = y;
@@ -95,6 +105,10 @@ export class Enemy {
   }
 
   draw(ctx) {
+    if (this.x + this.radius < 0 || this.x - this.radius > state.width ||
+        this.y + this.radius < 0 || this.y - this.radius > state.height) {
+      return;
+    }
     if (!this.texture) {
       this.texture = getOrCachePolygon(this.radius, this.sides, this.color, 8, "rgba(20,0,30,0.3)");
     }

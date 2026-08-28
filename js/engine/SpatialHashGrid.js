@@ -142,6 +142,117 @@ export class SpatialHashGrid {
       }
     });
   }
+
+  /**
+   * Resolves soft-body circle separation between all enemies in the grid.
+   * Uses spatial hash grid lookups for O(N) performance instead of O(N^2).
+   * 
+   * @param {Array} entities - Array of active enemies
+   * @param {Array} bosses - Optional array of active bosses
+   * @param {number} pushRatio - Separation relaxation factor (default 0.6)
+   */
+  resolveSeparation(entities, bosses = [], pushRatio = 0.6) {
+    const count = entities.length;
+    if (count < 2 && (!bosses || bosses.length === 0)) return;
+
+    for (let i = 0; i < count; i++) {
+      const e1 = entities[i];
+      if (!e1 || e1.hp <= 0) continue;
+
+      const r1 = e1.radius || 15;
+      const m1 = r1 * r1;
+      let pushX = 0;
+      let pushY = 0;
+
+      // 1. Check enemy-to-enemy collisions via spatial grid
+      this.queryRadius(e1.x, e1.y, r1, (e2) => {
+        if (e1 === e2 || !e2 || e2.hp <= 0) return;
+
+        const dx = e1.x - e2.x;
+        const dy = e1.y - e2.y;
+        const distSq = dx * dx + dy * dy;
+        const r2 = e2.radius || 15;
+        const minDist = r1 + r2;
+
+        if (distSq < minDist * minDist) {
+          const d = Math.sqrt(distSq);
+          let nx, ny;
+          if (d > 0.001) {
+            nx = dx / d;
+            ny = dy / d;
+          } else {
+            // Overlapping on exact same point: pick random direction
+            const randAng = Math.random() * Math.PI * 2;
+            nx = Math.cos(randAng);
+            ny = Math.sin(randAng);
+          }
+
+          const overlap = minDist - d;
+          const m2 = r2 * r2;
+          const totalMass = m1 + m2;
+          const weight = totalMass > 0 ? m2 / totalMass : 0.5;
+
+          pushX += nx * overlap * weight * pushRatio;
+          pushY += ny * overlap * weight * pushRatio;
+        }
+      });
+
+      // 2. Check enemy-to-boss collisions (bosses have infinite mass, push enemies away)
+      if (bosses && bosses.length > 0) {
+        for (let bIdx = 0; bIdx < bosses.length; bIdx++) {
+          const boss = bosses[bIdx];
+          if (!boss || boss.dead) continue;
+
+          const targets = boss.getTargetables ? boss.getTargetables() : [boss];
+          for (let tIdx = 0; tIdx < targets.length; tIdx++) {
+            const target = targets[tIdx];
+            if (!target || target.dead) continue;
+
+            const bdx = e1.x - target.x;
+            const bdy = e1.y - target.y;
+            const bDistSq = bdx * bdx + bdy * bdy;
+            const bRadius = target.radius || 40;
+            const bMinDist = r1 + bRadius;
+
+            if (bDistSq < bMinDist * bMinDist) {
+              const bd = Math.sqrt(bDistSq);
+              let bnx, bny;
+              if (bd > 0.001) {
+                bnx = bdx / bd;
+                bny = bdy / bd;
+              } else {
+                const bRandAng = Math.random() * Math.PI * 2;
+                bnx = Math.cos(bRandAng);
+                bny = Math.sin(bRandAng);
+              }
+              const bOverlap = bMinDist - bd;
+              pushX += bnx * bOverlap * pushRatio;
+              pushY += bny * bOverlap * pushRatio;
+            }
+          }
+        }
+      }
+
+      // 3. Clamp maximum single-frame displacement to avoid abrupt jumps
+      const maxDisplacement = 16;
+      const pushMag = Math.hypot(pushX, pushY);
+      if (pushMag > maxDisplacement) {
+        pushX = (pushX / pushMag) * maxDisplacement;
+        pushY = (pushY / pushMag) * maxDisplacement;
+      }
+
+      e1.x += pushX;
+      e1.y += pushY;
+
+      // 4. Boundary soft-clamp: if inside the arena, don't let pushes push outside
+      if (e1.type !== 'swarmer') {
+        if (e1.x >= 0 && e1.x <= this.width && e1.y >= 0 && e1.y <= this.height) {
+          e1.x = Math.max(r1, Math.min(this.width - r1, e1.x));
+          e1.y = Math.max(r1, Math.min(this.height - r1, e1.y));
+        }
+      }
+    }
+  }
 }
 
 export const spatialGrid = new SpatialHashGrid(1920, 1920, 120);

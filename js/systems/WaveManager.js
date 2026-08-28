@@ -148,56 +148,102 @@ export function handleSpawning() {
 
   let baseInterval;
   if (state.gameTime < 180) {
-    baseInterval = Math.max(40, 65 - Math.floor((state.gameTime / 180) * 25));
+    // Inicio equilibrado: de 42 frames (~0.7s) bajando a 26 frames (~0.43s)
+    baseInterval = Math.max(26, 42 - Math.floor((state.gameTime / 180) * 16));
   } else if (state.gameTime < 480) {
-    baseInterval = Math.max(20, 40 - Math.floor(((state.gameTime - 180) / 300) * 20));
+    // Fase media: de 26 frames a 16 frames (~0.26s)
+    baseInterval = Math.max(16, 26 - Math.floor(((state.gameTime - 180) / 300) * 10));
   } else {
-    baseInterval = Math.max(10, 20 - Math.floor(((state.gameTime - 480) / 300) * 10));
+    // Fase tardía: de 16 frames a 9 frames (~0.15s)
+    baseInterval = Math.max(9, 16 - Math.floor(((state.gameTime - 480) / 300) * 7));
   }
 
+  const mult = state.spawnRateMultiplier || 1.0;
+  baseInterval = Math.max(2, Math.floor(baseInterval / mult));
+
   if (hasActiveBoss) {
-    baseInterval = Math.floor(baseInterval / 0.25);
+    baseInterval = Math.floor(baseInterval * 2.5);
   }
 
   if (state.spawnTimer >= baseInterval) {
     state.spawnTimer = 0;
     
-    if (state.bossDefeatTimes.first && Math.random() < 0.15) {
-       const count = 5 + Math.floor(Math.random() * 4);
+    // 1. Oleada de Enjambradores (Swarmers)
+    if (state.bossDefeatTimes.first && Math.random() < 0.16) {
+       const count = 6 + Math.floor(Math.random() * 5);
        const dummy = new StandardEnemy('small');
-       const sx = dummy.x; const sy = dummy.y;
+       const sx = dummy.x; 
+       const sy = dummy.y;
+       const isHoriz = dummy.y < 0 || dummy.y > state.height;
        for (let i = 0; i < count; i++) {
-         const sw = new SwarmerEnemy(sx + (Math.random() * 40 - 20), sy + (Math.random() * 40 - 20));
+         let nx, ny;
+         if (isHoriz) {
+           nx = Math.max(20, Math.min(state.width - 20, sx + (Math.random() * 120 - 60)));
+           ny = dummy.y < 0 ? -(90 + Math.random() * 50) : (state.height + 90 + Math.random() * 50);
+         } else {
+           nx = dummy.x < 0 ? -(90 + Math.random() * 50) : (state.width + 90 + Math.random() * 50);
+           ny = Math.max(20, Math.min(state.height - 20, sy + (Math.random() * 120 - 60)));
+         }
+         const sw = new SwarmerEnemy(nx, ny);
          state.enemies.push(sw);
        }
        return;
     }
 
+    // 2. Enemigos especiales por progresión
+    if (state.bossDefeatTimes.kyren && Math.random() < 0.22) {
+       state.enemies.push(new RangerEnemy());
+       return;
+    }
+    if (state.bossDefeatTimes.amalgam && Math.random() < 0.08) {
+       state.enemies.push(new MotherEnemy());
+       return;
+    }
+
+    // 3. Cantidad de enemigos por lote (Batch Spawning)
+    let batchCount = 1;
+    if (state.gameTime < 60) {
+      batchCount = Math.random() < 0.25 ? 2 : 1;
+    } else if (state.gameTime < 180) {
+      batchCount = Math.random() < 0.40 ? 2 : 1;
+    } else if (state.gameTime < 480) {
+      const r = Math.random();
+      batchCount = r < 0.30 ? 3 : (r < 0.70 ? 2 : 1);
+    } else {
+      batchCount = Math.random() < 0.35 ? 3 : 2;
+    }
+
+    // 4. Tipo de enemigo estándar
     let enemyType;
     if (state.gameTime < 180) {
       enemyType = 'small';
     } else if (state.gameTime < 480) {
-      enemyType = Math.random() < 0.45 ? 'medium' : 'small';
+      enemyType = Math.random() < 0.50 ? 'medium' : 'small';
     } else {
       const roll = Math.random();
-      if (roll < 0.30) {
+      if (roll < 0.35) {
         enemyType = 'large';
-      } else if (roll < 0.65) {
+      } else if (roll < 0.70) {
         enemyType = 'medium';
       } else {
         enemyType = 'small';
       }
     }
 
-    if (state.bossDefeatTimes.kyren && Math.random() < 0.20) {
-       state.enemies.push(new RangerEnemy());
-       return;
-    }
-    if (state.bossDefeatTimes.amalgam && Math.random() < 0.05) {
-       state.enemies.push(new MotherEnemy());
-       return;
-    }
+    const firstEnemy = new StandardEnemy(enemyType);
+    state.enemies.push(firstEnemy);
 
-    state.enemies.push(new StandardEnemy(enemyType));
+    const isHoriz = firstEnemy.y < 0 || firstEnemy.y > state.height;
+    for (let i = 1; i < batchCount; i++) {
+      let ox, oy;
+      if (isHoriz) {
+        ox = Math.max(20, Math.min(state.width - 20, firstEnemy.x + (Math.random() * 80 - 40)));
+        oy = firstEnemy.y < 0 ? -(90 + Math.random() * 40) : (state.height + 90 + Math.random() * 40);
+      } else {
+        ox = firstEnemy.x < 0 ? -(90 + Math.random() * 40) : (state.width + 90 + Math.random() * 40);
+        oy = Math.max(20, Math.min(state.height - 20, firstEnemy.y + (Math.random() * 80 - 40)));
+      }
+      state.enemies.push(new StandardEnemy(enemyType, ox, oy));
+    }
   }
 }

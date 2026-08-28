@@ -1,4 +1,5 @@
 import { state } from "../engine/gameState.js";
+import { updateAimJoystickUI } from "../engine/Input.js";
 export const upgradeDatabase = [
   {
     id: 'blaster_count',
@@ -291,7 +292,10 @@ export const upgradeDatabase = [
     icon: '🔦',
     desc: 'Un cañón de apuntado manual que perfora infinitamente.',
     isAvailable: (p) => p.weapons.laserCannon.level === 0,
-    apply: (p) => { p.weapons.laserCannon.level = 1; }
+    apply: (p) => { 
+      p.weapons.laserCannon.level = 1; 
+      updateAimJoystickUI();
+    }
   },
   {
     id: 'laser_charge',

@@ -19,6 +19,7 @@ export const state = {
   godMode: false,
   disableSpawns: false,
   disableBossSpawns: false,
+  disableEnemyCollisions: false,
   spawnRateMultiplier: 1.0,
   
   bossScaling: {},
@@ -115,6 +116,7 @@ export const state = {
       amalgam: null
     };
     this.spawnRateMultiplier = 1.0;
+    this.disableEnemyCollisions = false;
 
     this.damageStats = {
       blaster: 0,
