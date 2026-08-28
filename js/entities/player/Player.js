@@ -1,5 +1,5 @@
 import { state } from '../../engine/gameState.js';
-import { keys } from '../../engine/Input.js';
+import { keys, mouse } from '../../engine/Input.js';
 import { dist, drawPolygon } from '../../engine/Utils.js';
 import { spawnExplosion } from '../effects/spawnExplosion.js';
 import { FloatingText } from '../effects/FloatingText.js';
@@ -7,7 +7,9 @@ import { Projectile } from '../projectiles/Projectile.js';
 import { Shockwave } from '../projectiles/Shockwave.js';
 import { NovaProjectile } from '../projectiles/NovaProjectile.js';
 import { MissileProjectile } from '../projectiles/MissileProjectile.js';
+import { LaserBeam } from '../projectiles/LaserBeam.js';
 import { showUpgradeMenu, triggerGameOver, updateHUD } from '../../ui/UIManager.js';
+import { audioManager } from '../../engine/AudioManager.js';
 
 export class Player {
   constructor() {
@@ -43,12 +45,25 @@ export class Player {
     this.doubleGemUpgradesCount = 0;
     this.acquiredUpgrades = {};
 
+    this.activeSkill = {
+      id: 'dash', // Test skill
+      level: 1,
+      timer: 0,
+      cooldown: 3, 
+      duration: 0.2, 
+      activeTimer: 0,
+      isActive: false,
+      emoji: '⚡',
+      color: '#ffff00'
+    };
+
     this.weapons = {
       blaster: { level: 1, timer: 0, cooldown: 60, projectileCount: 1, damage: 22, range: 500, speed: 12, homing: 0, homingUpgrades: 0 },
       orbitals: { level: 0, count: 2, radius: 120, angle: 0, speed: 0.05, damage: 35, tickTimer: 0, tickInterval: 10, size: 12 },
       nova: { level: 0, count: 6, timer: 0, cooldown: 400, speed: 6, spiral: false },
       shockwave: { level: 0, timer: 0, cooldown: 230, radius: 175, damage: 150 },
-      missiles: { level: 0, count: 6, timer: 0, cooldown: 220, speed: 7, homing: 0.05, aoe: 70, damage: 23 }
+      missiles: { level: 0, count: 6, timer: 0, cooldown: 220, speed: 7, homing: 0.05, aoe: 70, damage: 23 },
+      laserCannon: { level: 0, chargeTimer: 0, maxCharge: 1140, fullyCharged: false, damage: 250, width: 25, duration: 24, chargeSpeedMult: 1, damageMult: 1, widthMult: 1, subLasers: false, dot: false, dotDamage: 20, dotDuration: 5, tickDamage: false, soundNode: null }
     };
   }
 
@@ -66,6 +81,10 @@ export class Player {
       this.speed = this.baseSpeed * 0.75;
     } else {
       this.speed = this.baseSpeed;
+    }
+
+    if (this.activeSkill && this.activeSkill.isActive && this.activeSkill.id === 'dash') {
+      this.speed *= 2.5; // Dash speed boost
     }
 
     let dx = 0;
@@ -102,6 +121,61 @@ export class Player {
     this.updateShockwave();
     this.updateNova();
     this.updateMissiles();
+    this.updateLaserCannon();
+    this.updateActiveSkill(dt);
+  }
+
+  onPause() {
+    for (const key in this.weapons) {
+      const w = this.weapons[key];
+      if (w.soundNode) {
+        try { 
+          w.soundNode.stop(); 
+          w.soundNode.disconnect();
+        } catch(e) {}
+        w.soundNode = null;
+      }
+      if (w.charging !== undefined) {
+        w.charging = false;
+      }
+    }
+  }
+
+  updateActiveSkill(dt) {
+    if (!this.activeSkill || !this.activeSkill.id) return;
+    
+    if (this.activeSkill.isActive) {
+      this.activeSkill.activeTimer -= dt;
+      if (this.activeSkill.activeTimer <= 0) {
+        this.activeSkill.isActive = false;
+        // The specific skill deactivation logic would go here or be checked actively in update loop
+      }
+    } else {
+      if (this.activeSkill.timer > 0) {
+        this.activeSkill.timer -= dt;
+      } else if (keys[' ']) { // Spacebar pressed
+        this.triggerActiveSkill();
+      }
+    }
+  }
+
+  triggerActiveSkill() {
+    this.activeSkill.isActive = true;
+    this.activeSkill.activeTimer = this.activeSkill.duration;
+    this.activeSkill.timer = this.activeSkill.cooldown;
+    
+    // Switch based on this.activeSkill.id
+    if (this.activeSkill.id === 'dash') {
+      audioManager.playSound('ui_click', { volume: 0.5, throttleMs: 0 }); // Placeholder sound
+      import('../effects/Particle.js').then(({ Particle }) => {
+        for(let i=0; i<15; i++) {
+          const p = new Particle(this.x, this.y, this.activeSkill.color, 4, 0.05, 5);
+          p.vx = (Math.random() - 0.5) * 10;
+          p.vy = (Math.random() - 0.5) * 10;
+          state.particles.push(p);
+        }
+      });
+    }
   }
 
   updateBlaster() {
@@ -146,9 +220,7 @@ export class Player {
       ));
     }
     
-    import('../../engine/AudioManager.js').then(({ audioManager }) => {
-        audioManager.playSound('fire_main_gun', { volume: 0.3, throttleMs: 100 });
-    });
+    audioManager.playSound('fire_main_gun', { volume: 0.3, throttleMs: 100 });
   }
 
   updateOrbitals() {
@@ -176,9 +248,7 @@ export class Player {
             e.takeDamage(w.damage * this.damageMult, "#ff00ff");
             state.recordDamage('orbitals', w.damage * this.damageMult);
             spawnExplosion(ox, oy, "#ff00ff", 3, 1.5);
-            import('../../engine/AudioManager.js').then(({ audioManager }) => {
-                audioManager.playSound('hit_satellite', { volume: 0.5, throttleMs: 50 });
-            });
+            audioManager.playSound('hit_satellite', { volume: 0.5, throttleMs: 50 });
           }
         }
 
@@ -193,9 +263,7 @@ export class Player {
               state.recordDamage('orbitals', w.damage * this.damageMult);
               spawnExplosion(ox, oy, "#ff00ff", 3, 1.5);
               damagedParents.add(actualTarget);
-              import('../../engine/AudioManager.js').then(({ audioManager }) => {
-                  audioManager.playSound('hit_satellite', { volume: 0.5, throttleMs: 50 });
-              });
+              audioManager.playSound('hit_satellite', { volume: 0.5, throttleMs: 50 });
             }
           }
         }
@@ -210,9 +278,7 @@ export class Player {
     if (w.timer >= w.cooldown * this.cooldownMult) {
       w.timer = 0;
       state.shockwaves.push(new Shockwave(this.x, this.y, w.radius, w.damage * this.damageMult));
-      import('../../engine/AudioManager.js').then(({ audioManager }) => {
-          audioManager.playSound('fire_shockwave', { volume: 0.7, throttleMs: 100 });
-      });
+      audioManager.playSound('fire_shockwave', { volume: 0.7, throttleMs: 100 });
     }
   }
 
@@ -240,9 +306,7 @@ export class Player {
         w.spiral
       ));
     }
-    import('../../engine/AudioManager.js').then(({ audioManager }) => {
-        audioManager.playSound('fire_nova', { volume: 0.6, throttleMs: 100 });
-    });
+    audioManager.playSound('fire_nova', { volume: 0.6, throttleMs: 100 });
   }
 
   updateMissiles() {
@@ -259,7 +323,7 @@ export class Player {
       if (this.missileFireTimer <= 0) {
         this.fireSingleMissile();
         this.missilesQueue--;
-        this.missileFireTimer = 12; // 0.2s * 60fps = 12 frames
+        this.missileFireTimer = 6; // 0.2s * 60fps = 12 frames
       } else {
         this.missileFireTimer--;
       }
@@ -278,9 +342,111 @@ export class Player {
       w.homing,
       w.aoe
     ));
-    import('../../engine/AudioManager.js').then(({ audioManager }) => {
-        audioManager.playSound('fire_missile', { volume: 0.5, throttleMs: 50 });
-    });
+    audioManager.playSound('fire_missile', { volume: 0.5, throttleMs: 50 });
+  }
+
+  updateLaserCannon() {
+    const w = this.weapons.laserCannon;
+    if (w.level <= 0) return;
+
+    if (!w.fullyCharged) {
+      if (!w.charging) {
+         w.charging = true;
+         const chargeTimeSeconds = (w.maxCharge / w.chargeSpeedMult) / 60;
+         const soundBaseLen = 19; 
+         const speed = soundBaseLen / chargeTimeSeconds;
+         const chargeRatio = w.chargeTimer / w.maxCharge;
+         const offset = chargeRatio * soundBaseLen;
+         const res = audioManager.playSound('charge_laser_cannon', { volume: 0.5, throttleMs: 0, speed: speed, offset: offset, randomPitch: false });
+         if (res) w.soundNode = res.source;
+      }
+
+      w.chargeTimer += w.chargeSpeedMult;
+      
+      const chargeRatio = w.chargeTimer / w.maxCharge;
+      if (Math.random() < chargeRatio * 0.8) {
+         const angle = Math.random() * Math.PI * 2;
+         const distP = 50 + Math.random() * 50;
+         const px = this.x + Math.cos(angle) * distP;
+         const py = this.y + Math.sin(angle) * distP;
+         import('../effects/Particle.js').then(({ Particle }) => {
+            const p = new Particle(px, py, "#00ff00", 2 + chargeRatio * 3, 0.05, 3);
+            p.vx = -Math.cos(angle) * (2 + chargeRatio * 2);
+            p.vy = -Math.sin(angle) * (2 + chargeRatio * 2);
+            state.particles.push(p);
+         });
+      }
+
+      if (w.chargeTimer >= w.maxCharge) {
+        w.fullyCharged = true;
+        w.charging = false;
+        w.chargeTimer = 0;
+        if (w.soundNode) {
+          try { w.soundNode.stop(); } catch(e){}
+          w.soundNode = null;
+        }
+        
+        import('../effects/Particle.js').then(({ Particle }) => {
+           for (let i=0; i<20; i++) {
+              const a = Math.random() * Math.PI * 2;
+              const p = new Particle(this.x, this.y, "#00ff00", 4, 0.03, 3);
+              p.vx = Math.cos(a) * Math.random() * 5;
+              p.vy = Math.sin(a) * Math.random() * 5;
+              state.particles.push(p);
+           }
+        });
+      }
+    } else {
+      if (mouse.down) {
+         w.fullyCharged = false;
+         w.chargeTimer = 0;
+         
+         const angle = Math.atan2(mouse.y - this.y, mouse.x - this.x);
+         
+         state.laserBeams.push(new LaserBeam(
+            this.x, this.y, angle, 
+            w.damage * w.damageMult, 
+            w.width * w.widthMult, 
+            w.duration, 
+            false, 
+            w.dot ? w.dotDamage : 0, 
+            w.dot ? w.dotDuration : 0, 
+            w.tickDamage
+         ));
+         
+         if (w.subLasers) {
+             const subWidth = (w.width * w.widthMult) * 0.25;
+             const subDmg = (w.damage * w.damageMult) * 0.25;
+             state.laserBeams.push(new LaserBeam(
+                this.x, this.y, angle - Math.PI / 6, 
+                subDmg, subWidth, w.duration, true, 
+                w.dot ? w.dotDamage : 0, 
+                w.dot ? w.dotDuration : 0, 
+                w.tickDamage
+             ));
+             state.laserBeams.push(new LaserBeam(
+                this.x, this.y, angle + Math.PI / 6, 
+                subDmg, subWidth, w.duration, true, 
+                w.dot ? w.dotDamage : 0, 
+                w.dot ? w.dotDuration : 0, 
+                w.tickDamage
+             ));
+         }
+
+         audioManager.playSound('fire_laser_cannon', { volume: 0.8, throttleMs: 50 });
+
+         import('../effects/Particle.js').then(({ Particle }) => {
+            for (let i=0; i<15; i++) {
+               const a = angle + (Math.random() - 0.5) * 0.5;
+               const p = new Particle(this.x, this.y, "#00ff00", 3, 0.04, 3);
+               const s = Math.random() * 6 + 2;
+               p.vx = Math.cos(a) * s;
+               p.vy = Math.sin(a) * s;
+               state.particles.push(p);
+            }
+         });
+      }
+    }
   }
 
   takeDamage(amount, damageColor = "#ff2255") {
@@ -294,6 +460,8 @@ export class Player {
     state.floatingTexts.push(new FloatingText(this.x + offsetX, this.y + offsetY, `-${Math.round(amount)}`, damageColor, 16));
     spawnExplosion(this.x, this.y, "#ff0055", 8, 2.5);
 
+    audioManager.playSound('hurt_player', { volume: 0.6, throttleMs: 50 });
+
     if (this.hp <= 0) {
       this.hp = 0;
       triggerGameOver();
@@ -305,6 +473,9 @@ export class Player {
     const finalVal = Math.round(val * (this.xpMultiplier || 1.0));
     this.xp += finalVal;
     state.floatingTexts.push(new FloatingText(this.x + (Math.random() * 20 - 10), this.y - 15, `+${finalVal} XP`, "#00ffcc", 11));
+    
+    audioManager.playSound('pickup_gem', { volume: 0.3, throttleMs: 50 });
+
     if (this.xp >= this.nextXp) {
       this.levelUp();
     }
@@ -334,12 +505,24 @@ export class Player {
     this.acquiredUpgrades = {};
     this.maxHp = 100;
     this.hp = Math.min(this.hp, 100);
+    this.activeSkill = {
+      id: null,
+      level: 0,
+      timer: 0,
+      cooldown: 0,
+      duration: 0,
+      activeTimer: 0,
+      isActive: false,
+      emoji: '?',
+      color: '#fff'
+    };
     this.weapons = {
       blaster: { level: 1, timer: 0, cooldown: 35, projectileCount: 1, damage: 22, range: 500, speed: 9, homing: 0, homingUpgrades: 0 },
       orbitals: { level: 0, count: 2, radius: 70, angle: 0, speed: 0.05, damage: 14, tickTimer: 0, tickInterval: 12, size: 8 },
       nova: { level: 0, count: 8, timer: 0, cooldown: 120, speed: 6, spiral: false },
       shockwave: { level: 0, timer: 0, cooldown: 180, radius: 175, damage: 48 },
-      missiles: { level: 0, count: 6, timer: 0, cooldown: 90, speed: 7, homing: 0.05, aoe: 50, damage: 35 }
+      missiles: { level: 0, count: 6, timer: 0, cooldown: 90, speed: 7, homing: 0.05, aoe: 50, damage: 35 },
+      laserCannon: { level: 0, chargeTimer: 0, maxCharge: 1140, fullyCharged: false, damage: 250, width: 25, duration: 24, chargeSpeedMult: 1, damageMult: 1, widthMult: 1, subLasers: false, dot: false, dotDamage: 20, dotDuration: 5, tickDamage: false, soundNode: null }
     };
     this.magnetUpgrades = 0;
     this.blasterRateUpgrades = 0;

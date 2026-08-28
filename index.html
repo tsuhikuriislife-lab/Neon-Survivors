@@ -28,6 +28,15 @@
         </div>
       </div>
 
+      <!-- Active Skill HUD -->
+      <div class="active-skill-container" style="position: absolute; right: 30px; bottom: 30px; text-align: right; display: none;" id="activeSkillHud">
+        <div id="hudActiveSkillIcon" style="width: 60px; height: 60px; background: rgba(0,0,0,0.5); border: 2px solid #555; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 30px; position: relative; overflow: hidden; margin-left: auto;">
+          <div id="hudActiveSkillCooldown" style="position: absolute; top: 0; left: 0; width: 100%; background: rgba(0, 0, 0, 0.7); height: 100%; transition: height 0.1s linear;"></div>
+          <span id="hudActiveSkillEmoji" style="position: relative; z-index: 2;">🚀</span>
+        </div>
+        <div id="hudActiveSkillKey" style="font-size: 14px; font-weight: bold; margin-top: 5px; color: #ccc;">[SPACE]</div>
+      </div>
+
       <!-- Multi-Boss Health Bars Overlay -->
       <div id="boss-hud-container"></div>
 

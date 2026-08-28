@@ -284,6 +284,110 @@ export const upgradeDatabase = [
     }
   },
 
+  {
+    id: 'laser_unlock',
+    rarity: 'common',
+    name: 'Cañón Láser',
+    icon: '🔦',
+    desc: 'Un cañón de apuntado manual que perfora infinitamente.',
+    isAvailable: (p) => p.weapons.laserCannon.level === 0,
+    apply: (p) => { p.weapons.laserCannon.level = 1; }
+  },
+  {
+    id: 'laser_charge',
+    rarity: 'common',
+    name: 'Carga Rápida',
+    icon: '🔋',
+    desc: '+15% Velocidad de carga del Cañón Láser (Máx. 4).',
+    isAvailable: (p) => p.weapons.laserCannon.level > 0 && (p.weapons.laserCannon.chargeUpgrades || 0) < 4,
+    apply: (p) => {
+      p.weapons.laserCannon.chargeSpeedMult *= 1.15;
+      p.weapons.laserCannon.chargeUpgrades = (p.weapons.laserCannon.chargeUpgrades || 0) + 1;
+    }
+  },
+  {
+    id: 'laser_damage',
+    rarity: 'common',
+    name: 'Intensidad Láser',
+    icon: '🔥',
+    desc: '+25% Daño del Cañón Láser (Máx. 3).',
+    isAvailable: (p) => p.weapons.laserCannon.level > 0 && (p.weapons.laserCannon.dmgUpgrades || 0) < 3,
+    apply: (p) => {
+      p.weapons.laserCannon.damageMult += 0.25;
+      p.weapons.laserCannon.dmgUpgrades = (p.weapons.laserCannon.dmgUpgrades || 0) + 1;
+    }
+  },
+  {
+    id: 'laser_width',
+    rarity: 'uncommon',
+    name: 'Haz Expandido',
+    icon: '📏',
+    desc: '+30% Anchura del Cañón Láser (Máx. 3).',
+    isAvailable: (p) => p.weapons.laserCannon.level > 0 && (p.weapons.laserCannon.widthUpgrades || 0) < 3,
+    apply: (p) => {
+      p.weapons.laserCannon.widthMult += 0.30;
+      p.weapons.laserCannon.widthUpgrades = (p.weapons.laserCannon.widthUpgrades || 0) + 1;
+    }
+  },
+  {
+    id: 'laser_lifespan',
+    rarity: 'uncommon',
+    name: 'Persistencia Lumínica',
+    icon: '⏱️',
+    desc: '+0.1s de vida del Cañón Láser (Máx. 5).',
+    isAvailable: (p) => p.weapons.laserCannon.level > 0 && (p.weapons.laserCannon.lifeUpgrades || 0) < 5,
+    apply: (p) => {
+      p.weapons.laserCannon.duration += 6;
+      p.weapons.laserCannon.lifeUpgrades = (p.weapons.laserCannon.lifeUpgrades || 0) + 1;
+    }
+  },
+  {
+    id: 'laser_sublasers',
+    rarity: 'rare',
+    name: 'Láseres Auxiliares',
+    icon: '🔱',
+    desc: 'Dispara 2 sub-láseres en diagonal al 25% de poder (Único).',
+    isAvailable: (p) => p.weapons.laserCannon.level > 0 && !p.weapons.laserCannon.subLasers,
+    apply: (p) => {
+      p.weapons.laserCannon.subLasers = true;
+    }
+  },
+  {
+    id: 'laser_dot',
+    rarity: 'rare',
+    name: 'Láser Corrosivo',
+    icon: '☣️',
+    desc: 'Los enemigos alcanzados reciben daño por tiempo (Único).',
+    isAvailable: (p) => p.weapons.laserCannon.level > 0 && !p.weapons.laserCannon.dot,
+    apply: (p) => {
+      p.weapons.laserCannon.dot = true;
+    }
+  },
+  {
+    id: 'laser_dot_up',
+    rarity: 'rare',
+    name: 'Corrosión Profunda',
+    icon: '☢️',
+    desc: '+5 Daño de corrosión, +0.5s duración (Máx. 4).',
+    isAvailable: (p) => p.weapons.laserCannon.dot && (p.weapons.laserCannon.dotUpgrades || 0) < 4,
+    apply: (p) => {
+      p.weapons.laserCannon.dotDamage += 5;
+      p.weapons.laserCannon.dotDuration += 0.5;
+      p.weapons.laserCannon.dotUpgrades = (p.weapons.laserCannon.dotUpgrades || 0) + 1;
+    }
+  },
+  {
+    id: 'laser_tick',
+    rarity: 'legendary',
+    name: 'Haz Continuo',
+    icon: '⚡',
+    desc: 'El láser inflige daño constantemente mientras permanece.',
+    isAvailable: (p) => p.weapons.laserCannon.level > 0 && !p.weapons.laserCannon.tickDamage,
+    apply: (p) => {
+      p.weapons.laserCannon.tickDamage = true;
+    }
+  },
+
   // NUEVAS MEJORAS INFINITAS
   {
     id: 'damage_small',

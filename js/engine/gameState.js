@@ -1,5 +1,6 @@
 export const state = {
   isPaused: false,
+  wasPaused: false,
   isGameOver: false,
   gameTime: 0,
   killCount: 0,
@@ -16,12 +17,19 @@ export const state = {
   bossScaling: {},
   lastBossName: null,
   
+  bossDefeatTimes: {
+    first: null,
+    kyren: null,
+    amalgam: null
+  },
+  
   damageStats: {
     blaster: 0,
     orbitals: 0,
     nova: 0,
     shockwave: 0,
-    missiles: 0
+    missiles: 0,
+    laserCannon: 0
   },
 
   width: window.innerWidth,
@@ -37,6 +45,7 @@ export const state = {
   acceleratingProjectiles: [],
   fallingProjectiles: [],
   shockwaves: [],
+  laserBeams: [],
   
   gems: [],
   hazardAreas: [],
@@ -53,6 +62,7 @@ export const state = {
     this.fallingProjectiles = [];
     this.hazardAreas = [];
     this.shockwaves = [];
+    this.laserBeams = [];
     this.gems = [];
     this.particles = [];
     this.floatingTexts = [];
@@ -65,6 +75,11 @@ export const state = {
     this.hasRerolledCurrentLevel = false;
     this.bossScaling = {};
     this.lastBossName = null;
+    this.bossDefeatTimes = {
+      first: null,
+      kyren: null,
+      amalgam: null
+    };
     this.spawnRateMultiplier = 1.0;
 
     this.damageStats = {
@@ -72,7 +87,8 @@ export const state = {
       orbitals: 0,
       nova: 0,
       shockwave: 0,
-      missiles: 0
+      missiles: 0,
+      laserCannon: 0
     };
   },
   recordDamage(weapon, amount) {
@@ -81,4 +97,5 @@ export const state = {
     }
   }
 };
+
 

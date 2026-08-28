@@ -1,6 +1,9 @@
 import { state } from '../engine/gameState.js';
 import { FloatingText } from '../entities/effects/FloatingText.js';
-import { Enemy } from '../entities/enemies/Enemy.js';
+import { StandardEnemy } from '../entities/enemies/StandardEnemy.js';
+import { SwarmerEnemy } from '../entities/enemies/SwarmerEnemy.js';
+import { RangerEnemy } from '../entities/enemies/RangerEnemy.js';
+import { MotherEnemy } from '../entities/enemies/MotherEnemy.js';
 import { KyrenBoss } from '../entities/bosses/KyrenBoss.js';
 import { DevourerOfTaxBoss } from '../entities/bosses/DevourerOfTaxBoss.js';
 import { AmalgamBossRoot } from '../entities/bosses/AmalgamBossRoot.js';
@@ -46,6 +49,17 @@ export function handleSpawning() {
   if (state.spawnTimer >= baseInterval) {
     state.spawnTimer = 0;
     
+    if (state.bossDefeatTimes.first && Math.random() < 0.15) {
+       const count = 5 + Math.floor(Math.random() * 4); // 5 to 8 swarmers
+       const dummy = new StandardEnemy('small');
+       const sx = dummy.x; const sy = dummy.y;
+       for (let i = 0; i < count; i++) {
+         const sw = new SwarmerEnemy(sx + (Math.random() * 40 - 20), sy + (Math.random() * 40 - 20));
+         state.enemies.push(sw);
+       }
+       return;
+    }
+
     let enemyType;
     if (state.gameTime < 180) {
       enemyType = 'small';
@@ -62,7 +76,16 @@ export function handleSpawning() {
       }
     }
 
-    state.enemies.push(new Enemy(enemyType));
+    if (state.bossDefeatTimes.kyren && Math.random() < 0.20) {
+       state.enemies.push(new RangerEnemy());
+       return;
+    }
+    if (state.bossDefeatTimes.amalgam && Math.random() < 0.05) {
+       state.enemies.push(new MotherEnemy());
+       return;
+    }
+
+    state.enemies.push(new StandardEnemy(enemyType));
   }
 }
 

@@ -30,11 +30,18 @@ export class AudioManager {
             'fire_main_gun': 'assets/sfc/firing/main gun/rescopicsound-sci-fi-weapon-shoot-firing-plasma-ku-01-233816.mp3',
             'fire_missile': 'assets/sfc/firing/missile/daviddumaisaudio-sci-fi-weapon-single-shot-bass-heavy-02-316418.mp3',
             'fire_shockwave': 'assets/sfc/firing/shockwave/black_kumizhi-cyberpunk-bass-impact-effect-479138.mp3',
+            'fire_laser_cannon': 'assets/sfc/firing/laser canon/snoops-audio-08-weaponry-ultra-heavy-cannon-b-343781_qfxIjBYq.mp3',
+            
+            'charge_laser_cannon': 'assets/sfc/charging/laser cannon/freesound_community-power-charge-6798.mp3',
+            'hit_laser_cannon': 'assets/sfc/hit/laser canon/freesound_community-hurt_c_08-102842.mp3',
+            'hurt_player': 'assets/sfc/player/hurt/driken5482-retro-hurt-2-236675.mp3',
             
             'level_up': 'assets/sfc/levelUp/universfield-level-up-191997.mp3',
+            'jackpot': 'assets/sfc/jackpot/vadim_makes_sound-retro-arcade-level-up-552982.mp3',
             
             'ui_click': 'assets/sfc/ui/click/creatorshome-video-game-select-337214.mp3',
             'ui_hover': 'assets/sfc/ui/hover/u_iozlfd2w96-bubble-pop-283674.mp3',
+            'pickup_gem': 'assets/sfc/pickups/gems/lumora_studios-video-game-coin-pickup-sfx-319169.mp3',
             
             'music_main': 'assets/music/mainGame/soundcarousel-shadowy-figure-116963.mp3',
             'music_boss_amalgam': 'assets/music/boss/Amalgam/the_mountain-background-techno-133101.mp3',
@@ -56,7 +63,7 @@ export class AudioManager {
         }
     }
     
-    playSound(key, { volume = 1.0, pitch = 1.0, randomPitch = true, speed = 1.0, throttleMs = 50, loop = false } = {}) {
+    playSound(key, { volume = 1.0, pitch = 1.0, randomPitch = true, speed = 1.0, throttleMs = 50, loop = false, offset = 0 } = {}) {
         if (!this.buffers[key]) return null;
         
         if (throttleMs > 0) {
@@ -95,7 +102,7 @@ export class AudioManager {
         
         source.connect(gainNode);
         gainNode.connect(this.ctx.destination);
-        source.start(0);
+        source.start(0, offset);
         
         return { source, gainNode };
     }

@@ -428,7 +428,6 @@ export function updateHUD() {
     shockwave: "#00ffb4",
     missiles: "#ff4400"
   };
-
   const weaponsContainer = document.getElementById("testWeaponStats");
   let weaponsHtml = "";
   for (let key in state.damageStats) {
@@ -540,7 +539,7 @@ export function showBossRewardMenu(bossName) {
         if (Math.random() < 0.05) {
           // JACKPOT!
           instruction.innerText = "¡JACKPOT! Has obtenido todas las cartas. Clickea en el fondo para salir.";
-          audioManager.playSound('level_up', { volume: 0.8, throttleMs: 50 });
+          audioManager.playSound('jackpot', { volume: 0.9, throttleMs: 50 });
           picksLeft = 0; // consumed all picks
           
           // Generate particles
@@ -589,4 +588,22 @@ export function showBossRewardMenu(bossName) {
       audioManager.setMusicMuffled(false);
     }
   };
+}
+
+export function updateActiveSkillHUD() {
+  if (!state.player) return;
+  const activeSkillHud = document.getElementById("activeSkillHud");
+  if (state.player.activeSkill && state.player.activeSkill.id) {
+    activeSkillHud.style.display = "block";
+    document.getElementById("hudActiveSkillEmoji").innerText = state.player.activeSkill.emoji;
+    const cdElement = document.getElementById("hudActiveSkillCooldown");
+    if (state.player.activeSkill.timer > 0) {
+      const pct = (state.player.activeSkill.timer / state.player.activeSkill.cooldown) * 100;
+      cdElement.style.height = `${pct}%`;
+    } else {
+      cdElement.style.height = `0%`;
+    }
+  } else {
+    activeSkillHud.style.display = "none";
+  }
 }

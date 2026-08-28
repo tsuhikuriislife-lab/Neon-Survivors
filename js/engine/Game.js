@@ -35,6 +35,15 @@ export function loop(timestamp, ctx) {
   const dt = Math.min(0.1, (timestamp - state.lastFrameTime) / 1000);
   state.lastFrameTime = timestamp;
 
+  if (state.isPaused !== state.wasPaused) {
+    if (state.isPaused) {
+      if (state.player && typeof state.player.onPause === 'function') {
+        state.player.onPause();
+      }
+    }
+    state.wasPaused = state.isPaused;
+  }
+
   if (!state.isPaused) {
     state.gameTime += dt;
 
@@ -194,6 +203,12 @@ export function loop(timestamp, ctx) {
       }
     }
 
+    for (let i = state.laserBeams.length - 1; i >= 0; i--) {
+      if (!state.laserBeams[i].update()) {
+        state.laserBeams.splice(i, 1);
+      }
+    }
+
     for (let i = state.enemies.length - 1; i >= 0; i--) {
       state.enemies[i].update(state.player);
       if (state.enemies[i].hp <= 0) {
@@ -201,11 +216,40 @@ export function loop(timestamp, ctx) {
       }
     }
 
+    const processDot = (t) => {
+      if (t.laserDot && t.laserDot.duration > 0) {
+        t.laserDot.timer--;
+        if (t.laserDot.timer <= 0) {
+          t.laserDot.timer = 60;
+          t.laserDot.duration--;
+          t.takeDamage(t.laserDot.damage, "#00ff00");
+        }
+        if (Math.random() < 0.1) {
+          import('../entities/effects/Particle.js').then(({ Particle }) => {
+            state.particles.push(new Particle(t.x, t.y, "#00ff00", 2, 0.05, 2));
+          });
+        }
+      }
+    };
+    state.enemies.forEach(processDot);
+
     for (let i = state.bosses.length - 1; i >= 0; i--) {
       state.bosses[i].update(state.player);
+      state.bosses[i].getTargetables().forEach(processDot);
       if (state.bosses[i].getTargetables().length === 0) {
         const bossName = state.bosses[i].constructor.name;
         state.bosses.splice(i, 1);
+        
+        if (!state.bossDefeatTimes.first) {
+          state.bossDefeatTimes.first = state.gameTime;
+        }
+        if (bossName === 'KyrenBoss' && !state.bossDefeatTimes.kyren) {
+          state.bossDefeatTimes.kyren = state.gameTime;
+        }
+        if (bossName === 'AmalgamBossRoot' && !state.bossDefeatTimes.amalgam) {
+          state.bossDefeatTimes.amalgam = state.gameTime;
+        }
+
         import('../ui/UIManager.js').then(({ showBossRewardMenu }) => {
           showBossRewardMenu(bossName);
         });
@@ -227,6 +271,10 @@ export function loop(timestamp, ctx) {
       state.floatingTexts[i].update();
       if (state.floatingTexts[i].alpha <= 0) state.floatingTexts.splice(i, 1);
     }
+    
+    import('../ui/UIManager.js').then(({ updateActiveSkillHUD }) => {
+      updateActiveSkillHUD();
+    });
 
     import('./AudioManager.js').then(({ audioManager }) => {
       let desiredMusic = 'music_main';
@@ -254,6 +302,7 @@ export function loop(timestamp, ctx) {
   state.acceleratingProjectiles.forEach(ap => ap.draw(ctx));
   state.fallingProjectiles.forEach(fp => fp.draw(ctx));
   state.shockwaves.forEach(s => s.draw(ctx));
+  state.laserBeams.forEach(l => l.draw(ctx));
   if (state.player) state.player.draw(ctx);
   state.particles.forEach(p => p.draw(ctx));
   state.floatingTexts.forEach(f => f.draw(ctx));
