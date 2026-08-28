@@ -8,6 +8,7 @@ export const state = {
   isPaused: false,
   wasPaused: false,
   isGameOver: false,
+  isAdPlaying: false,
   gameTime: 0,
   killCount: 0,
   lastFrameTime: performance.now(),
@@ -104,6 +105,7 @@ export const state = {
     this.spawnTimer = 0;
     this.isPaused = false;
     this.isGameOver = false;
+    this.isAdPlaying = false;
     this.hasRerolledCurrentLevel = false;
     this.bossScaling = {};
     this.lastBossName = null;

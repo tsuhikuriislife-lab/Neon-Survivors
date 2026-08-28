@@ -334,6 +334,14 @@ export function drawBossSpawnBeacon(ctx, pending) {
 }
 
 export function loop(timestamp, ctx) {
+  // Freezes all game updates and canvas rendering while an ad is active
+  // releasing 100% of CPU and GPU resources to the video ad player
+  if (state.isAdPlaying) {
+    state.lastFrameTime = timestamp;
+    requestAnimationFrame((ts) => loop(ts, ctx));
+    return;
+  }
+
   const dt = Math.min(0.1, (timestamp - state.lastFrameTime) / 1000);
   state.lastFrameTime = timestamp;
 

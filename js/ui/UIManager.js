@@ -214,8 +214,12 @@ export function initUIListeners() {
 
   // GameDistribution SDK Event Bridge
   window.gdsdkOnPause = () => {
+    state.isAdPlaying = true;
     state.isPaused = true;
-    audioManager.setMusicMuffled(true);
+    if (state.player && typeof state.player.onPause === 'function') {
+      state.player.onPause();
+    }
+    audioManager.suspendAudio();
   };
 
   window.gdsdkOnRewardedComplete = () => {
@@ -224,6 +228,10 @@ export function initUIListeners() {
   };
 
   window.gdsdkOnResume = () => {
+    state.isAdPlaying = false;
+    state.lastFrameTime = performance.now();
+    audioManager.resumeAudioContext();
+
     // Si estábamos esperando el resultado de un anuncio con recompensa:
     if (rewardedAdPending) {
       rewardedAdPending = false;
@@ -241,6 +249,7 @@ export function initUIListeners() {
           btnRevive.disabled = false;
           btnRevive.innerText = "📹 REINTENTAR (VER ANUNCIO)";
         }
+        alert("Debes ver el anuncio completo para poder revivir.");
       }
       return;
     }

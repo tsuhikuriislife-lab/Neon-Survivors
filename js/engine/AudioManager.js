@@ -161,9 +161,15 @@ export class AudioManager {
         this.sfxMuted = muted;
     }
 
+    suspendAudio() {
+        if (this.ctx && this.ctx.state === 'running') {
+            this.ctx.suspend().catch(() => {});
+        }
+    }
+
     resumeAudioContext() {
-        if (this.ctx.state === 'suspended') {
-            this.ctx.resume();
+        if (this.ctx && this.ctx.state === 'suspended') {
+            this.ctx.resume().catch(() => {});
         }
     }
 }
