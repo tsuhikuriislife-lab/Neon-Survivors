@@ -26,16 +26,11 @@
       position: relative;
       width: 100vw;
       width: 100dvw;
-      height: 56.25vw;
-      height: 56.25dvw;
-      max-height: 100vh;
-      max-height: 100dvh;
-      max-width: 177.78vh;
-      max-width: 177.78dvh;
-      aspect-ratio: 16 / 9;
+      height: 100vh;
+      height: 100dvh;
       background: radial-gradient(circle at center, #0f0c1b 0%, #030206 100%);
       overflow: hidden;
-      box-shadow: 0 0 50px rgba(0, 0, 0, 0.95);
+      box-shadow: none;
       touch-action: none;
       user-select: none;
       container-type: size;
@@ -44,7 +39,6 @@
       display: block;
       width: 100%;
       height: 100%;
-      object-fit: contain;
     }
     /* UI OVERLAY */
     #ui-layer {

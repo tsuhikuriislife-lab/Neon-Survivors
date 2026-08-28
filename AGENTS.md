@@ -92,6 +92,15 @@ This repository contains a browser-based arena survival game ("Neon Survivors").
   - **Visual Viewport Prioritization**: `getViewportSize()` queries `window.visualViewport.width/height` before fallback to `innerWidth/innerHeight`, accurately tracking Safari's dynamic navigation bars and landscape rotation.
   - **Multi-Stage Event Handlers**: Listens to `'resize'`, `'orientationchange'`, `visualViewport.onresize`, `visualViewport.onscroll`, and `'visibilitychange'`. Schedules multi-stage execution passes (immediate, 100ms, 200ms, 350ms) to ensure full synchronization with Safari's orientation animations.
   - **Dynamic Viewport Units**: `body` and `#game-container` use `100dvw` and `100dvh` in CSS to adapt to mobile browser chrome changes seamlessly.
+- **Dynamic Mobile UI Scaling & Anti-Collision Architecture**:
+  - **Fluid HUD Layout**: Top HUD (`.level-badge`, `.xp-container`, `.stats-hud`) and Bottom HUD (`.hp-container`, `#options-btn`, `#quick-test-btn`) use CSS `clamp()`, `cqw`, and `cqh` units to prevent element overlaps on constrained screens.
+  - **Stacked Multi-Boss Bars**: Boss health bars (`#boss-hud-container`) stack cleanly above the Active Skill button (`.active-skill-container`), eliminating visual collisions during boss encounters.
+  - **Auto-Contained Dynamic Modals**: Modals (`#levelModal`, `#bossRewardModal`, `#optionsModal`, `#adminModal`, `#gameOverModal`) utilize `max-height: 88cqh; overflow-y: auto;` and styled ultra-thin scrollbars, preventing content from bleeding off-screen on low-resolution landscape phones.
+- **Virtual Joystick Relative Directional Architecture (`Input.js`)**:
+  - Joysticks use nested DOM structures (`#virtual-joystick-knob` inside `#virtual-joystick-base`).
+  - Base positions to touch origin (`(startX / 1920) * 100%`, `(startY / 1080) * 100%`).
+  - The knob calculates its positional displacement directly from the normalized directional vector: `left: calc(50% + dx * 35%)` and `top: calc(50% + dy * 35%)` (or polar $(\cos\theta, \sin\theta) \times \text{norm} \times 35\%$ for laser aiming), ensuring faithful directional alignment under the thumb.
+
 
 
 

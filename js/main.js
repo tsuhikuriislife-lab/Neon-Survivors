@@ -53,27 +53,37 @@ function checkOrientation() {
 export function resize() {
   const container = document.getElementById("game-container");
   const viewport = getViewportSize();
-  const winW = viewport.width;
-  const winH = viewport.height;
+  const winW = Math.max(1, viewport.width);
+  const winH = Math.max(1, viewport.height);
+  const ar = winW / winH;
 
-  // 1. Internal Canvas Buffer is strictly fixed at 1920x1080
-  canvas.width = VIRTUAL_WIDTH;
-  canvas.height = VIRTUAL_HEIGHT;
+  // 1. Dynamic Virtual Resolution based on Viewport Aspect Ratio (No Letterboxing / Pillarboxing)
+  let virtualWidth = 1920;
+  let virtualHeight = 1080;
 
-  // 2. Uniform Aspect Ratio (16:9) Letterboxing / Pillarboxing Scale
-  const scale = Math.min(winW / VIRTUAL_WIDTH, winH / VIRTUAL_HEIGHT);
-  const containerW = Math.round(VIRTUAL_WIDTH * scale);
-  const containerH = Math.round(VIRTUAL_HEIGHT * scale);
+  if (ar >= 16 / 9) {
+    virtualWidth = Math.round(1080 * ar);
+    virtualHeight = 1080;
+  } else {
+    virtualWidth = 1920;
+    virtualHeight = Math.round(1920 / ar);
+  }
 
+  // 2. Set Canvas Buffer Dimensions
+  canvas.width = virtualWidth;
+  canvas.height = virtualHeight;
+
+  // 3. Scale Factor for UI
+  const scale = Math.min(winW / 1920, winH / 1080);
   if (container) {
-    container.style.width = `${containerW}px`;
-    container.style.height = `${containerH}px`;
+    container.style.width = '100%';
+    container.style.height = '100%';
     container.style.setProperty('--ui-scale', scale.toString());
   }
 
-  // 3. Camera virtual viewport setup
-  state.camera.screenWidth = VIRTUAL_WIDTH;
-  state.camera.screenHeight = VIRTUAL_HEIGHT;
+  // 4. Camera virtual viewport setup
+  state.camera.screenWidth = virtualWidth;
+  state.camera.screenHeight = virtualHeight;
   state.camera.baseScale = 1.0;
   state.camera.dpr = 1.0;
 
