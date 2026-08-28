@@ -9,8 +9,6 @@ import { getAllBosses } from '../data/bossRegistry.js';
 import { getAllEnemies } from '../data/enemyRegistry.js';
 import { spawnExplosion } from '../entities/effects/spawnExplosion.js';
 
-let rewardedAdPending = false;
-let rewardedAdSuccess = false;
 
 export function renderBossBars() {
   const container = document.getElementById("boss-hud-container");
@@ -208,69 +206,9 @@ export function initUIListeners() {
   const btnRevive = document.getElementById("btnRevive");
   if (btnRevive) {
     btnRevive.onclick = () => {
-      requestRewardedAd();
+      revivePlayer();
     };
   }
-
-  // GameDistribution SDK Event Bridge
-  window.gdsdkOnPause = () => {
-    state.isAdPlaying = true;
-    state.isPaused = true;
-    if (state.player && typeof state.player.onPause === 'function') {
-      state.player.onPause();
-    }
-    audioManager.suspendAudio();
-  };
-
-  window.gdsdkOnRewardedComplete = () => {
-    console.log("[GD SDK] Evento SDK_REWARDED_WATCH_COMPLETE recibido. Visualización completada.");
-    rewardedAdSuccess = true;
-  };
-
-  window.gdsdkOnResume = () => {
-    state.isAdPlaying = false;
-    state.lastFrameTime = performance.now();
-    audioManager.resumeAudioContext();
-
-    // Si estábamos esperando el resultado de un anuncio con recompensa:
-    if (rewardedAdPending) {
-      rewardedAdPending = false;
-      const btnRevive = document.getElementById("btnRevive");
-      if (rewardedAdSuccess) {
-        rewardedAdSuccess = false;
-        if (btnRevive) {
-          btnRevive.disabled = false;
-          btnRevive.innerText = "📹 REVIVIR (VER ANUNCIO)";
-        }
-        revivePlayer();
-      } else {
-        console.warn("[GD SDK] El anuncio finalizó sin confirmar la visualización completa (SDK_REWARDED_WATCH_COMPLETE).");
-        if (btnRevive) {
-          btnRevive.disabled = false;
-          btnRevive.innerText = "📹 REINTENTAR (VER ANUNCIO)";
-        }
-        alert("Debes ver el anuncio completo para poder revivir.");
-      }
-      return;
-    }
-
-    const levelModal = document.getElementById("levelModal");
-    const bossRewardModal = document.getElementById("bossRewardModal");
-    const optionsModal = document.getElementById("optionsModal");
-    const adminModal = document.getElementById("adminModal");
-    const gameOverModal = document.getElementById("gameOverModal");
-
-    const isAnyModalOpen = (levelModal && levelModal.style.display === "flex") ||
-                           (bossRewardModal && bossRewardModal.style.display === "flex") ||
-                           (optionsModal && optionsModal.style.display === "flex") ||
-                           (adminModal && adminModal.style.display === "flex") ||
-                           (gameOverModal && gameOverModal.style.display === "flex");
-
-    if (!state.isInMenu && !state.isGameOver && !isAnyModalOpen) {
-      state.isPaused = false;
-      audioManager.setMusicMuffled(false);
-    }
-  };
 
   // ACTIVE SKILL TOUCH / CLICK
   const activeSkillBtn = document.getElementById("activeSkillHud");
@@ -602,15 +540,13 @@ export function initUIListeners() {
 export function triggerGameOver() {
   state.isGameOver = true;
   state.isPaused = true;
-  rewardedAdPending = false;
-  rewardedAdSuccess = false;
   document.getElementById("finalTime").innerText = formatTime(state.gameTime);
   document.getElementById("finalKills").innerText = state.killCount;
 
   const btnRevive = document.getElementById("btnRevive");
   if (btnRevive) {
     btnRevive.disabled = false;
-    btnRevive.innerText = "📹 REVIVIR (VER ANUNCIO)";
+    btnRevive.innerText = "❤️ REVIVIR (1 POR PARTIDA)";
     if (state.player && !state.player.hasRevivedOnce) {
       btnRevive.style.display = "block";
     } else {
@@ -620,47 +556,6 @@ export function triggerGameOver() {
 
   document.getElementById("gameOverModal").style.display = "flex";
   audioManager.setMusicMuffled(true);
-}
-
-export function requestRewardedAd() {
-  const btnRevive = document.getElementById("btnRevive");
-  if (btnRevive) {
-    btnRevive.disabled = true;
-    btnRevive.innerText = "⏳ CARGANDO ANUNCIO...";
-  }
-
-  rewardedAdPending = true;
-  rewardedAdSuccess = false;
-
-  if (typeof window.gdsdk !== 'undefined' && typeof window.gdsdk.showAd === 'function') {
-    // Entorno oficial GameDistribution SDK
-    window.gdsdk.showAd('rewarded')
-      .catch((error) => {
-        console.warn("[GD SDK] Error o rechazo en showAd('rewarded'):", error);
-        rewardedAdPending = false;
-        rewardedAdSuccess = false;
-        if (btnRevive) {
-          btnRevive.disabled = false;
-          btnRevive.innerText = "📹 REVIVIR (VER ANUNCIO)";
-        }
-        alert("No hay anuncios disponibles en este momento. Revisa tu conexión a internet.");
-      });
-  } else {
-    // Entorno local / Fuera de línea / Bloqueador de anuncios: NO funciona ni revive
-    console.warn("[GD SDK] SDK no disponible en este entorno o sin conexión. La resurrección está deshabilitada.");
-    rewardedAdPending = false;
-    rewardedAdSuccess = false;
-    if (btnRevive) {
-      btnRevive.innerText = "❌ ANUNCIO NO DISPONIBLE";
-      setTimeout(() => {
-        if (btnRevive) {
-          btnRevive.disabled = false;
-          btnRevive.innerText = "📹 REVIVIR (VER ANUNCIO)";
-        }
-      }, 2000);
-    }
-    alert("El servicio de anuncios no está disponible en entorno local o fuera de línea. No es posible revivir sin ver el anuncio oficial.");
-  }
 }
 
 export function revivePlayer() {
