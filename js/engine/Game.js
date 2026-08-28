@@ -357,10 +357,7 @@ export function loop(timestamp, ctx) {
     // Clear Canvas
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-
-    const screenW = state.camera.screenWidth || window.innerWidth;
-    const screenH = state.camera.screenHeight || window.innerHeight;
+    ctx.clearRect(0, 0, 1920, 1080);
 
     // 1. Draw World Layer
     state.camera.applyTransform(ctx);
@@ -374,8 +371,7 @@ export function loop(timestamp, ctx) {
     // 2. Draw Screen UI Layer
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.scale(state.camera.dpr || 1, state.camera.dpr || 1);
-    vectorTitle.draw(ctx, screenW, screenH);
+    vectorTitle.draw(ctx, 1920, 1080);
     ctx.restore();
 
     requestAnimationFrame((ts) => loop(ts, ctx));
@@ -716,7 +712,7 @@ export function loop(timestamp, ctx) {
   // =========================================================================
   ctx.save();
   ctx.setTransform(1, 0, 0, 1, 0, 0);
-  ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+  ctx.clearRect(0, 0, 1920, 1080);
 
   // Apply Full Camera Transformation (DPR, Zoom, Screenshake, Rotation, Scale, Tracking)
   state.camera.applyTransform(ctx);

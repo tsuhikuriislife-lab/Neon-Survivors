@@ -83,5 +83,16 @@ This repository contains a browser-based arena survival game ("Neon Survivors").
     - **Grid Lines**: `environment.setGridLines(...)`
     - **Perimeter Borders & Corners**: `environment.setBorders(...)`
   - Supports permanent changes (`duration: 0`) or temporary alerts with smooth fade transitions.
+- **Fixed Virtual Resolution & Aspect Ratio Scaling (Letterboxing/Pillarboxing)**:
+  - **Canonical Resolution**: Fixed internal canvas coordinate space of `1920 x 1080` (16:9). `canvas.width = 1920` and `canvas.height = 1080` remain constant on all devices.
+  - **Responsive Letterboxing**: `#game-container` is strictly aspect-ratio 16:9, centered on `body` with black background (`#000000`).
+  - **Uniform Scaling**: Scale factor `Math.min(viewport.width / 1920, viewport.height / 1080)` sets `#game-container` pixel dimensions and `--ui-scale`.
+  - **Coordinate Mapping (`Input.js`)**: `getVirtualCoords(clientX, clientY)` converts raw viewport events to canonical virtual coordinates `(0-1920, 0-1080)` and `screenToWorld()` projects into world coordinates with perfect accuracy across letterboxed screens.
+- **Safari iOS Mobile Viewport Lifecycle & Rotation Compatibility**:
+  - **Visual Viewport Prioritization**: `getViewportSize()` queries `window.visualViewport.width/height` before fallback to `innerWidth/innerHeight`, accurately tracking Safari's dynamic navigation bars and landscape rotation.
+  - **Multi-Stage Event Handlers**: Listens to `'resize'`, `'orientationchange'`, `visualViewport.onresize`, `visualViewport.onscroll`, and `'visibilitychange'`. Schedules multi-stage execution passes (immediate, 100ms, 200ms, 350ms) to ensure full synchronization with Safari's orientation animations.
+  - **Dynamic Viewport Units**: `body` and `#game-container` use `100dvw` and `100dvh` in CSS to adapt to mobile browser chrome changes seamlessly.
+
+
 
 

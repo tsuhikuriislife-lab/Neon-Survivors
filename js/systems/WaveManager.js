@@ -41,7 +41,7 @@ export function triggerBossSpawnSequence(bossType, customX, customY) {
       x: spawnX,
       y: spawnY,
       zoom: 1.28,
-      duration: 3.4,
+      duration: 1.4,
       fadeInDuration: 0.6,
       fadeOutDuration: 0.9
     });

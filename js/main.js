@@ -5,12 +5,32 @@ import { initGame, loop } from './engine/Game.js';
 import { audioManager } from './engine/AudioManager.js';
 import { initTextureCache } from './engine/TextureCache.js';
 
+export const VIRTUAL_WIDTH = 1920;
+export const VIRTUAL_HEIGHT = 1080;
+
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 
+export function getViewportSize() {
+  if (typeof window !== 'undefined' && window.visualViewport) {
+    return {
+      width: window.visualViewport.width,
+      height: window.visualViewport.height
+    };
+  }
+  const winW = typeof window !== 'undefined'
+    ? (window.innerWidth || document.documentElement.clientWidth || (document.body ? document.body.clientWidth : 1920))
+    : 1920;
+  const winH = typeof window !== 'undefined'
+    ? (window.innerHeight || document.documentElement.clientHeight || (document.body ? document.body.clientHeight : 1080))
+    : 1080;
+  return { width: winW, height: winH };
+}
+
 function checkOrientation() {
   const isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
-  const isPortrait = window.innerHeight > window.innerWidth;
+  const viewport = getViewportSize();
+  const isPortrait = viewport.height > viewport.width;
   const overlay = document.getElementById("rotate-device-overlay");
 
   if (isTouch && isPortrait) {
@@ -30,27 +50,59 @@ function checkOrientation() {
   }
 }
 
-function resize() {
-  const dpr = window.devicePixelRatio || 1;
-  const screenW = window.innerWidth;
-  const screenH = window.innerHeight;
+export function resize() {
+  const container = document.getElementById("game-container");
+  const viewport = getViewportSize();
+  const winW = viewport.width;
+  const winH = viewport.height;
 
-  canvas.width = screenW * dpr;
-  canvas.height = screenH * dpr;
-  canvas.style.width = `${screenW}px`;
-  canvas.style.height = `${screenH}px`;
+  // 1. Internal Canvas Buffer is strictly fixed at 1920x1080
+  canvas.width = VIRTUAL_WIDTH;
+  canvas.height = VIRTUAL_HEIGHT;
 
-  state.camera.baseScale = Math.min(screenW / state.width, screenH / state.height);
-  state.camera.screenWidth = screenW;
-  state.camera.screenHeight = screenH;
-  state.camera.dpr = dpr;
+  // 2. Uniform Aspect Ratio (16:9) Letterboxing / Pillarboxing Scale
+  const scale = Math.min(winW / VIRTUAL_WIDTH, winH / VIRTUAL_HEIGHT);
+  const containerW = Math.round(VIRTUAL_WIDTH * scale);
+  const containerH = Math.round(VIRTUAL_HEIGHT * scale);
+
+  if (container) {
+    container.style.width = `${containerW}px`;
+    container.style.height = `${containerH}px`;
+    container.style.setProperty('--ui-scale', scale.toString());
+  }
+
+  // 3. Camera virtual viewport setup
+  state.camera.screenWidth = VIRTUAL_WIDTH;
+  state.camera.screenHeight = VIRTUAL_HEIGHT;
+  state.camera.baseScale = 1.0;
+  state.camera.dpr = 1.0;
 
   checkOrientation();
 }
-window.addEventListener("resize", resize);
-window.addEventListener("orientationchange", () => {
+
+// Multi-stage event handler for Safari iOS viewport lifecycle
+const handleResizeAndOrientation = () => {
+  resize();
   setTimeout(resize, 100);
+  setTimeout(resize, 200);
+  setTimeout(resize, 350);
+};
+
+window.addEventListener("resize", handleResizeAndOrientation);
+window.addEventListener("orientationchange", handleResizeAndOrientation);
+
+if (typeof window !== 'undefined' && window.visualViewport) {
+  window.visualViewport.addEventListener("resize", handleResizeAndOrientation);
+  window.visualViewport.addEventListener("scroll", handleResizeAndOrientation);
+}
+
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") {
+    handleResizeAndOrientation();
+  }
 });
+
+// Initial resize pass
 resize();
 
 initTextureCache();

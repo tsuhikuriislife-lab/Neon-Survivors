@@ -12,7 +12,7 @@ export const joystick = {
   currentY: 0,
   dx: 0,
   dy: 0,
-  maxRadius: 50
+  maxRadius: 60
 };
 
 export const aimInput = {
@@ -23,9 +23,33 @@ export const aimInput = {
   currentX: 0,
   currentY: 0,
   angle: 0,
+  norm: 0,
   justReleased: false,
   hasDragged: false
 };
+
+export function getVirtualCoords(clientX, clientY) {
+  const canvas = document.getElementById("gameCanvas");
+  if (!canvas) return { x: clientX, y: clientY };
+  const rect = canvas.getBoundingClientRect();
+  if (rect.width === 0 || rect.height === 0) return { x: clientX, y: clientY };
+
+  return {
+    x: (clientX - rect.left) * (1920 / rect.width),
+    y: (clientY - rect.top) * (1080 / rect.height)
+  };
+}
+
+export function screenToWorld(clientX, clientY) {
+  const v = getVirtualCoords(clientX, clientY);
+  const cam = state.camera || { x: 960, y: 960, userZoom: 1, currentZoomFactor: 1 };
+  const effectiveZoom = (cam.userZoom || 1) * (cam.currentZoomFactor || 1);
+
+  return {
+    x: (v.x - 1920 / 2) / effectiveZoom + cam.x,
+    y: (v.y - 1080 / 2) / effectiveZoom + cam.y
+  };
+}
 
 export function getMovementVector() {
   if (state.isInMenu) return { dx: 0, dy: 0 };
@@ -56,17 +80,6 @@ export function getMovementVector() {
   return { dx, dy };
 }
 
-export function screenToWorld(screenX, screenY) {
-  const cam = state.camera || { x: 960, y: 540, baseScale: 1, userZoom: 1, screenWidth: window.innerWidth, screenHeight: window.innerHeight };
-  const effectiveScale = (cam.baseScale || 1) * (cam.userZoom || 1);
-  const screenW = cam.screenWidth || window.innerWidth;
-  const screenH = cam.screenHeight || window.innerHeight;
-  return {
-    x: (screenX - screenW / 2) / effectiveScale + (cam.x || 960),
-    y: (screenY - screenH / 2) / effectiveScale + (cam.y || 540)
-  };
-}
-
 export function updateJoystickUI() {
   const base = document.getElementById('virtual-joystick-base');
   const knob = document.getElementById('virtual-joystick-knob');
@@ -74,12 +87,14 @@ export function updateJoystickUI() {
 
   if (joystick.active) {
     base.style.display = 'block';
-    base.style.left = `${joystick.startX}px`;
-    base.style.top = `${joystick.startY}px`;
-    knob.style.left = `${joystick.currentX}px`;
-    knob.style.top = `${joystick.currentY}px`;
+    base.style.left = `${(joystick.startX / 1920) * 100}%`;
+    base.style.top = `${(joystick.startY / 1080) * 100}%`;
+    knob.style.display = 'block';
+    knob.style.left = `calc(50% + ${joystick.dx * 35}%)`;
+    knob.style.top = `calc(50% + ${joystick.dy * 35}%)`;
   } else {
     base.style.display = 'none';
+    knob.style.display = 'none';
   }
 }
 
@@ -90,12 +105,16 @@ export function updateAimJoystickUI() {
 
   if (aimInput.id !== null && aimInput.hasDragged) {
     base.style.display = 'block';
-    base.style.left = `${aimInput.startX}px`;
-    base.style.top = `${aimInput.startY}px`;
-    knob.style.left = `${aimInput.currentX}px`;
-    knob.style.top = `${aimInput.currentY}px`;
+    base.style.left = `${(aimInput.startX / 1920) * 100}%`;
+    base.style.top = `${(aimInput.startY / 1080) * 100}%`;
+    knob.style.display = 'block';
+    const offsetX = Math.cos(aimInput.angle) * (aimInput.norm || 1) * 35;
+    const offsetY = Math.sin(aimInput.angle) * (aimInput.norm || 1) * 35;
+    knob.style.left = `calc(50% + ${offsetX}%)`;
+    knob.style.top = `calc(50% + ${offsetY}%)`;
   } else {
     base.style.display = 'none';
+    knob.style.display = 'none';
   }
 }
 
@@ -150,27 +169,29 @@ export function initInput() {
       const touch = e.changedTouches[i];
       if (isInteractiveElement(touch.target)) continue;
 
-      const screenMidX = window.innerWidth / 2;
+      const v = getVirtualCoords(touch.clientX, touch.clientY);
+      const screenMidX = 1920 / 2;
 
-      // Left half -> Virtual Movement Joystick
-      if (touch.clientX < screenMidX && joystick.id === null) {
+      // Left half (Virtual Movement Joystick)
+      if (v.x < screenMidX && joystick.id === null) {
         joystick.id = touch.identifier;
-        joystick.startX = touch.clientX;
-        joystick.startY = touch.clientY;
-        joystick.currentX = touch.clientX;
-        joystick.currentY = touch.clientY;
+        joystick.startX = v.x;
+        joystick.startY = v.y;
+        joystick.currentX = v.x;
+        joystick.currentY = v.y;
         joystick.dx = 0;
         joystick.dy = 0;
         joystick.active = true;
         updateJoystickUI();
       } 
-      // Right half -> Relative Swipe Aiming & Firing
-      else if (touch.clientX >= screenMidX && aimInput.id === null) {
+      // Right half (Relative Swipe Aiming & Firing)
+      else if (v.x >= screenMidX && aimInput.id === null) {
         aimInput.id = touch.identifier;
-        aimInput.startX = touch.clientX;
-        aimInput.startY = touch.clientY;
-        aimInput.currentX = touch.clientX;
-        aimInput.currentY = touch.clientY;
+        aimInput.startX = v.x;
+        aimInput.startY = v.y;
+        aimInput.currentX = v.x;
+        aimInput.currentY = v.y;
+        aimInput.norm = 0;
         aimInput.active = false;
         aimInput.hasDragged = false;
         updateAimJoystickUI();
@@ -181,11 +202,12 @@ export function initInput() {
   window.addEventListener("touchmove", (e) => {
     for (let i = 0; i < e.changedTouches.length; i++) {
       const touch = e.changedTouches[i];
+      const v = getVirtualCoords(touch.clientX, touch.clientY);
 
       // Update Movement Joystick
       if (touch.identifier === joystick.id) {
-        const deltaX = touch.clientX - joystick.startX;
-        const deltaY = touch.clientY - joystick.startY;
+        const deltaX = v.x - joystick.startX;
+        const deltaY = v.y - joystick.startY;
         const distance = Math.hypot(deltaX, deltaY);
 
         if (distance > 0) {
@@ -206,18 +228,22 @@ export function initInput() {
 
       // Update Aiming Joystick via relative drag vector
       if (touch.identifier === aimInput.id) {
-        const deltaX = touch.clientX - aimInput.startX;
-        const deltaY = touch.clientY - aimInput.startY;
+        const deltaX = v.x - aimInput.startX;
+        const deltaY = v.y - aimInput.startY;
         const distance = Math.hypot(deltaX, deltaY);
 
-        if (distance >= 6) {
+        if (distance >= 8) {
           aimInput.active = true;
           aimInput.hasDragged = true;
           aimInput.angle = Math.atan2(deltaY, deltaX);
-          const clampedDist = Math.min(distance, 50);
+          aimInput.norm = Math.min(1.0, distance / 60);
+          const clampedDist = Math.min(distance, 60);
           aimInput.currentX = aimInput.startX + Math.cos(aimInput.angle) * clampedDist;
           aimInput.currentY = aimInput.startY + Math.sin(aimInput.angle) * clampedDist;
         } else {
+          aimInput.active = false;
+          aimInput.hasDragged = false;
+          aimInput.norm = 0;
           aimInput.currentX = aimInput.startX;
           aimInput.currentY = aimInput.startY;
         }
@@ -245,6 +271,7 @@ export function initInput() {
         aimInput.active = false;
         aimInput.id = null;
         aimInput.hasDragged = false;
+        aimInput.norm = 0;
         updateAimJoystickUI();
       }
     }
@@ -253,4 +280,3 @@ export function initInput() {
   window.addEventListener("touchend", handleTouchEnd, { passive: false });
   window.addEventListener("touchcancel", handleTouchEnd, { passive: false });
 }
-

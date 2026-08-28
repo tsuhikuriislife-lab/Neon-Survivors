@@ -2,6 +2,9 @@
 // Camera.js - Dynamic 2D Camera Controller: Screenshake, Focus & Zoom Director
 // ============================================================================
 
+export const VIRTUAL_WIDTH = 1920;
+export const VIRTUAL_HEIGHT = 1080;
+
 function easeInOutQuad(t) {
   return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
 }
@@ -14,9 +17,9 @@ export class CameraController {
     this.targetY = 960;
     this.baseScale = 1.0;
     this.userZoom = 1.0;
-    this.dpr = 1;
-    this.screenWidth = typeof window !== 'undefined' ? window.innerWidth : 1920;
-    this.screenHeight = typeof window !== 'undefined' ? window.innerHeight : 1080;
+    this.dpr = 1.0;
+    this.screenWidth = VIRTUAL_WIDTH;
+    this.screenHeight = VIRTUAL_HEIGHT;
 
     // 1. Screenshake System
     this.shakeTimer = 0;
@@ -233,14 +236,13 @@ export class CameraController {
   }
 
   // --------------------------------------------------------------------------
-  // CANVAS MATRIX TRANSFORMATION
+  // CANVAS MATRIX TRANSFORMATION (Fixed 1920x1080 Virtual Screen Space)
   // --------------------------------------------------------------------------
   applyTransform(ctx) {
-    const effectiveScale = (this.baseScale || 1) * (this.userZoom || 1) * this.currentShakeScale * this.currentZoomFactor;
-    const centerX = (this.screenWidth / 2) + this.shakeOffsetX;
-    const centerY = (this.screenHeight / 2) + this.shakeOffsetY;
+    const effectiveScale = (this.userZoom || 1) * this.currentShakeScale * this.currentZoomFactor;
+    const centerX = (VIRTUAL_WIDTH / 2) + this.shakeOffsetX;
+    const centerY = (VIRTUAL_HEIGHT / 2) + this.shakeOffsetY;
 
-    ctx.scale(this.dpr, this.dpr);
     ctx.translate(centerX, centerY);
     ctx.scale(effectiveScale, effectiveScale);
 
@@ -256,6 +258,10 @@ export class CameraController {
     this.y = 960;
     this.targetX = 960;
     this.targetY = 960;
+    this.screenWidth = VIRTUAL_WIDTH;
+    this.screenHeight = VIRTUAL_HEIGHT;
+    this.baseScale = 1.0;
+    this.dpr = 1.0;
     this.shakeTimer = 0;
     this.shakeDuration = 0;
     this.shakeStrength = 0;

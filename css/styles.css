@@ -7,29 +7,44 @@
       -webkit-touch-callout: none;
     }
     body {
-      background-color: #05050d;
+      background-color: #000000;
       color: #fff;
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       overflow: hidden;
       display: flex;
       justify-content: center;
       align-items: center;
-      height: 100vh;
       width: 100vw;
+      width: 100dvw;
+      height: 100vh;
+      height: 100dvh;
+      margin: 0;
+      padding: 0;
       touch-action: none;
     }
     #game-container {
       position: relative;
       width: 100vw;
-      height: 100vh;
+      width: 100dvw;
+      height: 56.25vw;
+      height: 56.25dvw;
+      max-height: 100vh;
+      max-height: 100dvh;
+      max-width: 177.78vh;
+      max-width: 177.78dvh;
+      aspect-ratio: 16 / 9;
       background: radial-gradient(circle at center, #0f0c1b 0%, #030206 100%);
       overflow: hidden;
+      box-shadow: 0 0 50px rgba(0, 0, 0, 0.95);
       touch-action: none;
+      user-select: none;
+      container-type: size;
     }
     canvas {
       display: block;
       width: 100%;
       height: 100%;
+      object-fit: contain;
     }
     /* UI OVERLAY */
     #ui-layer {
@@ -39,20 +54,22 @@
       width: 100%;
       height: 100%;
       pointer-events: none;
+      overflow: hidden;
     }
     /* Top Progress Bar */
     .xp-container {
       position: absolute;
-      top: 15px;
+      top: clamp(8px, 1.4cqh, 16px);
       left: 50%;
       transform: translateX(-50%);
-      width: 50%;
-      height: 18px;
+      width: clamp(140px, 38cqw, 650px);
+      height: clamp(10px, 1.6cqh, 18px);
       background: rgba(10, 15, 30, 0.7);
       border: 1px solid #00ffff66;
       border-radius: 9px;
       overflow: hidden;
       box-shadow: 0 0 15px rgba(0, 255, 255, 0.3);
+      z-index: 30;
     }
     .xp-bar {
       width: 0%;
@@ -63,15 +80,15 @@
     }
     .boss-warning-banner {
       position: absolute;
-      top: 48px;
+      top: clamp(32px, 4.8cqh, 48px);
       left: 50%;
       transform: translateX(-50%);
       background: linear-gradient(90deg, transparent, rgba(255, 0, 85, 0.4) 20%, rgba(255, 0, 85, 0.85) 50%, rgba(255, 0, 85, 0.4) 80%, transparent);
       color: #fff;
-      font-size: 15px;
+      font-size: clamp(11px, 1.3cqw, 15px);
       font-weight: 800;
       letter-spacing: 2px;
-      padding: 6px 30px;
+      padding: clamp(3px, 0.5cqh, 6px) clamp(14px, 2cqw, 30px);
       border-top: 1px solid #ff0055;
       border-bottom: 1px solid #ff0055;
       text-shadow: 0 0 10px #ff0055, 0 0 20px #ff0055;
@@ -87,37 +104,39 @@
     }
     .level-badge {
       position: absolute;
-      top: 10px;
-      left: calc(25% - 75px);
+      top: clamp(6px, 1.2cqh, 12px);
+      left: clamp(10px, 1.5cqw, 25px);
       background: rgba(10, 10, 25, 0.85);
       border: 1px solid #ff00ff;
       color: #ff00ff;
-      padding: 4px 14px;
+      padding: clamp(3px, 0.5cqh, 5px) clamp(8px, 1.2cqw, 14px);
       border-radius: 20px;
       font-weight: 700;
-      font-size: 14px;
+      font-size: clamp(10px, 1.2cqw, 14px);
       letter-spacing: 1px;
       text-shadow: 0 0 8px #ff00ff;
       box-shadow: 0 0 12px rgba(255, 0, 255, 0.3);
+      z-index: 30;
     }
     .stats-hud {
       position: absolute;
-      top: 15px;
-      right: 25px;
+      top: clamp(6px, 1.2cqh, 12px);
+      right: clamp(10px, 1.5cqw, 25px);
       display: flex;
-      gap: 15px;
-      font-size: 15px;
+      gap: clamp(6px, 1cqw, 15px);
+      font-size: clamp(10px, 1.2cqw, 15px);
       font-weight: 600;
       text-shadow: 0 0 8px rgba(255, 255, 255, 0.5);
+      z-index: 30;
     }
     .stat-box {
       background: rgba(8, 12, 28, 0.75);
       border: 1px solid rgba(0, 255, 255, 0.3);
-      padding: 6px 14px;
+      padding: clamp(3px, 0.5cqh, 6px) clamp(8px, 1cqw, 14px);
       border-radius: 8px;
       display: flex;
       align-items: center;
-      gap: 6px;
+      gap: 5px;
     }
     .stat-box span {
       color: #00ffff;
@@ -125,26 +144,27 @@
     /* HP BAR */
     .hp-container {
       position: absolute;
-      bottom: 25px;
-      left: 25px;
-      width: 220px;
+      bottom: clamp(10px, 2cqh, 25px);
+      left: clamp(10px, 1.5cqw, 25px);
+      width: clamp(140px, 16cqw, 220px);
       background: rgba(10, 15, 30, 0.8);
       border: 1px solid #ff225588;
       border-radius: 10px;
-      padding: 8px;
+      padding: clamp(5px, 0.8cqh, 8px);
       box-shadow: 0 0 15px rgba(255, 34, 85, 0.2);
+      z-index: 30;
     }
     .hp-title {
-      font-size: 12px;
+      font-size: clamp(10px, 1cqw, 12px);
       color: #ff3366;
       font-weight: 700;
-      margin-bottom: 4px;
+      margin-bottom: 3px;
       display: flex;
       justify-content: space-between;
     }
     .hp-bar-bg {
       width: 100%;
-      height: 12px;
+      height: clamp(8px, 1.2cqh, 12px);
       background: rgba(255, 255, 255, 0.1);
       border-radius: 6px;
       overflow: hidden;
@@ -160,42 +180,43 @@
     /* BOSS HEALTH BARS HUD */
     #boss-hud-container {
       position: absolute;
-      bottom: 25px;
-      right: 25px;
+      bottom: clamp(75px, 10cqh, 100px);
+      right: clamp(10px, 1.5cqw, 25px);
       display: flex;
       flex-direction: column-reverse;
-      gap: 10px;
+      gap: clamp(4px, 0.8cqh, 8px);
       align-items: flex-end;
+      z-index: 30;
     }
     .boss-bar-wrapper {
       background: rgba(12, 10, 26, 0.9);
       border: 1px solid rgba(255, 0, 128, 0.6);
       border-radius: 8px;
-      padding: 6px 10px;
+      padding: clamp(4px, 0.6cqh, 6px) clamp(6px, 0.8cqw, 10px);
       box-shadow: 0 0 12px rgba(255, 0, 128, 0.3);
       display: flex;
       flex-direction: column;
       gap: 3px;
     }
     .boss-bar-main {
-      width: 320px;
+      width: clamp(180px, 20cqw, 320px);
       border: 2px solid #ff0055;
       box-shadow: 0 0 18px rgba(255, 0, 85, 0.5);
     }
     .boss-bar-sub {
-      width: 220px;
+      width: clamp(130px, 15cqw, 220px);
       opacity: 0.85;
     }
     .boss-bar-header {
       display: flex;
       justify-content: space-between;
-      font-size: 12px;
+      font-size: clamp(10px, 1cqw, 12px);
       font-weight: 700;
       letter-spacing: 0.8px;
     }
     .boss-bar-track {
       width: 100%;
-      height: 10px;
+      height: clamp(6px, 1cqh, 10px);
       background: rgba(255, 255, 255, 0.1);
       border-radius: 4px;
       overflow: hidden;
@@ -214,24 +235,29 @@
       left: 0;
       width: 100%;
       height: 100%;
-      background: rgba(2, 3, 10, 0.85);
+      background: rgba(2, 3, 10, 0.88);
       backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
       display: none;
       flex-direction: column;
       justify-content: center;
       align-items: center;
+      padding: clamp(10px, 2cqh, 25px);
       z-index: 50;
       pointer-events: all;
+      overflow-y: auto;
+      box-sizing: border-box;
     }
     .modal-title {
-      font-size: 32px;
+      font-size: clamp(18px, 2.6cqw, 32px);
       font-weight: 900;
       color: #00ffff;
       text-transform: uppercase;
       letter-spacing: 3px;
-      margin-bottom: 25px;
+      margin-bottom: clamp(6px, 1.4cqh, 20px);
       text-shadow: 0 0 20px #00ffff, 0 0 40px #00ffff;
       animation: pulse 1.5s infinite alternate;
+      flex-shrink: 0;
     }
     @keyframes pulse {
       from { transform: scale(1); opacity: 0.9; }
@@ -239,23 +265,26 @@
     }
     .current-upgrades-panel {
       display: flex;
-      gap: 10px;
-      margin-bottom: 25px;
-      padding: 10px 15px;
+      gap: clamp(4px, 0.8cqw, 10px);
+      margin-bottom: clamp(6px, 1.4cqh, 20px);
+      padding: clamp(4px, 0.6cqh, 8px) clamp(8px, 1cqw, 14px);
       background: rgba(10, 15, 30, 0.6);
       border: 1px solid rgba(0, 255, 255, 0.3);
       border-radius: 8px;
-      max-width: 90%;
+      max-width: 92%;
+      max-height: clamp(32px, 6.5cqh, 55px);
       overflow-x: auto;
       justify-content: center;
-      flex-wrap: wrap;
-      min-height: 50px;
+      flex-wrap: nowrap;
+      flex-shrink: 0;
+      box-sizing: border-box;
     }
     .current-upgrade-icon {
-      font-size: 24px;
+      font-size: clamp(16px, 1.8cqw, 24px);
       position: relative;
       cursor: help;
       transition: transform 0.2s;
+      flex-shrink: 0;
     }
     .current-upgrade-icon:hover {
       transform: scale(1.2);
@@ -266,7 +295,7 @@
       right: -4px;
       background: #ff00ff;
       color: white;
-      font-size: 11px;
+      font-size: clamp(8px, 0.9cqw, 11px);
       font-weight: bold;
       padding: 1px 4px;
       border-radius: 50%;
@@ -275,17 +304,23 @@
     }
     .cards-container {
       display: flex;
-      gap: 20px;
-      max-width: 960px;
-      width: 90%;
+      gap: clamp(8px, 1.4cqw, 20px);
+      max-width: min(94%, 960px);
+      width: 92%;
+      max-height: clamp(140px, 58cqh, 340px);
       justify-content: center;
+      align-items: stretch;
+      flex-shrink: 1;
+      overflow-y: auto;
+      box-sizing: border-box;
     }
     .card {
       background: linear-gradient(135deg, rgba(20, 25, 45, 0.9), rgba(10, 12, 22, 0.95));
       border: 2px solid #ff00ff;
-      border-radius: 14px;
-      padding: 24px 20px;
-      flex: 1;
+      border-radius: clamp(8px, 1.2cqw, 14px);
+      padding: clamp(8px, 1.6cqh, 20px) clamp(6px, 1cqw, 18px);
+      flex: 1 1 0;
+      min-width: 100px;
       max-width: 270px;
       display: flex;
       flex-direction: column;
@@ -294,42 +329,45 @@
       cursor: pointer;
       box-shadow: 0 0 20px rgba(255, 0, 255, 0.25);
       transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      box-sizing: border-box;
     }
     .card:hover {
-      transform: translateY(-8px) scale(1.04);
+      transform: translateY(-6px) scale(1.03);
       border-color: #00ffff;
       box-shadow: 0 0 35px rgba(0, 255, 255, 0.6);
       background: linear-gradient(135deg, rgba(30, 40, 70, 0.95), rgba(15, 18, 35, 0.98));
     }
     .card-icon {
-      font-size: 36px;
-      margin-bottom: 12px;
+      font-size: clamp(22px, 2.8cqw, 36px);
+      margin-bottom: clamp(4px, 0.8cqh, 10px);
       filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.6));
+      flex-shrink: 0;
     }
     .card-name {
-      font-size: 17px;
+      font-size: clamp(11px, 1.3cqw, 16px);
       font-weight: 700;
       color: #fff;
-      margin-bottom: 8px;
+      margin-bottom: clamp(2px, 0.5cqh, 6px);
     }
     .card-desc {
-      font-size: 13px;
+      font-size: clamp(9px, 1cqw, 13px);
       color: #a0aec0;
-      line-height: 1.4;
+      line-height: 1.35;
     }
     .btn-reroll {
-      margin-top: 25px;
+      margin-top: clamp(8px, 1.5cqh, 20px);
       background: linear-gradient(90deg, #00f0ff, #7928ca);
       border: none;
       color: white;
-      padding: 10px 24px;
-      font-size: 14px;
+      padding: clamp(6px, 1cqh, 10px) clamp(16px, 2cqw, 24px);
+      font-size: clamp(11px, 1.2cqw, 14px);
       font-weight: 700;
       letter-spacing: 1px;
       border-radius: 20px;
       cursor: pointer;
       box-shadow: 0 0 15px rgba(0, 240, 255, 0.3);
       transition: 0.2s all;
+      flex-shrink: 0;
     }
     .btn-reroll:hover:not(:disabled) {
       transform: scale(1.05);
@@ -347,19 +385,22 @@
       background: rgba(15, 10, 25, 0.95);
       border: 2px solid #ff2255;
       box-shadow: 0 0 40px rgba(255, 34, 85, 0.5);
-      padding: 40px;
-      border-radius: 16px;
+      padding: clamp(16px, 3cqh, 35px);
+      border-radius: clamp(10px, 1.5cqw, 16px);
       text-align: center;
-      max-width: 450px;
+      max-width: min(92%, 450px);
       width: 90%;
+      max-height: 88cqh;
+      overflow-y: auto;
+      box-sizing: border-box;
     }
     .btn-restart {
-      margin-top: 25px;
+      margin-top: clamp(10px, 1.8cqh, 20px);
       background: linear-gradient(90deg, #ff007f, #7928ca);
       border: none;
       color: white;
-      padding: 12px 30px;
-      font-size: 16px;
+      padding: clamp(8px, 1.2cqh, 12px) clamp(18px, 2.5cqw, 30px);
+      font-size: clamp(12px, 1.4cqw, 16px);
       font-weight: 700;
       letter-spacing: 1px;
       border-radius: 30px;
@@ -368,21 +409,22 @@
       transition: 0.2s all;
     }
     .btn-restart:hover {
-      transform: scale(1.08);
+      transform: scale(1.06);
       box-shadow: 0 0 30px rgba(255, 0, 128, 0.8);
     }
 
     /* QUICK TEST BTN */
     #quick-test-btn {
       position: absolute;
-      bottom: 135px;
-      left: 25px;
+      bottom: clamp(88px, 12cqh, 125px);
+      left: clamp(10px, 1.5cqw, 25px);
       background: rgba(40, 40, 60, 0.8);
       border: 1px solid #ff00ff;
       color: #ff00ff;
-      padding: 8px 12px;
+      padding: clamp(4px, 0.6cqh, 7px) clamp(8px, 1cqw, 12px);
       border-radius: 8px;
       cursor: pointer;
+      font-size: clamp(10px, 1cqw, 13px);
       font-weight: bold;
       z-index: 40;
       box-shadow: 0 0 10px rgba(255, 0, 255, 0.5);
@@ -398,14 +440,15 @@
     /* ADMIN PANEL */
     #options-btn {
       position: absolute;
-      bottom: 85px;
-      left: 25px;
+      bottom: clamp(52px, 7.5cqh, 78px);
+      left: clamp(10px, 1.5cqw, 25px);
       background: rgba(40, 40, 60, 0.8);
       border: 1px solid #7928ca;
       color: #00ffff;
-      padding: 8px 12px;
+      padding: clamp(4px, 0.6cqh, 7px) clamp(8px, 1cqw, 12px);
       border-radius: 8px;
       cursor: pointer;
+      font-size: clamp(10px, 1cqw, 13px);
       font-weight: bold;
       z-index: 40;
       box-shadow: 0 0 10px rgba(121, 40, 202, 0.5);
@@ -421,33 +464,36 @@
       background: rgba(15, 15, 25, 0.98);
       border: 2px solid #7928ca;
       box-shadow: 0 0 40px rgba(121, 40, 202, 0.5);
-      padding: 30px;
-      border-radius: 12px;
-      width: 400px;
-      max-width: 90%;
+      padding: clamp(12px, 2.2cqh, 26px);
+      border-radius: clamp(8px, 1.2cqw, 14px);
+      width: min(94%, 440px);
+      max-height: 88cqh;
+      overflow-y: auto;
       display: flex;
       flex-direction: column;
-      gap: 15px;
+      gap: clamp(8px, 1.4cqh, 14px);
+      box-sizing: border-box;
     }
     
     .admin-box h2 {
       color: #00ffff;
       text-align: center;
-      margin-bottom: 10px;
+      margin-bottom: clamp(4px, 0.8cqh, 10px);
+      font-size: clamp(16px, 2.2cqw, 24px);
       text-transform: uppercase;
     }
     
     .admin-section {
       background: rgba(30, 30, 40, 0.5);
-      padding: 12px;
+      padding: clamp(8px, 1.2cqh, 12px);
       border-radius: 8px;
       border: 1px solid rgba(255,255,255,0.1);
     }
     
     .admin-section h3 {
-      font-size: 14px;
+      font-size: clamp(11px, 1.2cqw, 14px);
       color: #ff00ff;
-      margin-bottom: 10px;
+      margin-bottom: clamp(4px, 0.8cqh, 8px);
       border-bottom: 1px solid rgba(255, 0, 255, 0.3);
       padding-bottom: 5px;
     }
@@ -492,29 +538,33 @@
       display: flex;
       flex-direction: column;
       gap: 8px;
-      max-height: 400px;
+      max-height: 55cqh;
       overflow-y: auto;
       padding-right: 5px;
+      box-sizing: border-box;
     }
 
     .admin-box.wide-box {
-      width: 90vw;
-      max-width: 1200px;
+      width: min(95%, 1100px);
+      max-width: 95%;
+      max-height: 90cqh;
     }
 
     .admin-cards-grid {
       display: grid !important;
-      grid-template-columns: repeat(5, 1fr);
-      gap: 15px;
-      max-height: 60vh;
+      grid-template-columns: repeat(auto-fill, minmax(clamp(85px, 12cqw, 150px), 1fr));
+      gap: clamp(6px, 1cqw, 12px);
+      max-height: 58cqh;
       overflow-y: auto;
-      padding: 10px;
+      padding: 8px;
+      box-sizing: border-box;
     }
 
     .admin-cards-grid .card {
       flex: unset;
       max-width: none;
-      padding: 15px 10px;
+      min-width: 0;
+      padding: clamp(8px, 1.2cqh, 14px) clamp(6px, 0.8cqw, 10px);
     }
 
 /* Rarity Colors */
@@ -532,14 +582,14 @@
 
 .card.rarity-legendary { border-color: #ffaa00; box-shadow: 0 0 15px rgba(255, 170, 0, 0.4); }
 .card.rarity-legendary:hover { border-color: #ffcc00; box-shadow: 0 0 35px rgba(255, 170, 0, 0.8); }
-.card.rarity-legendary .card-name { color: #ffcc00; }
-
 /* Boss Reward Modals & Flipping Cards */
 .card-container-3d {
   perspective: 1000px;
-  flex: 1;
-  max-width: 200px; /* Make them slightly thinner to fit 5 */
-  height: 280px;
+  flex: 1 1 0;
+  min-width: 75px;
+  max-width: 190px;
+  height: clamp(120px, 46cqh, 270px);
+  box-sizing: border-box;
 }
 
 .card-3d {
@@ -560,12 +610,13 @@
   height: 100%;
   position: absolute;
   backface-visibility: hidden;
-  border-radius: 14px;
+  border-radius: clamp(8px, 1.2cqw, 14px);
   display: flex;
   flex-direction: column;
   align-items: center;
   text-align: center;
-  padding: 24px 10px;
+  padding: clamp(6px, 1.4cqh, 20px) clamp(4px, 0.8cqw, 10px);
+  box-sizing: border-box;
 }
 
 .card-front {
@@ -576,6 +627,24 @@
   justify-content: center;
 }
 
+.card-front .card-icon {
+  font-size: clamp(18px, 2.5cqw, 32px);
+  margin-bottom: clamp(2px, 0.6cqh, 8px);
+  filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.6));
+  flex-shrink: 0;
+}
+
+.card-front .card-name {
+  font-size: clamp(10px, 1.2cqw, 15px);
+  font-weight: 700;
+  margin-bottom: clamp(2px, 0.4cqh, 6px);
+}
+
+.card-front .card-desc {
+  font-size: clamp(8px, 0.9cqw, 12px);
+  line-height: 1.3;
+}
+
 .card-back {
   background: repeating-linear-gradient(45deg, #101220, #101220 10px, #1a1c2e 10px, #1a1c2e 20px);
   border: 2px solid #555;
@@ -584,7 +653,7 @@
   justify-content: center;
   align-items: center;
   color: #ffaa00;
-  font-size: 40px;
+  font-size: clamp(22px, 3cqw, 40px);
 }
 
 .card-back:hover {
@@ -626,8 +695,8 @@
 /* VIRTUAL JOYSTICKS (LEFT & RIGHT) */
 .virtual-joystick-base {
   position: absolute;
-  width: 110px;
-  height: 110px;
+  width: clamp(80px, 9cqw, 110px);
+  height: clamp(80px, 9cqw, 110px);
   border-radius: 50%;
   background: radial-gradient(circle, rgba(0, 255, 255, 0.12) 0%, rgba(0, 255, 255, 0.02) 70%, transparent 100%);
   border: 2px solid rgba(0, 255, 255, 0.5);
@@ -638,9 +707,11 @@
 }
 
 .virtual-joystick-knob {
-  position: fixed;
-  width: 48px;
-  height: 48px;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: clamp(36px, 4.2cqw, 48px);
+  height: clamp(36px, 4.2cqw, 48px);
   border-radius: 50%;
   background: radial-gradient(circle, #00ffff 0%, rgba(0, 240, 255, 0.7) 60%, rgba(121, 40, 202, 0.9) 100%);
   border: 2px solid #ffffff;
@@ -652,8 +723,8 @@
 
 .virtual-aim-joystick-base {
   position: absolute;
-  width: 110px;
-  height: 110px;
+  width: clamp(80px, 9cqw, 110px);
+  height: clamp(80px, 9cqw, 110px);
   border-radius: 50%;
   background: radial-gradient(circle, rgba(0, 255, 0, 0.12) 0%, rgba(0, 255, 0, 0.02) 70%, transparent 100%);
   border: 2px solid rgba(0, 255, 0, 0.5);
@@ -664,9 +735,11 @@
 }
 
 .virtual-aim-joystick-knob {
-  position: fixed;
-  width: 48px;
-  height: 48px;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: clamp(36px, 4.2cqw, 48px);
+  height: clamp(36px, 4.2cqw, 48px);
   border-radius: 50%;
   background: radial-gradient(circle, #00ff00 0%, rgba(0, 255, 128, 0.7) 60%, rgba(0, 100, 50, 0.9) 100%);
   border: 2px solid #ffffff;
@@ -679,8 +752,8 @@
 /* ACTIVE SKILL HUD */
 .active-skill-container {
   position: absolute;
-  right: 25px;
-  bottom: 25px;
+  right: clamp(10px, 1.5cqw, 25px);
+  bottom: clamp(10px, 2cqh, 25px);
   text-align: right;
   display: none;
   pointer-events: auto;
@@ -690,15 +763,15 @@
 }
 
 #hudActiveSkillIcon {
-  width: 60px;
-  height: 60px;
+  width: clamp(42px, 5.2cqw, 60px);
+  height: clamp(42px, 5.2cqw, 60px);
   background: rgba(15, 15, 30, 0.85);
   border: 2px solid #00ffff;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 30px;
+  font-size: clamp(20px, 2.4cqw, 30px);
   position: relative;
   overflow: hidden;
   margin-left: auto;
@@ -722,206 +795,42 @@
 }
 
 #hudActiveSkillKey {
-  font-size: 12px;
+  font-size: clamp(9px, 1cqw, 12px);
   font-weight: bold;
-  margin-top: 5px;
+  margin-top: 3px;
   color: #00ffff;
   text-shadow: 0 0 5px rgba(0, 255, 255, 0.5);
 }
 
-/* RESPONSIVE DESIGN FOR MOBILE & SMALL SCREENS */
-@media (max-width: 850px), (max-height: 550px) {
-  /* Top HUD */
-  .xp-container {
-    top: 10px;
-    width: 55%;
-    height: 14px;
-  }
-  
-  .level-badge {
-    top: 8px;
-    left: 8px;
-    padding: 3px 10px;
-    font-size: 12px;
-  }
+#bossRewardInstruction {
+  margin-top: clamp(8px, 1.5cqh, 25px);
+  font-size: clamp(12px, 1.6cqw, 18px);
+  color: #fff;
+  text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+  text-align: center;
+  flex-shrink: 0;
+}
 
-  .stats-hud {
-    top: 8px;
-    right: 8px;
-    gap: 6px;
-    font-size: 12px;
-  }
-
-  .stat-box {
-    padding: 3px 8px;
-  }
-
-  /* HP Bar */
-  .hp-container {
-    bottom: 12px;
-    left: 12px;
-    width: 150px;
-    padding: 6px;
-  }
-
-  .hp-title {
-    font-size: 11px;
-    margin-bottom: 2px;
-  }
-
-  .hp-bar-bg {
-    height: 9px;
-  }
-
-  /* Boss Health Bars HUD */
-  #boss-hud-container {
-    bottom: 15px;
-    right: 15px;
-    gap: 6px;
-  }
-
-  .boss-bar-main {
-    width: 200px;
-  }
-
-  .boss-bar-sub {
-    width: 140px;
-  }
-
-  .boss-bar-header {
-    font-size: 10px;
-  }
-
-  .boss-bar-track {
-    height: 8px;
-  }
-
-  /* Buttons on screen */
-  #options-btn {
-    bottom: 55px;
-    left: 12px;
-    padding: 6px 10px;
-    font-size: 12px;
-  }
-
-  #quick-test-btn {
-    bottom: 95px;
-    left: 12px;
-    padding: 6px 10px;
-    font-size: 12px;
-  }
-
-  /* Active skill on mobile */
-  .active-skill-container {
-    right: 15px;
-    bottom: 75px;
-  }
-
-  #hudActiveSkillIcon {
-    width: 50px;
-    height: 50px;
-    font-size: 24px;
-  }
-
-  /* Modals */
-  .modal-title {
-    font-size: 22px;
-    margin-bottom: 15px;
-  }
-
-  .cards-container {
-    gap: 10px;
-    width: 95%;
-    max-height: 65vh;
-    overflow-y: auto;
-    flex-wrap: wrap;
-  }
-
-  .card {
-    max-width: 140px;
-    padding: 12px 10px;
-    border-radius: 10px;
-  }
-
-  .card-icon {
-    font-size: 26px;
-    margin-bottom: 6px;
-  }
-
-  .card-name {
-    font-size: 13px;
-    margin-bottom: 4px;
-  }
-
-  .card-desc {
-    font-size: 11px;
-    line-height: 1.25;
-  }
-
-  .card-container-3d {
-    max-width: 110px;
-    height: 160px;
-  }
-
-  .card-front, .card-back {
-    padding: 10px 6px;
-  }
-
-  .card-front .card-icon {
-    font-size: 22px;
-    margin-bottom: 6px;
-  }
-
-  .card-front .card-name {
-    font-size: 12px;
-    margin-bottom: 4px;
-  }
-
-  .card-front .card-desc {
-    font-size: 10px;
-  }
-
-  .card-back {
-    font-size: 28px;
-  }
-
-  .current-upgrades-panel {
-    margin-bottom: 15px;
-    padding: 6px 10px;
-    min-height: 38px;
-  }
-
-  .current-upgrade-icon {
-    font-size: 18px;
-  }
-
-  .btn-reroll, .btn-restart {
-    padding: 8px 18px;
-    font-size: 12px;
-    margin-top: 15px;
-  }
-
-  .admin-box {
-    width: 95%;
-    max-height: 85vh;
-    overflow-y: auto;
-    padding: 15px;
-    gap: 10px;
-  }
-
-  .admin-cards-grid {
-    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-    gap: 8px;
-    max-height: 55vh;
-  }
-
-  #testing-panel {
-    top: 75px;
-    left: 8px;
-    width: 180px;
-    padding: 8px;
-    font-size: 11px;
-  }
+/* SLEEK CUSTOM SCROLLBARS FOR MENUS */
+.modal-overlay::-webkit-scrollbar,
+.admin-box::-webkit-scrollbar,
+.gameover-box::-webkit-scrollbar,
+.cards-container::-webkit-scrollbar,
+.current-upgrades-panel::-webkit-scrollbar,
+.admin-sub-content::-webkit-scrollbar,
+.admin-cards-grid::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+.modal-overlay::-webkit-scrollbar-thumb,
+.admin-box::-webkit-scrollbar-thumb,
+.gameover-box::-webkit-scrollbar-thumb,
+.cards-container::-webkit-scrollbar-thumb,
+.current-upgrades-panel::-webkit-scrollbar-thumb,
+.admin-sub-content::-webkit-scrollbar-thumb,
+.admin-cards-grid::-webkit-scrollbar-thumb {
+  background: rgba(0, 255, 255, 0.4);
+  border-radius: 4px;
 }
 
 /* Mobile Landscape Orientation Lock Overlay */
@@ -930,7 +839,9 @@
   top: 0;
   left: 0;
   width: 100vw;
+  width: 100dvw;
   height: 100vh;
+  height: 100dvh;
   background: rgba(4, 3, 10, 0.96);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
