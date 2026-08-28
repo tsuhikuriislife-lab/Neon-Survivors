@@ -48,6 +48,22 @@ This repository contains a browser-based arena survival game ("Neon Survivors").
   - Bosses cannot spawn twice in a row (`state.lastBossName` tracking).
   - Defeating a boss permanently scales its specific base HP by +70% for future spawns via `state.bossScaling`.
   - Defeating a boss triggers a 5-card face-down Reward Modal. Players pick 1 (or 2 with a 20% chance). First pick has a 5% "Jackpot" chance to grant all remaining cards with a CSS confetti particle effect.
+  - **Boss Spawn Sequence (5 Seconds Anticipation)**: Boss spawns trigger a HUD warning banner (`#boss-warning-banner`), a spawn warning SFX, and render a pulsing red holographic beacon with concentric rotating rings in the arena. After 5.0 seconds, the beacon detonates in neon particles and instantiates the boss.
+- **Arena Dimensions & Camera**:
+  - Fixed square arena dimensions of `1920 x 1920` with canonical center at `(960, 960)`.
+  - The camera smoothly tracks the player (`state.camera`) and supports customizable zoom via the Options menu.
+- **Enemy & Boss Registry Architecture (`enemyRegistry.js` & `bossRegistry.js`)**:
+  - All enemies and bosses are centrally registered with their metadata, factory instantiators, and vector preview canvas drawings.
+  - Adding any new enemy or boss automatically populates developer spawn grids (`adminBtnSpawnEnemy`, `adminBtnSpawnBoss`) and wave manager pools (`getMainBosses()`) without modifying UI logic.
+- **Floor Controls Guide (1-Minute Fadeout)**:
+  - Responsive floor diagrams rendered directly into the arena floor at `(960, 960)` via `drawFloorControls(ctx)` in `Game.js`.
+  - Desktop: WASD / Directional arrows movement keys on left, vector mouse with hold-to-aim and release-to-fire Laser Cannon on right.
+  - Mobile: Virtual movement joystick on left, touch drag aim & release fire laser on right.
+  - Smoothly fades out from 50s to 60s and stops rendering after 1 minute (`state.gameTime >= 60`).
+- **Mobile Landscape Orientation Enforcer**:
+  - Automatically detects touch/mobile devices in portrait orientation.
+  - Displays `#rotate-device-overlay` with phone rotation animation and automatically pauses game execution.
+  - Automatically resumes when rotated back to landscape mode. Calls `screen.orientation?.lock('landscape')` on user interactions.
 - **Critical Hit System**:
   - Players have `critChance` (base 0) and `critDamage` (base 1.5).
   - Computed on impact inside `Enemy.js` and `Boss.js` `takeDamage` methods. Crits trigger larger, yellow `#ffff00` floating damage text.

@@ -3,11 +3,10 @@ import { formatTime, drawPolygon } from '../engine/Utils.js';
 import { upgradeDatabase } from '../data/upgrades.js';
 import { initGame } from '../engine/Game.js';
 import { Enemy } from '../entities/enemies/Enemy.js';
-import { KyrenBoss } from '../entities/bosses/KyrenBoss.js';
-import { DevourerOfTaxBoss } from '../entities/bosses/DevourerOfTaxBoss.js';
-import { AmalgamBossRoot } from '../entities/bosses/AmalgamBossRoot.js';
-import { TestingBoss } from '../entities/bosses/TestingBoss.js';
 import { audioManager } from '../engine/AudioManager.js';
+import { triggerBossSpawnSequence } from '../systems/WaveManager.js';
+import { getAllBosses } from '../data/bossRegistry.js';
+import { getAllEnemies } from '../data/enemyRegistry.js';
 
 export function renderBossBars() {
   const container = document.getElementById("boss-hud-container");
@@ -132,7 +131,62 @@ export function showUpgradeMenu() {
   audioManager.setMusicMuffled(true);
 }
 
+export function startGame() {
+  const startOverlay = document.getElementById("start-screen-overlay");
+  const uiLayer = document.getElementById("ui-layer");
+  if (startOverlay) startOverlay.style.display = "none";
+  if (uiLayer) uiLayer.style.display = "block";
+  
+  audioManager.resumeAudioContext();
+  audioManager.playSound('main_gun_fire', { volume: 0.7 });
+  audioManager.playMusic('music_main');
+  
+  initGame();
+}
+
+export function returnToMainMenu() {
+  state.isInMenu = true;
+  state.isPaused = false;
+  state.isGameOver = false;
+  
+  const gameOverModal = document.getElementById("gameOverModal");
+  const levelModal = document.getElementById("levelModal");
+  const bossRewardModal = document.getElementById("bossRewardModal");
+  const optionsModal = document.getElementById("optionsModal");
+  const adminModal = document.getElementById("adminModal");
+  const adminSubModal = document.getElementById("adminSubModal");
+  const uiLayer = document.getElementById("ui-layer");
+  const startOverlay = document.getElementById("start-screen-overlay");
+  
+  if (gameOverModal) gameOverModal.style.display = "none";
+  if (levelModal) levelModal.style.display = "none";
+  if (bossRewardModal) bossRewardModal.style.display = "none";
+  if (optionsModal) optionsModal.style.display = "none";
+  if (adminModal) adminModal.style.display = "none";
+  if (adminSubModal) adminSubModal.style.display = "none";
+  
+  if (uiLayer) uiLayer.style.display = "none";
+  if (startOverlay) startOverlay.style.display = "flex";
+  
+  audioManager.setMusicMuffled(false);
+  audioManager.playMusic('music_main');
+}
+
 export function initUIListeners() {
+  const btnStartGame = document.getElementById("btnStartGame");
+  if (btnStartGame) {
+    btnStartGame.onclick = () => {
+      startGame();
+    };
+  }
+
+  const btnGameOverMenu = document.getElementById("btnGameOverMenu");
+  if (btnGameOverMenu) {
+    btnGameOverMenu.onclick = () => {
+      returnToMainMenu();
+    };
+  }
+
   document.getElementById("btnReroll").onclick = () => {
     if (!state.hasRerolledCurrentLevel) {
       state.hasRerolledCurrentLevel = true;
@@ -141,9 +195,27 @@ export function initUIListeners() {
   };
 
   document.getElementById("btnRestart").onclick = () => {
+    document.getElementById("gameOverModal").style.display = "none";
+    document.getElementById("ui-layer").style.display = "block";
+    audioManager.setMusicMuffled(false);
     initGame();
-    document.getElementById("gameOverModal").style.display = "none"; audioManager.setMusicMuffled(false);
   };
+
+  // ACTIVE SKILL TOUCH / CLICK
+  const activeSkillBtn = document.getElementById("activeSkillHud");
+  if (activeSkillBtn) {
+    const triggerSkill = (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      if (state.player && state.player.activeSkill && state.player.activeSkill.id) {
+        if (!state.player.activeSkill.isActive && state.player.activeSkill.timer <= 0) {
+          state.player.triggerActiveSkill();
+        }
+      }
+    };
+    activeSkillBtn.addEventListener('click', triggerSkill);
+    activeSkillBtn.addEventListener('touchstart', triggerSkill, { passive: false });
+  }
 
   // OPTIONS & ADMIN PANEL LOGIC
   const optionsBtn = document.getElementById("options-btn");
@@ -164,42 +236,59 @@ export function initUIListeners() {
   bgmMute.onchange = (e) => audioManager.setBgmMuted(e.target.checked);
   sfxMute.onchange = (e) => audioManager.setSfxMuted(e.target.checked);
 
-  document.getElementById("quick-test-btn").onclick = () => {
-    // 1. Spawn Dummy Boss
-    state.bosses.push(new TestingBoss());
+  // Camera Zoom Control
+  const cameraZoomSlider = document.getElementById("optionsCameraZoom");
+  const cameraZoomValue = document.getElementById("optionsZoomValue");
 
-    // 2. Max out all available capped upgrades
-    let upgraded = true;
-    let safetyCounter = 0;
-    while (upgraded && safetyCounter < 50) {
-        safetyCounter++;
-        upgraded = false;
-        upgradeDatabase.forEach(upg => {
-            if (upg.isAvailable && !upg.isInfinite && upg.isAvailable(state.player)) {
-                upg.apply(state.player);
-                state.player.acquiredUpgrades = state.player.acquiredUpgrades || {};
-                state.player.acquiredUpgrades[upg.id] = (state.player.acquiredUpgrades[upg.id] || 0) + 1;
-                upgraded = true;
-            }
-        });
-    }
+  if (cameraZoomSlider) {
+    cameraZoomSlider.oninput = (e) => {
+      const val = parseFloat(e.target.value);
+      if (state.camera) {
+        state.camera.userZoom = val;
+      }
+      if (cameraZoomValue) {
+        cameraZoomValue.innerText = `${val.toFixed(2)}x`;
+      }
+    };
+  }
 
-    // 3. Apply infinite upgrades a few times for testing
-    upgradeDatabase.forEach(upg => {
-        if (upg.isInfinite) {
-            for(let i=0; i<10; i++) {
-                // Some infinite upgrades require conditions (like boss alive), but we can just forcefully apply them or check if available.
-                // Quick test should just give the player the stats anyway for testing.
-                upg.apply(state.player);
-                state.player.acquiredUpgrades = state.player.acquiredUpgrades || {};
-                state.player.acquiredUpgrades[upg.id] = (state.player.acquiredUpgrades[upg.id] || 0) + 1;
-            }
-        }
-    });
+  const quickTestBtn = document.getElementById("quick-test-btn");
+  if (quickTestBtn) {
+    quickTestBtn.onclick = () => {
+      // 1. Spawn Dummy Boss
+      state.bosses.push(new TestingBoss());
 
-    updateHUD();
-    audioManager.playSound('level_up', { volume: 0.8, throttleMs: 50 });
-  };
+      // 2. Max out all available capped upgrades
+      let upgraded = true;
+      let safetyCounter = 0;
+      while (upgraded && safetyCounter < 50) {
+          safetyCounter++;
+          upgraded = false;
+          upgradeDatabase.forEach(upg => {
+              if (upg.isAvailable && !upg.isInfinite && upg.isAvailable(state.player)) {
+                  upg.apply(state.player);
+                  state.player.acquiredUpgrades = state.player.acquiredUpgrades || {};
+                  state.player.acquiredUpgrades[upg.id] = (state.player.acquiredUpgrades[upg.id] || 0) + 1;
+                  upgraded = true;
+              }
+          });
+      }
+
+      // 3. Apply infinite upgrades a few times for testing
+      upgradeDatabase.forEach(upg => {
+          if (upg.isInfinite) {
+              for(let i=0; i<10; i++) {
+                  upg.apply(state.player);
+                  state.player.acquiredUpgrades = state.player.acquiredUpgrades || {};
+                  state.player.acquiredUpgrades[upg.id] = (state.player.acquiredUpgrades[upg.id] || 0) + 1;
+              }
+          }
+      });
+
+      updateHUD();
+      audioManager.playSound('level_up', { volume: 0.8, throttleMs: 50 });
+    };
+  }
 
   optionsBtn.onclick = () => {
     state.isPaused = true;
@@ -210,6 +299,13 @@ export function initUIListeners() {
     sfxVol.value = audioManager.sfxVolume;
     bgmMute.checked = audioManager.bgmMuted;
     sfxMute.checked = audioManager.sfxMuted;
+
+    if (cameraZoomSlider && state.camera) {
+      cameraZoomSlider.value = state.camera.userZoom || 1.0;
+      if (cameraZoomValue) {
+        cameraZoomValue.innerText = `${(state.camera.userZoom || 1.0).toFixed(2)}x`;
+      }
+    }
   };
 
   document.getElementById("optionsBtnClose").onclick = () => {
@@ -218,15 +314,18 @@ export function initUIListeners() {
     state.isPaused = false;
   };
 
-  document.getElementById("optionsBtnDev").onclick = () => {
-    optionsModal.style.display = "none";
-    adminModal.style.display = "flex";
-    
-    // Sync checkboxes
-    document.getElementById("adminGodMode").checked = state.godMode;
-    document.getElementById("adminDisableSpawns").checked = state.disableSpawns;
-    document.getElementById("adminDisableBossSpawns").checked = state.disableBossSpawns;
-  };
+  const optionsBtnDev = document.getElementById("optionsBtnDev");
+  if (optionsBtnDev) {
+    optionsBtnDev.onclick = () => {
+      optionsModal.style.display = "none";
+      adminModal.style.display = "flex";
+      
+      // Sync checkboxes
+      document.getElementById("adminGodMode").checked = state.godMode;
+      document.getElementById("adminDisableSpawns").checked = state.disableSpawns;
+      document.getElementById("adminDisableBossSpawns").checked = state.disableBossSpawns;
+    };
+  }
 
   document.getElementById("adminBtnClose").onclick = () => {
     adminModal.style.display = "none"; 
@@ -267,26 +366,7 @@ export function initUIListeners() {
     adminSubContent.className = "admin-sub-content admin-cards-grid";
     adminSubContent.parentElement.classList.add("wide-box");
     
-    const bosses = [
-      { name: "Kyren", action: () => state.bosses.push(new KyrenBoss()), draw: (ctx) => {
-          drawPolygon(ctx, 50, 50, 30, 8, 0, "#00ffcc", 10, "rgba(0, 255, 204, 0.1)");
-          drawPolygon(ctx, 50, 50, 15, 8, 0, "#ffffff", 5, "rgba(255, 255, 255, 0.2)");
-      }},
-      { name: "Devourer of Tax", action: () => state.bosses.push(new DevourerOfTaxBoss()), draw: (ctx) => {
-          drawPolygon(ctx, 50, 50, 30, 3, -Math.PI/2, "#39ff14", 10, "rgba(57, 255, 20, 0.3)");
-      }},
-      { name: "Amalgam", action: () => {
-          state.currentAmalgamBoss = new AmalgamBossRoot();
-          state.bosses.push(state.currentAmalgamBoss);
-      }, draw: (ctx) => {
-          drawPolygon(ctx, 50, 50, 30, 10, 0, "#ff0033", 10, "rgba(255, 0, 51, 0.2)");
-      }},
-      { name: "Dummy Target", action: () => {
-          state.bosses.push(new TestingBoss());
-      }, draw: (ctx) => {
-          drawPolygon(ctx, 50, 50, 30, 10, 0, "#00ffff", 10, "rgba(0, 255, 255, 0.2)");
-      }}
-    ];
+    const bosses = getAllBosses();
 
     bosses.forEach(b => {
       const card = document.createElement("div");
@@ -298,7 +378,9 @@ export function initUIListeners() {
       canvas.style.margin = "0 auto 10px auto";
       canvas.style.display = "block";
       const ctx = canvas.getContext("2d");
-      b.draw(ctx);
+      if (typeof b.drawPreview === 'function') {
+        b.drawPreview(ctx);
+      }
       
       const title = document.createElement("div");
       title.className = "card-name";
@@ -308,11 +390,11 @@ export function initUIListeners() {
       card.appendChild(title);
       
       card.onclick = () => {
-        b.action();
+        triggerBossSpawnSequence(b.id);
         adminSubModal.style.display = "none";
-        adminModal.style.display = "none"; audioManager.setMusicMuffled(false);
-      
-        
+        adminModal.style.display = "none";
+        optionsModal.style.display = "none";
+        audioManager.setMusicMuffled(false);
         state.isPaused = false;
       };
       adminSubContent.appendChild(card);
@@ -322,11 +404,64 @@ export function initUIListeners() {
   };
 
   document.getElementById("adminBtnSpawnEnemy").onclick = () => {
-    openSubMenu("SPAWN ENEMIGO", [
-      { label: "Pequeño", action: () => state.enemies.push(new Enemy('small')) },
-      { label: "Mediano", action: () => state.enemies.push(new Enemy('medium')) },
-      { label: "Grande", action: () => state.enemies.push(new Enemy('large')) }
-    ]);
+    adminSubTitle.innerText = "SPAWN ENEMIGO";
+    adminSubContent.innerHTML = "";
+    adminSubContent.className = "admin-sub-content admin-cards-grid";
+    adminSubContent.parentElement.classList.add("wide-box");
+    
+    const enemies = getAllEnemies();
+
+    enemies.forEach(e => {
+      const card = document.createElement("div");
+      card.className = "card";
+      
+      const canvas = document.createElement("canvas");
+      canvas.width = 100;
+      canvas.height = 100;
+      canvas.style.margin = "0 auto 10px auto";
+      canvas.style.display = "block";
+      const ctx = canvas.getContext("2d");
+      if (typeof e.drawPreview === 'function') {
+        e.drawPreview(ctx);
+      }
+      
+      const title = document.createElement("div");
+      title.className = "card-name";
+      title.innerText = e.name;
+
+      card.appendChild(canvas);
+      card.appendChild(title);
+
+      if (e.category) {
+        const desc = document.createElement("div");
+        desc.className = "card-desc";
+        desc.innerText = e.category;
+        desc.style.fontSize = "11px";
+        desc.style.color = "#718096";
+        card.appendChild(desc);
+      }
+      
+      card.onclick = () => {
+        const px = state.player ? state.player.x : state.width / 2;
+        const py = state.player ? state.player.y : state.height / 2;
+        const angle = Math.random() * Math.PI * 2;
+        const spawnDist = 250 + Math.random() * 80;
+        const sx = Math.max(60, Math.min(state.width - 60, px + Math.cos(angle) * spawnDist));
+        const sy = Math.max(60, Math.min(state.height - 60, py + Math.sin(angle) * spawnDist));
+        
+        const enemyInst = e.instantiate(sx, sy);
+        state.enemies.push(enemyInst);
+
+        adminSubModal.style.display = "none";
+        adminModal.style.display = "none";
+        optionsModal.style.display = "none";
+        audioManager.setMusicMuffled(false);
+        state.isPaused = false;
+      };
+      adminSubContent.appendChild(card);
+    });
+
+    adminSubModal.style.display = "flex";
   };
 
   document.getElementById("adminBtnUpgrades").onclick = () => {
@@ -411,45 +546,51 @@ export function updateHUD() {
   document.getElementById("hudKills").innerText = state.killCount;
   renderBossBars();
 
-  // Update Testing Panel
-  let totalDamage = 0;
-  for (let key in state.damageStats) {
-    totalDamage += state.damageStats[key];
-  }
-  let totalDPS = state.gameTime > 0 ? (totalDamage / state.gameTime).toFixed(1) : "0.0";
-  
-  document.getElementById("testTotalDamage").innerText = Math.round(totalDamage);
-  document.getElementById("testTotalDPS").innerText = totalDPS;
-
-  const weaponColors = {
-    blaster: "#00ffff",
-    orbitals: "#ff00ff",
-    nova: "#ffffff",
-    shockwave: "#00ffb4",
-    missiles: "#ff4400"
-  };
+  // Update Testing Panel (if present and active)
+  const testDamageElem = document.getElementById("testTotalDamage");
+  const testDpsElem = document.getElementById("testTotalDPS");
   const weaponsContainer = document.getElementById("testWeaponStats");
-  let weaponsHtml = "";
-  for (let key in state.damageStats) {
-    const dmg = state.damageStats[key];
-    if (dmg > 0) {
-      const dps = state.gameTime > 0 ? (dmg / state.gameTime).toFixed(1) : "0.0";
-      const percent = totalDamage > 0 ? ((dmg / totalDamage) * 100).toFixed(1) : 0;
-      const barColor = weaponColors[key] || "#00ffff";
-      weaponsHtml += `
-        <div style="margin-top: 8px;">
-          <div style="display: flex; justify-content: space-between; font-size: 11px;">
-            <span style="text-transform: capitalize; color: ${barColor}">${key}</span>
-            <span>${Math.round(dmg)} (${dps}/s)</span>
-          </div>
-          <div style="width: 100%; height: 5px; background: rgba(255,255,255,0.2); margin-top: 2px;">
-            <div style="width: ${percent}%; height: 100%; background: ${barColor}; box-shadow: 0 0 5px ${barColor};"></div>
-          </div>
-        </div>
-      `;
+  const testingPanel = document.getElementById("testing-panel");
+
+  if (testingPanel && testingPanel.style.display !== 'none' && testDamageElem && testDpsElem && weaponsContainer) {
+    let totalDamage = 0;
+    for (let key in state.damageStats) {
+      totalDamage += state.damageStats[key];
     }
+    let totalDPS = state.gameTime > 0 ? (totalDamage / state.gameTime).toFixed(1) : "0.0";
+    
+    testDamageElem.innerText = Math.round(totalDamage);
+    testDpsElem.innerText = totalDPS;
+
+    const weaponColors = {
+      blaster: "#00ffff",
+      orbitals: "#ff00ff",
+      nova: "#ffffff",
+      shockwave: "#00ffb4",
+      missiles: "#ff4400"
+    };
+    let weaponsHtml = "";
+    for (let key in state.damageStats) {
+      const dmg = state.damageStats[key];
+      if (dmg > 0) {
+        const dps = state.gameTime > 0 ? (dmg / state.gameTime).toFixed(1) : "0.0";
+        const percent = totalDamage > 0 ? ((dmg / totalDamage) * 100).toFixed(1) : 0;
+        const barColor = weaponColors[key] || "#00ffff";
+        weaponsHtml += `
+          <div style="margin-top: 8px;">
+            <div style="display: flex; justify-content: space-between; font-size: 11px;">
+              <span style="text-transform: capitalize; color: ${barColor}">${key}</span>
+              <span>${Math.round(dmg)} (${dps}/s)</span>
+            </div>
+            <div style="width: 100%; height: 5px; background: rgba(255,255,255,0.2); margin-top: 2px;">
+              <div style="width: ${percent}%; height: 100%; background: ${barColor}; box-shadow: 0 0 5px ${barColor};"></div>
+            </div>
+          </div>
+        `;
+      }
+    }
+    weaponsContainer.innerHTML = weaponsHtml;
   }
-  weaponsContainer.innerHTML = weaponsHtml;
 }
 
 

@@ -14,19 +14,20 @@ import { FallingProjectile } from '../projectiles/FallingProjectile.js';
 import { Boss } from './Boss.js';
 
 export class DevourerOfTaxBoss extends Boss {
-  constructor() {
+  constructor(x, y) {
     super();
     this.name = "Devourer of Tax";
     this.segmentCount = 45;
-    this.segmentLength = 56;
-    this.radius = 56;
+    this.segmentLength = 36;
+    this.radius = 36;
     const multiplier = state.bossScaling['DevourerOfTaxBoss'] || 1.0;
-    this.maxHp = 33000 * multiplier;
+    this.maxHp = 15000 * multiplier;
     this.hp = this.maxHp;
+    this.color = "#39ff14";
     this.dead = false;
 
-    this.x = state.width / 2;
-    this.y = -100;
+    this.x = x !== undefined ? x : state.width / 2;
+    this.y = y !== undefined ? y : 250;
     this.vx = 0;
     this.vy = 2;
     this.speed = 2.7;
@@ -108,6 +109,12 @@ export class DevourerOfTaxBoss extends Boss {
 
     this.carlos = new CarlosMinion(this.x - 60, this.y, subHp);
     this.sebastian = new SebastianMinion(this.x + 60, this.y, subHp);
+
+    const minionSegments = (this.carlos ? this.carlos.segmentCount : 0) + (this.sebastian ? this.sebastian.segmentCount : 0);
+    this.segmentCount = Math.max(1, this.segmentCount - minionSegments);
+    this.segments = this.segments.slice(0, this.segmentCount);
+
+    spawnExplosion(this.x, this.y, "#39ff14", 30, 4);
   }
 
   update(player) {

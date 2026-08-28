@@ -72,7 +72,7 @@ export class AmalgamNode extends Boss {
 
     if (this.stage === 1 && this.hp <= this.maxHp * 0.75) {
       this.subdivide();
-    } else if ((this.stage === 2 || this.stage === 3) && this.hp <= this.maxHp * 0.5) {
+    } else if ((this.stage === 2 || this.stage === 3) && this.hp <= this.maxHp * 0.75) {
       this.subdivide();
     } else if (this.hp <= 0) {
       this.hp = 0;

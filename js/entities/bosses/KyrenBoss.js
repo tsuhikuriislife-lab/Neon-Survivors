@@ -13,18 +13,28 @@ import { FallingProjectile } from '../projectiles/FallingProjectile.js';
 import { Boss } from './Boss.js';
 
 export class KyrenBoss extends Boss {
-  constructor() {
+  constructor(x, y) {
     super();
     this.name = "Kyren";
-    this.x = state.width / 2;
-    this.y = state.height / 2 - 180;
+    const cx = state.width / 2;
+    const cy = state.height / 2;
+    this.orbitRadius = Math.min(state.width, state.height) * 0.35;
+
+    if (x !== undefined && y !== undefined) {
+      this.x = x;
+      this.y = y;
+      this.orbitAngle = Math.atan2(this.y - cy, this.x - cx);
+    } else {
+      this.orbitAngle = -Math.PI / 2;
+      this.x = cx + Math.cos(this.orbitAngle) * this.orbitRadius;
+      this.y = cy + Math.sin(this.orbitAngle) * this.orbitRadius;
+    }
+
     this.radius = 150;
     const multiplier = state.bossScaling['KyrenBoss'] || 1.0;
-    this.maxHp = 22000 * multiplier;
+    this.maxHp = 12000 * multiplier;
     this.hp = this.maxHp;
     this.color = "#00ffcc";
-    this.orbitAngle = 0;
-    this.orbitRadius = Math.min(state.width, state.height) * 0.50;
     this.angle = 0;
     this.innerAngle = 0;
 

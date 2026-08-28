@@ -1,4 +1,5 @@
 export const state = {
+  isInMenu: true,
   isPaused: false,
   wasPaused: false,
   isGameOver: false,
@@ -32,8 +33,21 @@ export const state = {
     laserCannon: 0
   },
 
-  width: window.innerWidth,
-  height: window.innerHeight,
+  width: 1920,
+  height: 1920,
+  camera: {
+    x: 960,
+    y: 960,
+    targetX: 960,
+    targetY: 960,
+    baseScale: 1.0,
+    userZoom: 1.0,
+    dpr: 1,
+    screenWidth: typeof window !== 'undefined' ? window.innerWidth : 1920,
+    screenHeight: typeof window !== 'undefined' ? window.innerHeight : 1080
+  },
+
+  pendingBossSpawn: null,
 
   player: null,
   enemies: [],
@@ -56,6 +70,7 @@ export const state = {
     this.enemies = [];
     this.bosses = [];
     this.currentAmalgamBoss = null;
+    this.pendingBossSpawn = null;
     this.projectiles = [];
     this.enemyProjectiles = [];
     this.acceleratingProjectiles = [];
@@ -81,6 +96,11 @@ export const state = {
       amalgam: null
     };
     this.spawnRateMultiplier = 1.0;
+
+    this.camera.x = 960;
+    this.camera.y = 960;
+    this.camera.targetX = 960;
+    this.camera.targetY = 960;
 
     this.damageStats = {
       blaster: 0,

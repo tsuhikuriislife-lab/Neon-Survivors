@@ -2,18 +2,30 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <title>Neon Survivors - Balanced Waves</title>
   <link rel="stylesheet" href="css/styles.css" />
 </head>
 <body>
   <div id="game-container">
     <canvas id="gameCanvas"></canvas>
-    <div id="ui-layer">
+    
+    <!-- Virtual Movement Joystick (Left) -->
+    <div id="virtual-joystick-base" class="virtual-joystick-base" style="display: none;">
+      <div id="virtual-joystick-knob" class="virtual-joystick-knob"></div>
+    </div>
+
+    <!-- Virtual Aim Joystick (Right) -->
+    <div id="virtual-aim-joystick-base" class="virtual-aim-joystick-base" style="display: none;">
+      <div id="virtual-aim-joystick-knob" class="virtual-aim-joystick-knob"></div>
+    </div>
+
+    <div id="ui-layer" style="display: none;">
       <div class="level-badge" id="hudLevel">LVL 1</div>
       <div class="xp-container">
         <div class="xp-bar" id="hudXpBar"></div>
       </div>
+      <div id="boss-warning-banner" class="boss-warning-banner" style="display: none;">⚠️ ¡ALERTA: UN JEFE SE APROXIMA! ⚠️</div>
       <div class="stats-hud">
         <div class="stat-box"><span id="hudTime">00:00</span></div>
         <div class="stat-box"><span id="hudKills">0</span> Kills</div>
@@ -29,25 +41,32 @@
       </div>
 
       <!-- Active Skill HUD -->
-      <div class="active-skill-container" style="position: absolute; right: 30px; bottom: 30px; text-align: right; display: none;" id="activeSkillHud">
-        <div id="hudActiveSkillIcon" style="width: 60px; height: 60px; background: rgba(0,0,0,0.5); border: 2px solid #555; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 30px; position: relative; overflow: hidden; margin-left: auto;">
-          <div id="hudActiveSkillCooldown" style="position: absolute; top: 0; left: 0; width: 100%; background: rgba(0, 0, 0, 0.7); height: 100%; transition: height 0.1s linear;"></div>
-          <span id="hudActiveSkillEmoji" style="position: relative; z-index: 2;">🚀</span>
+      <div class="active-skill-container" id="activeSkillHud">
+        <div id="hudActiveSkillIcon">
+          <div id="hudActiveSkillCooldown"></div>
+          <span id="hudActiveSkillEmoji">🚀</span>
         </div>
-        <div id="hudActiveSkillKey" style="font-size: 14px; font-weight: bold; margin-top: 5px; color: #ccc;">[SPACE]</div>
+        <div id="hudActiveSkillKey">[SPACE]</div>
       </div>
 
       <!-- Multi-Boss Health Bars Overlay -->
       <div id="boss-hud-container"></div>
 
-      <!-- Testing Panel -->
-      <div id="testing-panel" style="position: absolute; left: 10px; top: 150px; width: 250px; background: rgba(0,0,0,0.6); padding: 15px; border: 1px solid #00ffff; color: #fff; font-family: monospace; z-index: 50;">
-        <h3 style="margin-top: 0; color: #00ffff; border-bottom: 1px solid #00ffff; padding-bottom: 5px;">TESTING PANEL</h3>
-        <div style="margin-bottom: 10px;">
-          <div>Daño total: <span id="testTotalDamage">0</span></div>
-          <div>DPS: <span id="testTotalDPS">0.0</span></div>
-        </div>
+      <!-- Testing Panel (Hidden for production) -->
+      <div id="testing-panel" style="display: none;">
+        <div id="testTotalDamage">0</div>
+        <div id="testTotalDPS">0.0</div>
         <div id="testWeaponStats"></div>
+      </div>
+    </div>
+
+    <!-- Start Screen Overlay -->
+    <div id="start-screen-overlay" class="start-screen-overlay">
+      <div class="start-screen-content">
+        <div class="start-tagline">SOBREVIVE AL ENJAMBRE VECTORIAL</div>
+        <button id="btnStartGame" class="btn-start-game">
+          <span class="btn-start-text">⚡ INICIAR PARTIDA ⚡</span>
+        </button>
       </div>
     </div>
 
@@ -74,11 +93,12 @@
         <p style="color: #cbd5e0; margin-bottom: 8px;">Tiempo de supervivencia: <span id="finalTime" style="color: #00ffff; font-weight: 700;">00:00</span></p>
         <p style="color: #cbd5e0; margin-bottom: 20px;">Enemigos eliminados: <span id="finalKills" style="color: #ff00ff; font-weight: 700;">0</span></p>
         <button class="btn-restart" id="btnRestart">REINICIAR PARTIDA</button>
+        <button class="btn-menu" id="btnGameOverMenu">MENÚ PRINCIPAL</button>
       </div>
     </div>
 
-    <!-- Quick Test Button -->
-    <div id="quick-test-btn">🚀 TESTEO RÁPIDO</div>
+    <!-- Quick Test Button (Hidden for production) -->
+    <div id="quick-test-btn" style="display: none;">🚀 TESTEO RÁPIDO</div>
 
     <!-- Options Button -->
     <div id="options-btn">⚙️ OPCIONES</div>
@@ -99,7 +119,11 @@
           </div>
         </div>
         <div class="admin-section">
-          <button id="optionsBtnDev" class="admin-action-btn">🛠️ Opciones de Desarrollador</button>
+          <h3>Cámara</h3>
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 5px;">
+            <label>Zoom: <span id="optionsZoomValue" style="color: #00ffff; font-weight: bold;">1.0x</span></label>
+            <input type="range" id="optionsCameraZoom" min="0.6" max="2.0" step="0.05" value="1.0" style="width: 60%;">
+          </div>
         </div>
         <button id="optionsBtnClose" class="admin-action-btn close-btn">CERRAR</button>
       </div>
@@ -136,6 +160,13 @@
         <div id="adminSubModalContent" class="admin-sub-content"></div>
         <button id="adminSubBtnClose" class="admin-action-btn close-btn" style="margin-top: 15px;">VOLVER</button>
       </div>
+    </div>
+
+    <!-- Mobile Orientation Lock Overlay -->
+    <div id="rotate-device-overlay" class="rotate-device-overlay" style="display: none;">
+      <div class="rotate-phone-icon">📱</div>
+      <h2 style="color: #00ffff; font-size: 22px; font-weight: 800; letter-spacing: 2px; text-shadow: 0 0 15px #00ffff; margin-bottom: 12px;">GIRA TU DISPOSITIVO</h2>
+      <p style="color: #cbd5e0; font-size: 15px; max-width: 320px; line-height: 1.5; text-shadow: 0 0 8px rgba(255,255,255,0.3);">Este juego está optimizado exclusivamente para modo horizontal (Landscape).</p>
     </div>
 
   </div>

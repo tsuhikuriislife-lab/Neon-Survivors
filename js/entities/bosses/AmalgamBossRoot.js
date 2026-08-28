@@ -13,10 +13,12 @@ import { FallingProjectile } from '../projectiles/FallingProjectile.js';
 import { Boss } from './Boss.js';
 
 export class AmalgamBossRoot {
-  constructor() {
+  constructor(x, y) {
     this.name = "Amalgam";
     const multiplier = state.bossScaling['AmalgamBossRoot'] || 1.0;
-    this.nodes = [new AmalgamNode("Amalgam", state.width / 2, state.height / 2, 55000 * multiplier, 55000 * multiplier, 1, 2, 2)];
+    const startX = x !== undefined ? x : state.width / 2;
+    const startY = y !== undefined ? y : state.height / 2;
+    this.nodes = [new AmalgamNode("Amalgam", startX, startY, 35000 * multiplier, 35000 * multiplier, 1, 2, 2)];
   }
 
   getTargetables() {

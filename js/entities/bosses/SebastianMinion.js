@@ -16,8 +16,8 @@ export class SebastianMinion extends Boss {
     super();
     this.name = "Sebastian";
     this.segmentCount = 15;
-    this.segmentLength = 56;
-    this.radius = 56;
+    this.segmentLength = 36;
+    this.radius = 36;
     this.hp = hp;
     this.maxHp = hp;
     this.x = x;

@@ -1,5 +1,5 @@
 import { state } from '../../engine/gameState.js';
-import { keys, mouse } from '../../engine/Input.js';
+import { keys, mouse, getMovementVector, aimInput } from '../../engine/Input.js';
 import { dist, drawPolygon } from '../../engine/Utils.js';
 import { spawnExplosion } from '../effects/spawnExplosion.js';
 import { FloatingText } from '../effects/FloatingText.js';
@@ -87,17 +87,9 @@ export class Player {
       this.speed *= 2.5; // Dash speed boost
     }
 
-    let dx = 0;
-    let dy = 0;
-    if (keys['w'] || keys['arrowup']) dy -= 1;
-    if (keys['s'] || keys['arrowdown']) dy += 1;
-    if (keys['a'] || keys['arrowleft']) dx -= 1;
-    if (keys['d'] || keys['arrowright']) dx += 1;
-
-    if (dx !== 0 && dy !== 0) {
-      dx *= 0.7071;
-      dy *= 0.7071;
-    }
+    const move = getMovementVector();
+    let dx = move.dx;
+    let dy = move.dy;
 
     this.x += dx * this.speed;
     this.y += dy * this.speed;
@@ -105,11 +97,13 @@ export class Player {
     this.x = Math.max(this.radius, Math.min(state.width - this.radius, this.x));
     this.y = Math.max(this.radius, Math.min(state.height - this.radius, this.y));
 
-    if (dx !== 0 || dy !== 0) {
+    if (aimInput.active) {
+      this.angle = aimInput.angle;
+    } else if (mouse.down && this.weapons.laserCannon && this.weapons.laserCannon.level > 0 && this.weapons.laserCannon.fullyCharged) {
+      this.angle = Math.atan2(mouse.y - this.y, mouse.x - this.x);
+    } else if (dx !== 0 || dy !== 0) {
       this.angle = Math.atan2(dy, dx);
       if (Math.random() < 0.35) {
-        // We do not directly use state.particles here to avoid circular imports 
-        // if not needed, but spawnExplosion works fine. Actually, we can just push.
         import('../effects/Particle.js').then(({ Particle }) => {
           state.particles.push(new Particle(this.x, this.y, "#00f0ff", 1, 0.05, 2));
         });
@@ -347,9 +341,16 @@ export class Player {
 
   updateLaserCannon() {
     const w = this.weapons.laserCannon;
-    if (w.level <= 0) return;
+    if (w.level <= 0) {
+      mouse.justReleased = false;
+      aimInput.justReleased = false;
+      return;
+    }
 
     if (!w.fullyCharged) {
+      mouse.justReleased = false;
+      aimInput.justReleased = false;
+
       if (!w.charging) {
          w.charging = true;
          const chargeTimeSeconds = (w.maxCharge / w.chargeSpeedMult) / 60;
@@ -381,6 +382,8 @@ export class Player {
         w.fullyCharged = true;
         w.charging = false;
         w.chargeTimer = 0;
+        mouse.justReleased = false;
+        aimInput.justReleased = false;
         if (w.soundNode) {
           try { w.soundNode.stop(); } catch(e){}
           w.soundNode = null;
@@ -397,11 +400,21 @@ export class Player {
         });
       }
     } else {
-      if (mouse.down) {
+      const isMobileFire = aimInput.justReleased;
+      const isDesktopFire = mouse.justReleased;
+
+      if (isMobileFire || isDesktopFire) {
+         let angle;
+         if (isMobileFire) {
+            angle = aimInput.angle;
+            aimInput.justReleased = false;
+         } else {
+            angle = Math.atan2(mouse.y - this.y, mouse.x - this.x);
+            mouse.justReleased = false;
+         }
+
          w.fullyCharged = false;
          w.chargeTimer = 0;
-         
-         const angle = Math.atan2(mouse.y - this.y, mouse.x - this.x);
          
          state.laserBeams.push(new LaserBeam(
             this.x, this.y, angle, 
@@ -529,6 +542,62 @@ export class Player {
   }
 
   draw(ctx) {
+    // Draw Aiming Guide Line
+    let isAiming = false;
+    let aimAngle = 0;
+
+    if (aimInput.active) {
+      isAiming = true;
+      aimAngle = aimInput.angle;
+    } else if (this.weapons.laserCannon.level > 0 && this.weapons.laserCannon.fullyCharged && mouse.down) {
+      isAiming = true;
+      aimAngle = Math.atan2(mouse.y - this.y, mouse.x - this.x);
+    }
+
+    if (isAiming) {
+      const maxLen = Math.max(state.width, state.height) * 1.5;
+      const endX = this.x + Math.cos(aimAngle) * maxLen;
+      const endY = this.y + Math.sin(aimAngle) * maxLen;
+
+      ctx.save();
+      // Outer faint glowing line with dashed pattern
+      ctx.strokeStyle = "rgba(0, 255, 0, 0.4)";
+      ctx.lineWidth = 3;
+      ctx.setLineDash([10, 8]);
+      ctx.shadowColor = "#00ff00";
+      ctx.shadowBlur = 10;
+      ctx.beginPath();
+      ctx.moveTo(this.x, this.y);
+      ctx.lineTo(endX, endY);
+      ctx.stroke();
+
+      // Inner bright beam core
+      ctx.strokeStyle = "rgba(180, 255, 180, 0.85)";
+      ctx.lineWidth = 1.2;
+      ctx.setLineDash([]);
+      ctx.beginPath();
+      ctx.moveTo(this.x, this.y);
+      ctx.lineTo(endX, endY);
+      ctx.stroke();
+
+      // Sub-lasers aiming guides if unlocked
+      if (this.weapons.laserCannon.level > 0 && this.weapons.laserCannon.subLasers) {
+        ctx.strokeStyle = "rgba(0, 255, 0, 0.25)";
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([6, 6]);
+        for (let offset of [-Math.PI / 6, Math.PI / 6]) {
+          const subEndX = this.x + Math.cos(aimAngle + offset) * maxLen;
+          const subEndY = this.y + Math.sin(aimAngle + offset) * maxLen;
+          ctx.beginPath();
+          ctx.moveTo(this.x, this.y);
+          ctx.lineTo(subEndX, subEndY);
+          ctx.stroke();
+        }
+      }
+
+      ctx.restore();
+    }
+
     if (this.invulnerabilityTimer > 0 && Math.floor(performance.now() / 80) % 2 === 0) {
       // Blink
     } else {
