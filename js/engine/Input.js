@@ -34,20 +34,25 @@ export function getVirtualCoords(clientX, clientY) {
   const rect = canvas.getBoundingClientRect();
   if (rect.width === 0 || rect.height === 0) return { x: clientX, y: clientY };
 
+  const curWidth = canvas.width || 1920;
+  const curHeight = canvas.height || 1080;
+
   return {
-    x: (clientX - rect.left) * (1920 / rect.width),
-    y: (clientY - rect.top) * (1080 / rect.height)
+    x: (clientX - rect.left) * (curWidth / rect.width),
+    y: (clientY - rect.top) * (curHeight / rect.height)
   };
 }
 
 export function screenToWorld(clientX, clientY) {
   const v = getVirtualCoords(clientX, clientY);
-  const cam = state.camera || { x: 960, y: 960, userZoom: 1, currentZoomFactor: 1 };
+  const cam = state.camera || { x: 960, y: 960, userZoom: 1, currentZoomFactor: 1, screenWidth: 1920, screenHeight: 1080 };
   const effectiveZoom = (cam.userZoom || 1) * (cam.currentZoomFactor || 1);
+  const sw = cam.screenWidth || 1920;
+  const sh = cam.screenHeight || 1080;
 
   return {
-    x: (v.x - 1920 / 2) / effectiveZoom + cam.x,
-    y: (v.y - 1080 / 2) / effectiveZoom + cam.y
+    x: (v.x - sw / 2) / effectiveZoom + cam.x,
+    y: (v.y - sh / 2) / effectiveZoom + cam.y
   };
 }
 
@@ -85,10 +90,14 @@ export function updateJoystickUI() {
   const knob = document.getElementById('virtual-joystick-knob');
   if (!base || !knob) return;
 
+  const cam = state.camera || { screenWidth: 1920, screenHeight: 1080 };
+  const sw = cam.screenWidth || 1920;
+  const sh = cam.screenHeight || 1080;
+
   if (joystick.active) {
     base.style.display = 'block';
-    base.style.left = `${(joystick.startX / 1920) * 100}%`;
-    base.style.top = `${(joystick.startY / 1080) * 100}%`;
+    base.style.left = `${(joystick.startX / sw) * 100}%`;
+    base.style.top = `${(joystick.startY / sh) * 100}%`;
     knob.style.display = 'block';
     knob.style.left = `calc(50% + ${joystick.dx * 35}%)`;
     knob.style.top = `calc(50% + ${joystick.dy * 35}%)`;
@@ -103,10 +112,14 @@ export function updateAimJoystickUI() {
   const knob = document.getElementById('virtual-aim-joystick-knob');
   if (!base || !knob) return;
 
+  const cam = state.camera || { screenWidth: 1920, screenHeight: 1080 };
+  const sw = cam.screenWidth || 1920;
+  const sh = cam.screenHeight || 1080;
+
   if (aimInput.id !== null && aimInput.hasDragged) {
     base.style.display = 'block';
-    base.style.left = `${(aimInput.startX / 1920) * 100}%`;
-    base.style.top = `${(aimInput.startY / 1080) * 100}%`;
+    base.style.left = `${(aimInput.startX / sw) * 100}%`;
+    base.style.top = `${(aimInput.startY / sh) * 100}%`;
     knob.style.display = 'block';
     const offsetX = Math.cos(aimInput.angle) * (aimInput.norm || 1) * 35;
     const offsetY = Math.sin(aimInput.angle) * (aimInput.norm || 1) * 35;
@@ -170,7 +183,8 @@ export function initInput() {
       if (isInteractiveElement(touch.target)) continue;
 
       const v = getVirtualCoords(touch.clientX, touch.clientY);
-      const screenMidX = 1920 / 2;
+      const cam = state.camera || { screenWidth: 1920 };
+      const screenMidX = (cam.screenWidth || 1920) / 2;
 
       // Left half (Virtual Movement Joystick)
       if (v.x < screenMidX && joystick.id === null) {

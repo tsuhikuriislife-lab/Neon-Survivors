@@ -240,8 +240,8 @@ export class CameraController {
   // --------------------------------------------------------------------------
   applyTransform(ctx) {
     const effectiveScale = (this.userZoom || 1) * this.currentShakeScale * this.currentZoomFactor;
-    const centerX = (VIRTUAL_WIDTH / 2) + this.shakeOffsetX;
-    const centerY = (VIRTUAL_HEIGHT / 2) + this.shakeOffsetY;
+    const centerX = ((this.screenWidth || VIRTUAL_WIDTH) / 2) + this.shakeOffsetX;
+    const centerY = ((this.screenHeight || VIRTUAL_HEIGHT) / 2) + this.shakeOffsetY;
 
     ctx.translate(centerX, centerY);
     ctx.scale(effectiveScale, effectiveScale);
@@ -258,8 +258,8 @@ export class CameraController {
     this.y = 960;
     this.targetX = 960;
     this.targetY = 960;
-    this.screenWidth = VIRTUAL_WIDTH;
-    this.screenHeight = VIRTUAL_HEIGHT;
+    this.screenWidth = this.screenWidth || VIRTUAL_WIDTH;
+    this.screenHeight = this.screenHeight || VIRTUAL_HEIGHT;
     this.baseScale = 1.0;
     this.dpr = 1.0;
     this.shakeTimer = 0;
