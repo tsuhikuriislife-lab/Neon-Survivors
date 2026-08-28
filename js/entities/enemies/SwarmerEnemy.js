@@ -1,5 +1,6 @@
 import { state } from '../../engine/gameState.js';
 import { Enemy } from './Enemy.js';
+import { textures } from '../../engine/TextureCache.js';
 
 export class SwarmerEnemy extends Enemy {
   constructor(x, y) {
@@ -10,10 +11,11 @@ export class SwarmerEnemy extends Enemy {
     this.speed = 3.2 + Math.random() * 0.8;
     this.maxHp = 10 + state.gameTime * 0.04;
     this.hp = this.maxHp;
-    this.color = "#ff9900"; // Orange
+    this.color = "#ff9900";
     this.xpValue = 2;
     this.damage = 12;
     this.deathSoundKey = 'enemy_death_small';
+    this.texture = textures['enemy_swarmer'];
     
     // Direction initialized in constructor
     if (state.player) {
@@ -31,7 +33,7 @@ export class SwarmerEnemy extends Enemy {
     
     // Check bounds before taking normal damage checks
     if (this.x < -200 || this.x > state.width + 200 || this.y < -200 || this.y > state.height + 200) {
-      this.hp = 0; // silently die (handled in Game loop, without spawning effects since it just disappears)
+      this.hp = 0; // silently die
       return;
     }
     
@@ -40,10 +42,8 @@ export class SwarmerEnemy extends Enemy {
 
   die() {
     if (this.x < -100 || this.x > state.width + 100 || this.y < -100 || this.y > state.height + 100) {
-       // Died out of bounds, no drops or explosions or sound
-       return;
+      return;
     }
     super.die();
   }
 }
-

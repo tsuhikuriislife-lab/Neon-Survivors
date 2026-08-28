@@ -3,6 +3,7 @@ import { initInput } from './engine/Input.js';
 import { initUIListeners } from './ui/UIManager.js';
 import { initGame, loop } from './engine/Game.js';
 import { audioManager } from './engine/AudioManager.js';
+import { initTextureCache } from './engine/TextureCache.js';
 
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
@@ -52,7 +53,9 @@ window.addEventListener("orientationchange", () => {
 });
 resize();
 
+initTextureCache();
 audioManager.init();
+
 const startAudio = () => {
     audioManager.resumeAudioContext();
     if (screen.orientation && typeof screen.orientation.lock === 'function') {
@@ -72,4 +75,3 @@ initInput();
 initUIListeners();
 
 requestAnimationFrame((ts) => loop(ts, ctx));
-

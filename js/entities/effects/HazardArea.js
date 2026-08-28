@@ -1,5 +1,5 @@
-import { state } from '../../engine/gameState.js';
-import { drawPolygon, dist } from '../../engine/Utils.js';
+import { dist } from '../../engine/Utils.js';
+import { audioManager } from '../../engine/AudioManager.js';
 
 export class HazardArea {
   constructor(x, y, radius, duration, color, damage, isAcid = false) {
@@ -13,9 +13,7 @@ export class HazardArea {
     this.isAcid = isAcid;
     this.pulse = 0;
     
-    import('../../engine/AudioManager.js').then(({ audioManager }) => {
-        audioManager.playSound('enemy_aoe', { volume: 0.6 });
-    });
+    audioManager.playSound('enemy_aoe', { volume: 0.6 });
   }
   update(player) {
     this.duration--;
@@ -38,7 +36,7 @@ export class HazardArea {
     ctx.strokeStyle = this.color;
     ctx.lineWidth = 1.5;
     ctx.shadowColor = this.color;
-    ctx.shadowBlur = 10;
+    ctx.shadowBlur = 8;
     ctx.stroke();
     ctx.restore();
   }

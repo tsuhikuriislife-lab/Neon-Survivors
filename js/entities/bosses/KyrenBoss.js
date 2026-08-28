@@ -1,21 +1,15 @@
 import { DenzelBoss } from './DenzelBoss.js';
 import { state } from '../../engine/gameState.js';
-import { dist, drawPolygon } from '../../engine/Utils.js';
+import { dist } from '../../engine/Utils.js';
 import { spawnExplosion } from '../effects/spawnExplosion.js';
-import { FloatingText } from '../effects/FloatingText.js';
-import { HazardArea } from '../effects/HazardArea.js';
-import { Gem } from '../collectibles/Gem.js';
 import { Projectile } from '../projectiles/Projectile.js';
-import { AcceleratingProjectile } from '../projectiles/AcceleratingProjectile.js';
-import { FallingProjectile } from '../projectiles/FallingProjectile.js';
-
-
+import { audioManager } from '../../engine/AudioManager.js';
 import { Boss } from './Boss.js';
+import { textures, drawCachedTexture } from '../../engine/TextureCache.js';
 
 export class KyrenBoss extends Boss {
   constructor(x, y) {
-    super();
-    this.name = "Kyren";
+    super(0, 0, "Kyren", 12000, 150, "#00ffcc");
     const cx = state.width / 2;
     const cy = state.height / 2;
     this.orbitRadius = Math.min(state.width, state.height) * 0.35;
@@ -48,6 +42,9 @@ export class KyrenBoss extends Boss {
     this.isSplit = false;
     this.denzel = null;
     this.dead = false;
+
+    this.textureOuter = textures['boss_kyren_outer'];
+    this.textureInner = textures['boss_kyren_inner'];
   }
 
   getTargetables() {
@@ -60,25 +57,22 @@ export class KyrenBoss extends Boss {
   takeDamage(amt, damageColor = "#00ffcc") {
     if (this.dead || this.hp <= 0) return false;
     let finalAmount = amt;
-
     let isCrit = false;
 
     if (state.player && Math.random() < (state.player.critChance || 0)) {
-
-        finalAmount *= (state.player.critDamage || 1.5);
-
-        isCrit = true;
-
+      finalAmount *= (state.player.critDamage || 1.5);
+      isCrit = true;
     }
 
     this.hp -= finalAmount;
     const offsetX = (Math.random() * 2 - 1) * (this.radius * 0.8);
     const offsetY = (Math.random() * 2 - 1) * (this.radius * 0.8);
     const dmgColor = isCrit ? "#ffff00" : damageColor;
+    const fontSize = isCrit ? 22 : 16;
 
-    const fontSize = isCrit ? parseInt(16) + 6 : 16;
-
-    state.floatingTexts.push(new FloatingText(this.x + offsetX, this.y + offsetY, Math.round(finalAmount), dmgColor, fontSize));
+    if (state.floatingTextPool) {
+      state.floatingTextPool.acquire(this.x + offsetX, this.y + offsetY, Math.round(finalAmount), dmgColor, fontSize);
+    }
 
     if (!this.isSplit && this.hp <= this.maxHp * 0.5) {
       this.split();
@@ -86,9 +80,14 @@ export class KyrenBoss extends Boss {
 
     if (this.hp <= 0) {
       this.hp = 0;
-      this.dead = true; import('../../engine/AudioManager.js').then(({ audioManager }) => audioManager.playSound('enemy_death_boss', { volume: 0.8, throttleMs: 200 }));
+      this.dead = true;
+      audioManager.playSound('enemy_death_boss', { volume: 0.8, throttleMs: 200 });
       spawnExplosion(this.x, this.y, this.color, 40, 6);
-      for (let i = 0; i < 15; i++) state.gems.push(new Gem(this.x + (Math.random()*40-20), this.y + (Math.random()*40-20), 10));
+      for (let i = 0; i < 15; i++) {
+        if (state.gemPool) {
+          state.gemPool.acquire(this.x + (Math.random() * 40 - 20), this.y + (Math.random() * 40 - 20), 10);
+        }
+      }
     }
   }
 
@@ -136,9 +135,7 @@ export class KyrenBoss extends Boss {
       if (this.stateTimer >= 90) {
         this.state = 2;
         this.stateTimer = 0;
-        import('../../engine/AudioManager.js').then(({ audioManager }) => {
-            audioManager.playSound('enemy_dash', { volume: 0.8, throttleMs: 100 });
-        });
+        audioManager.playSound('enemy_dash', { volume: 0.8, throttleMs: 100 });
       }
     } else if (this.state === 2) {
       const progress = Math.min(1, this.stateTimer / 25);
@@ -161,11 +158,15 @@ export class KyrenBoss extends Boss {
     const count = 15;
     for (let i = 0; i < count; i++) {
       const a = (i * 2 * Math.PI) / count;
-      state.enemyProjectiles.push(new Projectile(this.x, this.y, Math.cos(a) * 4, Math.sin(a) * 4, 15, "#00ffcc", 5, true));
+      const vx = Math.cos(a) * 4;
+      const vy = Math.sin(a) * 4;
+      if (state.projectilePool) {
+        state.projectilePool.acquire(this.x, this.y, vx, vy, 15, "#00ffcc", 5, true);
+      } else {
+        state.enemyProjectiles.push(new Projectile(this.x, this.y, vx, vy, 15, "#00ffcc", 5, true));
+      }
     }
-    import('../../engine/AudioManager.js').then(({ audioManager }) => {
-        audioManager.playSound('enemy_projectile', { volume: 0.6, throttleMs: 100 });
-    });
+    audioManager.playSound('enemy_projectile', { volume: 0.6, throttleMs: 100 });
   }
 
   draw(ctx) {
@@ -189,10 +190,11 @@ export class KyrenBoss extends Boss {
       ctx.restore();
     }
 
-    drawPolygon(ctx, this.x, this.y, this.radius, 8, this.angle, this.color, 18, "rgba(0, 255, 204, 0.1)");
-    if (!this.isSplit) {
-      drawPolygon(ctx, this.x, this.y, this.radius * 0.52, 8, this.innerAngle, "#ffffff", 10, "rgba(255, 255, 255, 0.2)");
+    if (this.textureOuter) {
+      drawCachedTexture(ctx, this.textureOuter, this.x, this.y, this.angle);
+    }
+    if (!this.isSplit && this.textureInner) {
+      drawCachedTexture(ctx, this.textureInner, this.x, this.y, this.innerAngle);
     }
   }
 }
-

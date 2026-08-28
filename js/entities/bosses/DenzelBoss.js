@@ -1,23 +1,15 @@
 import { state } from '../../engine/gameState.js';
-import { dist, drawPolygon } from '../../engine/Utils.js';
+import { dist } from '../../engine/Utils.js';
 import { spawnExplosion } from '../effects/spawnExplosion.js';
-import { FloatingText } from '../effects/FloatingText.js';
-import { HazardArea } from '../effects/HazardArea.js';
-import { Gem } from '../collectibles/Gem.js';
-import { Projectile } from '../projectiles/Projectile.js';
-import { AcceleratingProjectile } from '../projectiles/AcceleratingProjectile.js';
 import { FallingProjectile } from '../projectiles/FallingProjectile.js';
-
-
+import { audioManager } from '../../engine/AudioManager.js';
 import { Boss } from './Boss.js';
+import { textures, drawCachedTexture } from '../../engine/TextureCache.js';
 
 export class DenzelBoss extends Boss {
   constructor(x, y, hp, maxHp) {
-    super();
-    this.name = "Denzel";
-    this.x = x;
-    this.y = y;
-    this.targetY = 160; // Lower height than 80
+    super(x, y, "Denzel", maxHp, 75, "#ffffff");
+    this.targetY = 160;
     this.radius = 75;
     this.hp = hp;
     this.maxHp = maxHp;
@@ -26,33 +18,33 @@ export class DenzelBoss extends Boss {
     this.angle = 0;
     this.fireTimer = 0;
     this.dead = false;
+    this.texture = textures['boss_denzel'];
   }
 
   takeDamage(amt, damageColor = "#ffffff") {
     if (this.dead || this.hp <= 0) return false;
     let finalAmount = amt;
-
     let isCrit = false;
 
     if (state.player && Math.random() < (state.player.critChance || 0)) {
-
-        finalAmount *= (state.player.critDamage || 1.5);
-
-        isCrit = true;
-
+      finalAmount *= (state.player.critDamage || 1.5);
+      isCrit = true;
     }
 
     this.hp -= finalAmount;
     const offsetX = (Math.random() * 2 - 1) * (this.radius * 0.8);
     const offsetY = (Math.random() * 2 - 1) * (this.radius * 0.8);
     const dmgColor = isCrit ? "#ffff00" : damageColor;
+    const fontSize = isCrit ? 20 : 14;
 
-    const fontSize = isCrit ? parseInt(14) + 6 : 14;
+    if (state.floatingTextPool) {
+      state.floatingTextPool.acquire(this.x + offsetX, this.y + offsetY, Math.round(finalAmount), dmgColor, fontSize);
+    }
 
-    state.floatingTexts.push(new FloatingText(this.x + offsetX, this.y + offsetY, Math.round(finalAmount), dmgColor, fontSize));
     if (this.hp <= 0) {
       this.hp = 0;
-      this.dead = true; import('../../engine/AudioManager.js').then(({ audioManager }) => audioManager.playSound('enemy_death_boss', { volume: 0.8, throttleMs: 200 }));
+      this.dead = true;
+      audioManager.playSound('enemy_death_boss', { volume: 0.8, throttleMs: 200 });
       spawnExplosion(this.x, this.y, "#ffffff", 25, 5);
     }
   }
@@ -78,9 +70,7 @@ export class DenzelBoss extends Boss {
       for (let i = -1; i <= 1; i++) {
         state.fallingProjectiles.push(new FallingProjectile(this.x, this.y, i * 2.2, -7, 18, "#ffffff"));
       }
-      import('../../engine/AudioManager.js').then(({ audioManager }) => {
-          audioManager.playSound('enemy_projectile', { volume: 0.6, throttleMs: 100 });
-      });
+      audioManager.playSound('enemy_projectile', { volume: 0.6, throttleMs: 100 });
     }
 
     if (dist(this.x, this.y, player.x, player.y) < this.radius + player.radius) {
@@ -90,7 +80,8 @@ export class DenzelBoss extends Boss {
 
   draw(ctx) {
     if (this.dead) return;
-    drawPolygon(ctx, this.x, this.y, this.radius, 8, this.angle, this.color, 12, "rgba(255, 255, 255, 0.3)");
+    if (this.texture) {
+      drawCachedTexture(ctx, this.texture, this.x, this.y, this.angle);
+    }
   }
 }
-

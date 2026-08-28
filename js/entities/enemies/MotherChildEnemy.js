@@ -1,5 +1,7 @@
 import { state } from '../../engine/gameState.js';
 import { Enemy } from './Enemy.js';
+import { Projectile } from '../projectiles/Projectile.js';
+import { textures } from '../../engine/TextureCache.js';
 
 export class MotherChildEnemy extends Enemy {
   constructor(x, y) {
@@ -10,7 +12,7 @@ export class MotherChildEnemy extends Enemy {
     this.speed = 3.5;
     this.maxHp = 25 + state.gameTime * 0.05;
     this.hp = this.maxHp;
-    this.color = "#00ff00"; // Bright green
+    this.color = "#00ff00";
     this.xpValue = 2; 
     this.damage = 15;
     this.directionChangeTimer = 0;
@@ -18,6 +20,7 @@ export class MotherChildEnemy extends Enemy {
     this.fireRate = 60 + Math.random() * 60;
     this.fireTimer = this.fireRate;
     this.deathSoundKey = 'enemy_death_small';
+    this.texture = textures['enemy_mother_child'];
   }
 
   update(player) {
@@ -37,20 +40,16 @@ export class MotherChildEnemy extends Enemy {
     this.fireTimer--;
     if (this.fireTimer <= 0) {
       this.fireTimer = this.fireRate;
-      import('../projectiles/Projectile.js').then(({ Projectile }) => {
-           const pa = Math.random() * Math.PI * 2;
-           state.enemyProjectiles.push(new Projectile(
-             this.x, this.y,
-             Math.cos(pa) * 4,
-             Math.sin(pa) * 4,
-             15,
-             this.color,
-             4,
-             true
-           ));
-      });
+      const pa = Math.random() * Math.PI * 2;
+      const vx = Math.cos(pa) * 4;
+      const vy = Math.sin(pa) * 4;
+
+      if (state.projectilePool) {
+        state.projectilePool.acquire(this.x, this.y, vx, vy, 15, this.color, 4, true);
+      } else {
+        state.enemyProjectiles.push(new Projectile(this.x, this.y, vx, vy, 15, this.color, 4, true));
+      }
     }
     super.update(player);
   }
 }
-

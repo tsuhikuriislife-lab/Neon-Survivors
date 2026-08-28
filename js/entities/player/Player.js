@@ -1,8 +1,7 @@
 import { state } from '../../engine/gameState.js';
 import { keys, mouse, getMovementVector, aimInput } from '../../engine/Input.js';
-import { dist, drawPolygon } from '../../engine/Utils.js';
+import { dist } from '../../engine/Utils.js';
 import { spawnExplosion } from '../effects/spawnExplosion.js';
-import { FloatingText } from '../effects/FloatingText.js';
 import { Projectile } from '../projectiles/Projectile.js';
 import { Shockwave } from '../projectiles/Shockwave.js';
 import { NovaProjectile } from '../projectiles/NovaProjectile.js';
@@ -10,6 +9,7 @@ import { MissileProjectile } from '../projectiles/MissileProjectile.js';
 import { LaserBeam } from '../projectiles/LaserBeam.js';
 import { showUpgradeMenu, triggerGameOver, updateHUD } from '../../ui/UIManager.js';
 import { audioManager } from '../../engine/AudioManager.js';
+import { textures, drawCachedTexture, getOrCachePolygon } from '../../engine/TextureCache.js';
 
 export class Player {
   constructor() {
@@ -38,7 +38,7 @@ export class Player {
     this.damageMult = 1.0;
     this.cooldownMult = 1.0;
     this.critChance = 0.0;
-    this.critDamage = 1.5; // Base 150% crit damage
+    this.critDamage = 1.5;
     this.xpMultiplier = 1.0;
     
     this.doubleGemChance = 0;
@@ -46,11 +46,11 @@ export class Player {
     this.acquiredUpgrades = {};
 
     this.activeSkill = {
-      id: 'dash', // Test skill
+      id: 'dash',
       level: 1,
       timer: 0,
       cooldown: 3, 
-      duration: 0.2, 
+      duration: 0.5, 
       activeTimer: 0,
       isActive: false,
       emoji: '⚡',
@@ -84,7 +84,7 @@ export class Player {
     }
 
     if (this.activeSkill && this.activeSkill.isActive && this.activeSkill.id === 'dash') {
-      this.speed *= 2.5; // Dash speed boost
+      this.speed *= 2.5;
     }
 
     const move = getMovementVector();
@@ -103,10 +103,8 @@ export class Player {
       this.angle = Math.atan2(mouse.y - this.y, mouse.x - this.x);
     } else if (dx !== 0 || dy !== 0) {
       this.angle = Math.atan2(dy, dx);
-      if (Math.random() < 0.35) {
-        import('../effects/Particle.js').then(({ Particle }) => {
-          state.particles.push(new Particle(this.x, this.y, "#00f0ff", 1, 0.05, 2));
-        });
+      if (Math.random() < 0.35 && state.particlePool) {
+        state.particlePool.acquire(this.x, this.y, "#00f0ff", 1, 0.05, 2);
       }
     }
 
@@ -142,12 +140,11 @@ export class Player {
       this.activeSkill.activeTimer -= dt;
       if (this.activeSkill.activeTimer <= 0) {
         this.activeSkill.isActive = false;
-        // The specific skill deactivation logic would go here or be checked actively in update loop
       }
     } else {
       if (this.activeSkill.timer > 0) {
         this.activeSkill.timer -= dt;
-      } else if (keys[' ']) { // Spacebar pressed
+      } else if (keys[' ']) {
         this.triggerActiveSkill();
       }
     }
@@ -158,17 +155,17 @@ export class Player {
     this.activeSkill.activeTimer = this.activeSkill.duration;
     this.activeSkill.timer = this.activeSkill.cooldown;
     
-    // Switch based on this.activeSkill.id
     if (this.activeSkill.id === 'dash') {
-      audioManager.playSound('ui_click', { volume: 0.5, throttleMs: 0 }); // Placeholder sound
-      import('../effects/Particle.js').then(({ Particle }) => {
-        for(let i=0; i<15; i++) {
-          const p = new Particle(this.x, this.y, this.activeSkill.color, 4, 0.05, 5);
-          p.vx = (Math.random() - 0.5) * 10;
-          p.vy = (Math.random() - 0.5) * 10;
-          state.particles.push(p);
+      audioManager.playSound('ui_click', { volume: 0.5, throttleMs: 0 });
+      if (state.particlePool) {
+        for (let i = 0; i < 15; i++) {
+          const p = state.particlePool.acquire(this.x, this.y, this.activeSkill.color, 4, 0.05, 5);
+          if (p) {
+            p.vx = (Math.random() - 0.5) * 10;
+            p.vy = (Math.random() - 0.5) * 10;
+          }
         }
-      });
+      }
     }
   }
 
@@ -184,34 +181,40 @@ export class Player {
 
   fireBlaster() {
     const w = this.weapons.blaster;
-    let closest = null;
+    let closest = state.spatialGrid.getNearest(this.x, this.y, w.range);
     let minD = w.range;
 
-    const allTargets = [...state.enemies, ...state.bosses.flatMap(b => b.getTargetables())];
-    for (let target of allTargets) {
-      const d = dist(this.x, this.y, target.x, target.y);
-      if (d < minD) {
-        minD = d;
-        closest = target;
+    if (closest) {
+      minD = dist(this.x, this.y, closest.x, closest.y);
+    }
+
+    // Also check boss targets if closer
+    for (let b of state.bosses) {
+      for (let target of b.getTargetables()) {
+        const d = dist(this.x, this.y, target.x, target.y);
+        if (d < minD) {
+          minD = d;
+          closest = target;
+        }
       }
     }
 
     const baseAngle = closest ? Math.atan2(closest.y - this.y, closest.x - this.x) : this.angle;
     const count = w.projectileCount;
+    const dmg = w.damage * this.damageMult;
+    const homing = w.homing || 0;
+
     for (let i = 0; i < count; i++) {
       const spread = count > 1 ? (i - (count - 1) / 2) * 0.09 : 0;
       const finalAngle = baseAngle + spread;
-      state.projectiles.push(new Projectile(
-        this.x, 
-        this.y, 
-        Math.cos(finalAngle) * w.speed, 
-        Math.sin(finalAngle) * w.speed, 
-        w.damage * this.damageMult, 
-        "#00ffff",
-        4,
-        false,
-        w.homing || 0
-      ));
+      const vx = Math.cos(finalAngle) * w.speed;
+      const vy = Math.sin(finalAngle) * w.speed;
+
+      if (state.projectilePool) {
+        state.projectilePool.acquire(this.x, this.y, vx, vy, dmg, "#00ffff", 4, false, homing);
+      } else {
+        state.projectiles.push(new Projectile(this.x, this.y, vx, vy, dmg, "#00ffff", 4, false, homing));
+      }
     }
     
     audioManager.playSound('fire_main_gun', { volume: 0.3, throttleMs: 100 });
@@ -236,16 +239,17 @@ export class Player {
         const ox = this.x + Math.cos(curAng) * w.radius;
         const oy = this.y + Math.sin(curAng) * w.radius;
         const orbRadius = w.size;
+        const orbDmg = w.damage * this.damageMult;
 
-        for (let e of state.enemies) {
-          if (dist(ox, oy, e.x, e.y) < orbRadius + e.radius) {
-            e.takeDamage(w.damage * this.damageMult, "#ff00ff");
-            state.recordDamage('orbitals', w.damage * this.damageMult);
-            spawnExplosion(ox, oy, "#ff00ff", 3, 1.5);
-            audioManager.playSound('hit_satellite', { volume: 0.5, throttleMs: 50 });
-          }
-        }
+        // Query spatial grid for nearby enemies
+        state.spatialGrid.queryRadius(ox, oy, orbRadius, (e) => {
+          e.takeDamage(orbDmg, "#ff00ff");
+          state.recordDamage('orbitals', orbDmg);
+          spawnExplosion(ox, oy, "#ff00ff", 3, 1.5);
+          audioManager.playSound('hit_satellite', { volume: 0.5, throttleMs: 50 });
+        });
 
+        // Check bosses
         for (let b of state.bosses) {
           const damagedParents = new Set();
           for (let t of b.getTargetables()) {
@@ -253,8 +257,8 @@ export class Player {
             if (damagedParents.has(actualTarget)) continue;
 
             if (dist(ox, oy, t.x, t.y) < orbRadius + t.radius) {
-              t.takeDamage(w.damage * this.damageMult, "#ff00ff");
-              state.recordDamage('orbitals', w.damage * this.damageMult);
+              t.takeDamage(orbDmg, "#ff00ff");
+              state.recordDamage('orbitals', orbDmg);
               spawnExplosion(ox, oy, "#ff00ff", 3, 1.5);
               damagedParents.add(actualTarget);
               audioManager.playSound('hit_satellite', { volume: 0.5, throttleMs: 50 });
@@ -317,7 +321,7 @@ export class Player {
       if (this.missileFireTimer <= 0) {
         this.fireSingleMissile();
         this.missilesQueue--;
-        this.missileFireTimer = 6; // 0.2s * 60fps = 12 frames
+        this.missileFireTimer = 6;
       } else {
         this.missileFireTimer--;
       }
@@ -365,17 +369,16 @@ export class Player {
       w.chargeTimer += w.chargeSpeedMult;
       
       const chargeRatio = w.chargeTimer / w.maxCharge;
-      if (Math.random() < chargeRatio * 0.8) {
+      if (Math.random() < chargeRatio * 0.8 && state.particlePool) {
          const angle = Math.random() * Math.PI * 2;
          const distP = 50 + Math.random() * 50;
          const px = this.x + Math.cos(angle) * distP;
          const py = this.y + Math.sin(angle) * distP;
-         import('../effects/Particle.js').then(({ Particle }) => {
-            const p = new Particle(px, py, "#00ff00", 2 + chargeRatio * 3, 0.05, 3);
-            p.vx = -Math.cos(angle) * (2 + chargeRatio * 2);
-            p.vy = -Math.sin(angle) * (2 + chargeRatio * 2);
-            state.particles.push(p);
-         });
+         const p = state.particlePool.acquire(px, py, "#00ff00", 2 + chargeRatio * 3, 0.05, 3);
+         if (p) {
+           p.vx = -Math.cos(angle) * (2 + chargeRatio * 2);
+           p.vy = -Math.sin(angle) * (2 + chargeRatio * 2);
+         }
       }
 
       if (w.chargeTimer >= w.maxCharge) {
@@ -389,15 +392,16 @@ export class Player {
           w.soundNode = null;
         }
         
-        import('../effects/Particle.js').then(({ Particle }) => {
-           for (let i=0; i<20; i++) {
-              const a = Math.random() * Math.PI * 2;
-              const p = new Particle(this.x, this.y, "#00ff00", 4, 0.03, 3);
+        if (state.particlePool) {
+          for (let i = 0; i < 20; i++) {
+            const a = Math.random() * Math.PI * 2;
+            const p = state.particlePool.acquire(this.x, this.y, "#00ff00", 4, 0.03, 3);
+            if (p) {
               p.vx = Math.cos(a) * Math.random() * 5;
               p.vy = Math.sin(a) * Math.random() * 5;
-              state.particles.push(p);
-           }
-        });
+            }
+          }
+        }
       }
     } else {
       const isMobileFire = aimInput.justReleased;
@@ -448,16 +452,17 @@ export class Player {
 
          audioManager.playSound('fire_laser_cannon', { volume: 0.8, throttleMs: 50 });
 
-         import('../effects/Particle.js').then(({ Particle }) => {
-            for (let i=0; i<15; i++) {
+         if (state.particlePool) {
+            for (let i = 0; i < 15; i++) {
                const a = angle + (Math.random() - 0.5) * 0.5;
-               const p = new Particle(this.x, this.y, "#00ff00", 3, 0.04, 3);
+               const p = state.particlePool.acquire(this.x, this.y, "#00ff00", 3, 0.04, 3);
                const s = Math.random() * 6 + 2;
-               p.vx = Math.cos(a) * s;
-               p.vy = Math.sin(a) * s;
-               state.particles.push(p);
+               if (p) {
+                 p.vx = Math.cos(a) * s;
+                 p.vy = Math.sin(a) * s;
+               }
             }
-         });
+         }
       }
     }
   }
@@ -470,7 +475,10 @@ export class Player {
     this.invulnerabilityTimer = this.invulnerabilityMaxTime;
     const offsetX = (Math.random() * 2 - 1) * (this.radius * 0.8);
     const offsetY = (Math.random() * 2 - 1) * (this.radius * 0.8);
-    state.floatingTexts.push(new FloatingText(this.x + offsetX, this.y + offsetY, `-${Math.round(amount)}`, damageColor, 16));
+    
+    if (state.floatingTextPool) {
+      state.floatingTextPool.acquire(this.x + offsetX, this.y + offsetY, `-${Math.round(amount)}`, damageColor, 16);
+    }
     spawnExplosion(this.x, this.y, "#ff0055", 8, 2.5);
 
     audioManager.playSound('hurt_player', { volume: 0.6, throttleMs: 50 });
@@ -485,7 +493,9 @@ export class Player {
   gainXP(val) {
     const finalVal = Math.round(val * (this.xpMultiplier || 1.0));
     this.xp += finalVal;
-    state.floatingTexts.push(new FloatingText(this.x + (Math.random() * 20 - 10), this.y - 15, `+${finalVal} XP`, "#00ffcc", 11));
+    if (state.floatingTextPool) {
+      state.floatingTextPool.acquire(this.x + (Math.random() * 20 - 10), this.y - 15, `+${finalVal} XP`, "#00ffcc", 11);
+    }
     
     audioManager.playSound('pickup_gem', { volume: 0.3, throttleMs: 50 });
 
@@ -560,7 +570,6 @@ export class Player {
       const endY = this.y + Math.sin(aimAngle) * maxLen;
 
       ctx.save();
-      // Outer faint glowing line with dashed pattern
       ctx.strokeStyle = "rgba(0, 255, 0, 0.4)";
       ctx.lineWidth = 3;
       ctx.setLineDash([10, 8]);
@@ -571,7 +580,6 @@ export class Player {
       ctx.lineTo(endX, endY);
       ctx.stroke();
 
-      // Inner bright beam core
       ctx.strokeStyle = "rgba(180, 255, 180, 0.85)";
       ctx.lineWidth = 1.2;
       ctx.setLineDash([]);
@@ -580,7 +588,6 @@ export class Player {
       ctx.lineTo(endX, endY);
       ctx.stroke();
 
-      // Sub-lasers aiming guides if unlocked
       if (this.weapons.laserCannon.level > 0 && this.weapons.laserCannon.subLasers) {
         ctx.strokeStyle = "rgba(0, 255, 0, 0.25)";
         ctx.lineWidth = 1.5;
@@ -599,20 +606,24 @@ export class Player {
     }
 
     if (this.invulnerabilityTimer > 0 && Math.floor(performance.now() / 80) % 2 === 0) {
-      // Blink
+      // Blinking i-frame
     } else {
-      drawPolygon(ctx, this.x, this.y, this.radius, 3, this.angle, "#00ffff", 15, "rgba(0, 255, 255, 0.2)");
+      if (textures['player_ship']) {
+        drawCachedTexture(ctx, textures['player_ship'], this.x, this.y, this.angle);
+      }
     }
 
     const orb = this.weapons.orbitals;
     if (orb.level > 0) {
+      const orbTexture = orb.size > 10 ? (textures['player_orbital_12'] || textures['player_orbital_8']) : textures['player_orbital_8'];
       for (let i = 0; i < orb.count; i++) {
         const curAng = orb.angle + (i * 2 * Math.PI) / orb.count;
         const ox = this.x + Math.cos(curAng) * orb.radius;
         const oy = this.y + Math.sin(curAng) * orb.radius;
-        drawPolygon(ctx, ox, oy, orb.size, 6, curAng * 2, "#ff00ff", 12, "rgba(255, 0, 255, 0.4)");
+        if (orbTexture) {
+          drawCachedTexture(ctx, orbTexture, ox, oy, curAng * 2);
+        }
       }
     }
   }
 }
-

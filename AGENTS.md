@@ -67,3 +67,9 @@ This repository contains a browser-based arena survival game ("Neon Survivors").
 - **Critical Hit System**:
   - Players have `critChance` (base 0) and `critDamage` (base 1.5).
   - Computed on impact inside `Enemy.js` and `Boss.js` `takeDamage` methods. Crits trigger larger, yellow `#ffff00` floating damage text.
+- **60 FPS Performance Optimization Architecture**:
+  - **Texture Caching (`TextureCache.js`)**: Pre-computes offscreen canvases with baked neon `shadowBlur` for player ship, orbitals, all enemy tiers, gems, projectiles, and boss parts. Replaces runtime `drawPolygon` / vector paths with direct `ctx.drawImage` calls.
+  - **Spatial Partitioning (`SpatialHashGrid.js`)**: 120x120px uniform grid (16x16 cells) over the 1920x1920 arena. Reduces projectile, laser, shockwave, orbital, and auto-aim collision queries from $O(N \times M)$ to $O(1)$ average.
+  - **Object Pooling (`Pool.js`)**: Fixed-size preallocated pools with `active` flags for particles (1500), projectiles (400), XP gems (500), and floating texts (300). Eliminates runtime heap allocations and Garbage Collection pauses.
+  - **Fast Removals & Batch Rendering**: Replaces $O(N)$ `splice()` with $O(1)$ swap-and-pop on active entity arrays. Renders particles grouped by color in batches with `shadowBlur = 0`.
+

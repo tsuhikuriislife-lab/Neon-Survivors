@@ -1,3 +1,6 @@
+import { spatialGrid } from './SpatialHashGrid.js';
+import { particlePool, projectilePool, gemPool, floatingTextPool } from './Pool.js';
+
 export const state = {
   isInMenu: true,
   isPaused: false,
@@ -54,17 +57,26 @@ export const state = {
   bosses: [],
   currentAmalgamBoss: null,
   
+  // Custom non-pool projectiles / effects
   projectiles: [],
   enemyProjectiles: [],
   acceleratingProjectiles: [],
   fallingProjectiles: [],
   shockwaves: [],
   laserBeams: [],
-  
-  gems: [],
   hazardAreas: [],
+
+  // Legacy arrays kept for compatibility, backed by pools
+  gems: [],
   particles: [],
   floatingTexts: [],
+
+  // Object pools & Spatial Partitioning
+  spatialGrid,
+  particlePool,
+  projectilePool,
+  gemPool,
+  floatingTextPool,
 
   reset() {
     this.enemies = [];
@@ -81,6 +93,13 @@ export const state = {
     this.gems = [];
     this.particles = [];
     this.floatingTexts = [];
+
+    this.spatialGrid.clear();
+    this.particlePool.clear();
+    this.projectilePool.clear();
+    this.gemPool.clear();
+    this.floatingTextPool.clear();
+
     this.gameTime = 0;
     this.killCount = 0;
     this.nextBossTime = 300;
@@ -117,5 +136,3 @@ export const state = {
     }
   }
 };
-
-
