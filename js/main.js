@@ -71,5 +71,6 @@ window.addEventListener('touchend', startAudio, { passive: true });
 initInput();
 initUIListeners();
 
+initGame();
 requestAnimationFrame((ts) => loop(ts, ctx));
 
