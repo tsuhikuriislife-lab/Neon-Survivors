@@ -50,7 +50,6 @@ export function drawBackground(ctx) {
 }
 
 export function drawFloorControls(ctx) {
-  if (state.gameTime >= 60) return;
   if (state.isInMenu || state.gameTime >= 60) return;
 
   const fadeStart = 50;

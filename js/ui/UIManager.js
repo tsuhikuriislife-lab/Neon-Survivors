@@ -199,7 +199,6 @@ export function initUIListeners() {
     document.getElementById("ui-layer").style.display = "block";
     audioManager.setMusicMuffled(false);
     initGame();
-    document.getElementById("gameOverModal").style.display = "none"; audioManager.setMusicMuffled(false);
   };
 
   // ACTIVE SKILL TOUCH / CLICK

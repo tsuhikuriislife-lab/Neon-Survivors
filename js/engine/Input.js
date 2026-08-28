@@ -117,7 +117,6 @@ export function initInput() {
   });
 
   window.addEventListener("mousedown", (e) => {
-    if (e.target.closest('#options-btn, #quick-test-btn, .modal-overlay, button, input, .card, #activeSkillHud, #testing-panel')) {
     if (state.isInMenu) return;
     if (e.target.closest('#options-btn, #quick-test-btn, .modal-overlay, #start-screen-overlay, button, input, .card, #activeSkillHud, #testing-panel')) {
       return;
@@ -142,7 +141,6 @@ export function initInput() {
 
   // --- TOUCH (MOBILE) ---
   const isInteractiveElement = (target) => {
-    return !!target.closest('#options-btn, #quick-test-btn, .modal-overlay, button, input, .card, #activeSkillHud, #testing-panel');
     return !!target.closest('#options-btn, #quick-test-btn, .modal-overlay, #start-screen-overlay, button, input, .card, #activeSkillHud, #testing-panel');
   };
 
