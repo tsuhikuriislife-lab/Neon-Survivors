@@ -15,6 +15,7 @@ export function initGame() {
   state.reset();
   state.player = new Player();
   if (state.camera) {
+    state.camera.reset();
     state.camera.x = state.player.x;
     state.camera.y = state.player.y;
     state.camera.targetX = state.player.x;
@@ -26,13 +27,17 @@ export function initGame() {
 let gridOffset = 0;
 export function drawBackground(ctx) {
   gridOffset = (gridOffset + 0.5) % 40;
+
+  const bgProps = state.environment.background.getComputedProps(state.gameTime);
+  const linesProps = state.environment.gridLines.getComputedProps(state.gameTime);
   
-  // Arena base background
-  ctx.fillStyle = "#04030a";
+  // Arena base background with dynamic environment control
+  ctx.fillStyle = bgProps.color || "#04030a";
   ctx.fillRect(0, 0, state.width, state.height);
 
-  ctx.strokeStyle = "rgba(0, 255, 255, 0.04)";
-  ctx.lineWidth = 1;
+  // Dynamic grid lines
+  ctx.strokeStyle = linesProps.color || "rgba(0, 255, 255, 0.04)";
+  ctx.lineWidth = Math.max(1, (linesProps.computedBrightness || 1.0));
 
   for (let x = 0; x <= state.width; x += 40) {
     ctx.beginPath();
@@ -224,23 +229,26 @@ export function drawFloorControls(ctx) {
 }
 
 export function drawArenaBoundary(ctx) {
+  const borderProps = state.environment.borders.getComputedProps(state.gameTime);
+  const glow = (borderProps.glow || 15) * (borderProps.computedBrightness || 1.0);
+
   ctx.save();
-  ctx.strokeStyle = "rgba(0, 255, 255, 0.35)";
-  ctx.lineWidth = 4;
-  ctx.shadowColor = "#00ffff";
-  ctx.shadowBlur = 15;
+  ctx.strokeStyle = borderProps.color || "rgba(0, 255, 255, 0.35)";
+  ctx.lineWidth = 4 * (borderProps.computedBrightness || 1.0);
+  ctx.shadowColor = borderProps.color || "#00ffff";
+  ctx.shadowBlur = glow;
   ctx.strokeRect(0, 0, state.width, state.height);
 
-  ctx.strokeStyle = "rgba(255, 255, 255, 0.7)";
+  ctx.strokeStyle = borderProps.innerColor || "rgba(255, 255, 255, 0.7)";
   ctx.lineWidth = 1.5;
   ctx.shadowBlur = 0;
   ctx.strokeRect(0, 0, state.width, state.height);
 
   const cornerLen = 50;
-  ctx.strokeStyle = "#ff00ff";
+  ctx.strokeStyle = borderProps.cornerColor || "#ff00ff";
   ctx.lineWidth = 3;
-  ctx.shadowColor = "#ff00ff";
-  ctx.shadowBlur = 12;
+  ctx.shadowColor = borderProps.cornerColor || "#ff00ff";
+  ctx.shadowBlur = glow * 0.8;
 
   // Top-Left
   ctx.beginPath();
@@ -349,19 +357,10 @@ export function loop(timestamp, ctx) {
     // Clear Canvas
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-
-    const cam = state.camera || { x: 960, y: 960, baseScale: 1, userZoom: 1, dpr: 1, screenWidth: window.innerWidth, screenHeight: window.innerHeight };
-    const dpr = cam.dpr || 1;
-    const effectiveScale = (cam.baseScale || 1) * (cam.userZoom || 1);
-    const screenW = cam.screenWidth || window.innerWidth;
-    const screenH = cam.screenHeight || window.innerHeight;
+    ctx.clearRect(0, 0, 1920, 1080);
 
     // 1. Draw World Layer
-    ctx.scale(dpr, dpr);
-    ctx.translate(screenW / 2, screenH / 2);
-    ctx.scale(effectiveScale, effectiveScale);
-    ctx.translate(-cam.x, -cam.y);
+    state.camera.applyTransform(ctx);
 
     drawBackground(ctx);
     drawArenaBoundary(ctx);
@@ -372,8 +371,7 @@ export function loop(timestamp, ctx) {
     // 2. Draw Screen UI Layer
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.scale(dpr, dpr);
-    vectorTitle.draw(ctx, screenW, screenH);
+    vectorTitle.draw(ctx, 1920, 1080);
     ctx.restore();
 
     requestAnimationFrame((ts) => loop(ts, ctx));
@@ -402,6 +400,9 @@ export function loop(timestamp, ctx) {
     updatePendingBossSpawn(dt);
     handleSpawning();
 
+    // Update Environment Transitions (Background, Lines, Borders)
+    state.environment.update(dt, state.gameTime);
+
     // 1. Update Spatial Hash Grid with all current enemies
     state.spatialGrid.clear();
     const currentEnemies = state.enemies;
@@ -412,14 +413,10 @@ export function loop(timestamp, ctx) {
 
     if (state.player) {
       state.player.update(dt);
-      if (state.camera) {
-        state.camera.targetX = state.player.x;
-        state.camera.targetY = state.player.y;
-        const lerpSpeed = Math.min(1, dt * 10);
-        state.camera.x += (state.camera.targetX - state.camera.x) * lerpSpeed;
-        state.camera.y += (state.camera.targetY - state.camera.y) * lerpSpeed;
-      }
     }
+
+    // Update Camera (Player tracking, cinematic focus, screenshake, zoom)
+    state.camera.update(dt, state.player);
 
     // Update Hazard Areas
     for (let i = state.hazardAreas.length - 1; i >= 0; i--) {
@@ -449,12 +446,12 @@ export function loop(timestamp, ctx) {
             state.recordDamage('blaster', p.damage);
 
             if (!e.takeDamage(p.damage, p.color)) {
-              // Enemy died, will be cleaned up in enemy loop
+              // Enemy died
             }
 
             p.active = false;
             hit = true;
-            return true; // Stop spatial search on first hit
+            return true;
           });
 
           if (hit) continue;
@@ -715,18 +712,10 @@ export function loop(timestamp, ctx) {
   // =========================================================================
   ctx.save();
   ctx.setTransform(1, 0, 0, 1, 0, 0);
-  ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+  ctx.clearRect(0, 0, 1920, 1080);
 
-  const cam = state.camera || { x: 960, y: 540, baseScale: 1, userZoom: 1, dpr: 1, screenWidth: window.innerWidth, screenHeight: window.innerHeight };
-  const dpr = cam.dpr || 1;
-  const effectiveScale = (cam.baseScale || 1) * (cam.userZoom || 1);
-  const screenW = cam.screenWidth || window.innerWidth;
-  const screenH = cam.screenHeight || window.innerHeight;
-
-  ctx.scale(dpr, dpr);
-  ctx.translate(screenW / 2, screenH / 2);
-  ctx.scale(effectiveScale, effectiveScale);
-  ctx.translate(-cam.x, -cam.y);
+  // Apply Full Camera Transformation (DPR, Zoom, Screenshake, Rotation, Scale, Tracking)
+  state.camera.applyTransform(ctx);
 
   drawBackground(ctx);
   drawArenaBoundary(ctx);

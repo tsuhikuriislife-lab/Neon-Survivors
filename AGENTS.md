@@ -72,4 +72,27 @@ This repository contains a browser-based arena survival game ("Neon Survivors").
   - **Spatial Partitioning (`SpatialHashGrid.js`)**: 120x120px uniform grid (16x16 cells) over the 1920x1920 arena. Reduces projectile, laser, shockwave, orbital, and auto-aim collision queries from $O(N \times M)$ to $O(1)$ average.
   - **Object Pooling (`Pool.js`)**: Fixed-size preallocated pools with `active` flags for particles (1500), projectiles (400), XP gems (500), and floating texts (300). Eliminates runtime heap allocations and Garbage Collection pauses.
   - **Fast Removals & Batch Rendering**: Replaces $O(N)$ `splice()` with $O(1)$ swap-and-pop on active entity arrays. Renders particles grouped by color in batches with `shadowBlur = 0`.
+- **Dynamic Camera & Screenshake Architecture (`Camera.js`)**:
+  - `state.camera` is managed by `CameraController`.
+  - **Screenshake**: `camera.shake({ strength, duration, rotation, scale })` applies quadratic ease-out decay with translation jitter, rotational roll, and punch-scale perturbation.
+  - **Dynamic Zoom**: `camera.setZoom(zoomAmount, duration, fadeInDuration, fadeOutDuration)` allows temporary or permanent camera zoom with smooth easing.
+  - **Cinematic Focus**: `camera.focusOn({ x, y, zoom, duration, fadeInDuration, fadeOutDuration })` smoothly pans the camera to objectives (e.g. boss spawn beacons) and returns to the player with `easeInOutQuad`.
+- **Map Environment Visual Effects (`EnvironmentManager.js`)**:
+  - `state.environment` manages independent dynamic properties (`color`, `brightness`, `pulse`, `duration`, `fadeInDuration`, `fadeOutDuration`) for:
+    - **Background**: `environment.setBackground(...)`
+    - **Grid Lines**: `environment.setGridLines(...)`
+    - **Perimeter Borders & Corners**: `environment.setBorders(...)`
+  - Supports permanent changes (`duration: 0`) or temporary alerts with smooth fade transitions.
+- **Fixed Virtual Resolution & Aspect Ratio Scaling (Letterboxing/Pillarboxing)**:
+  - **Canonical Resolution**: Fixed internal canvas coordinate space of `1920 x 1080` (16:9). `canvas.width = 1920` and `canvas.height = 1080` remain constant on all devices.
+  - **Responsive Letterboxing**: `#game-container` is strictly aspect-ratio 16:9, centered on `body` with black background (`#000000`).
+  - **Uniform Scaling**: Scale factor `Math.min(viewport.width / 1920, viewport.height / 1080)` sets `#game-container` pixel dimensions and `--ui-scale`.
+  - **Coordinate Mapping (`Input.js`)**: `getVirtualCoords(clientX, clientY)` converts raw viewport events to canonical virtual coordinates `(0-1920, 0-1080)` and `screenToWorld()` projects into world coordinates with perfect accuracy across letterboxed screens.
+- **Safari iOS Mobile Viewport Lifecycle & Rotation Compatibility**:
+  - **Visual Viewport Prioritization**: `getViewportSize()` queries `window.visualViewport.width/height` before fallback to `innerWidth/innerHeight`, accurately tracking Safari's dynamic navigation bars and landscape rotation.
+  - **Multi-Stage Event Handlers**: Listens to `'resize'`, `'orientationchange'`, `visualViewport.onresize`, `visualViewport.onscroll`, and `'visibilitychange'`. Schedules multi-stage execution passes (immediate, 100ms, 200ms, 350ms) to ensure full synchronization with Safari's orientation animations.
+  - **Dynamic Viewport Units**: `body` and `#game-container` use `100dvw` and `100dvh` in CSS to adapt to mobile browser chrome changes seamlessly.
+
+
+
 

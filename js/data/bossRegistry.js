@@ -36,6 +36,16 @@ registerBoss({
   id: 'KyrenBoss',
   name: 'Kyren',
   isMainBoss: true,
+  theme: {
+    primaryColor: '#00f0ff',
+    secondaryColor: '#ffaa00',
+    innerColor: 'rgba(255, 255, 255, 0.95)',
+    glow: 32,
+    spawnShake: { strength: 26, duration: 0.7, rotation: 0.09, scale: 0.07 },
+    spawnPulse: { rate: 4, amplitude: 0.6 },
+    focusZoom: 1.32,
+    focusDuration: 3.5
+  },
   defaultSpawnX: () => state.width / 2,
   defaultSpawnY: () => state.height / 2 - Math.min(state.width, state.height) * 0.35,
   instantiate: (x, y) => {
@@ -54,6 +64,16 @@ registerBoss({
   id: 'DevourerOfTaxBoss',
   name: 'Devourer of Tax',
   isMainBoss: true,
+  theme: {
+    primaryColor: '#39ff14',
+    secondaryColor: '#ffaa00',
+    innerColor: 'rgba(255, 255, 100, 0.95)',
+    glow: 35,
+    spawnShake: { strength: 30, duration: 0.8, rotation: 0.1, scale: 0.08 },
+    spawnPulse: { rate: 5, amplitude: 0.7 },
+    focusZoom: 1.26,
+    focusDuration: 3.5
+  },
   defaultSpawnX: () => state.width / 2,
   defaultSpawnY: () => 250,
   instantiate: (x, y) => {
@@ -71,6 +91,16 @@ registerBoss({
   id: 'AmalgamBossRoot',
   name: 'Amalgam',
   isMainBoss: true,
+  theme: {
+    primaryColor: '#ff0033',
+    secondaryColor: '#ff00ff',
+    innerColor: 'rgba(255, 120, 180, 0.95)',
+    glow: 36,
+    spawnShake: { strength: 28, duration: 0.75, rotation: 0.09, scale: 0.07 },
+    spawnPulse: { rate: 4, amplitude: 0.65 },
+    focusZoom: 1.35,
+    focusDuration: 3.5
+  },
   defaultSpawnX: () => state.width / 2,
   defaultSpawnY: () => state.height / 2,
   instantiate: (x, y) => {
@@ -88,6 +118,16 @@ registerBoss({
   id: 'DenzelBoss',
   name: 'Denzel',
   isMainBoss: false,
+  theme: {
+    primaryColor: '#ffffff',
+    secondaryColor: '#00ffff',
+    innerColor: 'rgba(255, 255, 255, 1.0)',
+    glow: 28,
+    spawnShake: { strength: 20, duration: 0.5, rotation: 0.06, scale: 0.05 },
+    spawnPulse: { rate: 3, amplitude: 0.5 },
+    focusZoom: 1.25,
+    focusDuration: 3.0
+  },
   defaultSpawnX: () => state.width / 2,
   defaultSpawnY: () => 250,
   instantiate: (x, y) => {
@@ -105,6 +145,16 @@ registerBoss({
   id: 'CarlosMinion',
   name: 'Carlos (Minion)',
   isMainBoss: false,
+  theme: {
+    primaryColor: '#00ff88',
+    secondaryColor: '#39ff14',
+    innerColor: 'rgba(255, 255, 255, 0.9)',
+    glow: 24,
+    spawnShake: { strength: 16, duration: 0.4, rotation: 0.04, scale: 0.03 },
+    spawnPulse: { rate: 3, amplitude: 0.4 },
+    focusZoom: 1.2,
+    focusDuration: 2.5
+  },
   defaultSpawnX: () => state.width / 2 - 100,
   defaultSpawnY: () => state.height / 2,
   instantiate: (x, y) => {
@@ -122,6 +172,16 @@ registerBoss({
   id: 'SebastianMinion',
   name: 'Sebastian (Minion)',
   isMainBoss: false,
+  theme: {
+    primaryColor: '#ff5500',
+    secondaryColor: '#ffd700',
+    innerColor: 'rgba(255, 255, 255, 0.9)',
+    glow: 24,
+    spawnShake: { strength: 16, duration: 0.4, rotation: 0.04, scale: 0.03 },
+    spawnPulse: { rate: 3, amplitude: 0.4 },
+    focusZoom: 1.2,
+    focusDuration: 2.5
+  },
   defaultSpawnX: () => state.width / 2 + 100,
   defaultSpawnY: () => state.height / 2,
   instantiate: (x, y) => {
@@ -139,6 +199,16 @@ registerBoss({
   id: 'TestingBoss',
   name: 'Dummy Target',
   isMainBoss: false,
+  theme: {
+    primaryColor: '#00ffff',
+    secondaryColor: '#ff00ff',
+    innerColor: 'rgba(255, 255, 255, 0.9)',
+    glow: 25,
+    spawnShake: { strength: 18, duration: 0.5, rotation: 0.05, scale: 0.04 },
+    spawnPulse: { rate: 3, amplitude: 0.4 },
+    focusZoom: 1.2,
+    focusDuration: 2.5
+  },
   defaultSpawnX: () => state.width / 2,
   defaultSpawnY: () => state.height / 2,
   instantiate: (x, y) => {
@@ -150,4 +220,3 @@ registerBoss({
     drawPolygon(ctx, 50, 50, 30, 10, 0, "#00ffff", 10, "rgba(0, 255, 255, 0.2)");
   }
 });
-

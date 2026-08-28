@@ -157,6 +157,9 @@ export class Player {
     
     if (this.activeSkill.id === 'dash') {
       audioManager.playSound('ui_click', { volume: 0.5, throttleMs: 0 });
+      if (state.camera && typeof state.camera.setZoom === 'function') {
+        state.camera.setZoom(1.05, (this.activeSkill.duration - 0.3) , 0.3, 0.3);
+      }
       if (state.particlePool) {
         for (let i = 0; i < 15; i++) {
           const p = state.particlePool.acquire(this.x, this.y, this.activeSkill.color, 4, 0.05, 5);
@@ -352,6 +355,9 @@ export class Player {
     }
 
     if (!w.fullyCharged) {
+      if (state.camera && typeof state.camera.setAimOffset === 'function') {
+        state.camera.setAimOffset(0, 0);
+      }
       mouse.justReleased = false;
       aimInput.justReleased = false;
 
@@ -404,6 +410,23 @@ export class Player {
         }
       }
     } else {
+      // Fully Charged: Check Aiming Peek & Camera Offset
+      const isMobileAiming = aimInput.active;
+      const isDesktopAiming = mouse.down;
+
+      if (state.camera && typeof state.camera.setAimOffset === 'function') {
+        if (isMobileAiming) {
+          const aimDist = 160;
+          state.camera.setAimOffset(Math.cos(aimInput.angle) * aimDist, Math.sin(aimInput.angle) * aimDist);
+        } else if (isDesktopAiming) {
+          const aimAngle = Math.atan2(mouse.y - this.y, mouse.x - this.x);
+          const aimDist = 160;
+          state.camera.setAimOffset(Math.cos(aimAngle) * aimDist, Math.sin(aimAngle) * aimDist);
+        } else {
+          state.camera.setAimOffset(0, 0);
+        }
+      }
+
       const isMobileFire = aimInput.justReleased;
       const isDesktopFire = mouse.justReleased;
 
@@ -419,6 +442,10 @@ export class Player {
 
          w.fullyCharged = false;
          w.chargeTimer = 0;
+
+         if (state.camera && typeof state.camera.setAimOffset === 'function') {
+           state.camera.setAimOffset(0, 0);
+         }
          
          state.laserBeams.push(new LaserBeam(
             this.x, this.y, angle, 
@@ -452,6 +479,10 @@ export class Player {
 
          audioManager.playSound('fire_laser_cannon', { volume: 0.8, throttleMs: 50 });
 
+         if (state.camera && typeof state.camera.shake === 'function') {
+           state.camera.shake({ strength: 18, duration: 0.48, rotation: 0.06, scale: 0.05 });
+         }
+
          if (state.particlePool) {
             for (let i = 0; i < 15; i++) {
                const a = angle + (Math.random() - 0.5) * 0.5;
@@ -480,6 +511,10 @@ export class Player {
       state.floatingTextPool.acquire(this.x + offsetX, this.y + offsetY, `-${Math.round(amount)}`, damageColor, 16);
     }
     spawnExplosion(this.x, this.y, "#ff0055", 8, 2.5);
+
+    if (state.camera && typeof state.camera.shake === 'function') {
+      state.camera.shake({ strength: 10, duration: 0.3, rotation: 0.04, scale: 0.03 });
+    }
 
     audioManager.playSound('hurt_player', { volume: 0.6, throttleMs: 50 });
 
