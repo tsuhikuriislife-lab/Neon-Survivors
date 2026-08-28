@@ -150,7 +150,7 @@ export function initInput() {
 
   window.addEventListener("mousedown", (e) => {
     if (state.isInMenu) return;
-    if (e.target.closest('#options-btn, #quick-test-btn, .modal-overlay, #start-screen-overlay, button, input, .card, #activeSkillHud, #testing-panel')) {
+    if (e.target.closest('#pause-btn, .pause-btn, #options-btn, #quick-test-btn, .modal-overlay, #start-screen-overlay, button, input, .card, #activeSkillHud, #testing-panel')) {
       return;
     }
     if (e.button === 0) {
@@ -173,7 +173,7 @@ export function initInput() {
 
   // --- TOUCH (MOBILE) ---
   const isInteractiveElement = (target) => {
-    return !!target.closest('#options-btn, #quick-test-btn, .modal-overlay, #start-screen-overlay, button, input, .card, #activeSkillHud, #testing-panel');
+    return !!target.closest('#pause-btn, .pause-btn, #options-btn, #quick-test-btn, .modal-overlay, #start-screen-overlay, button, input, .card, #activeSkillHud, #testing-panel');
   };
 
   window.addEventListener("touchstart", (e) => {

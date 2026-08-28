@@ -29,11 +29,26 @@ This repository contains a browser-based arena survival game ("Neon Survivors").
   - Centralized Web Audio API manager handling BGM and SFX.
   - Supports dynamic property modification (volume, pitch, speed), throttling for overlapped sounds (e.g. `throttleMs: 50`), and independent channels (`bgmVolume`, `sfxVolume`).
   - Music dynamically switches per boss. Menus opening automatically muffle BGM (fades to 20%).
-- **Options & Admin Panel**: The HUD contains an `⚙️ OPCIONES` button. This pauses the game and provides sound sliders. The legacy Admin Menu is now a sub-menu accessed from within the Options modal.
-- **Boss Mechanics (`Bosses.js`)**: 
-  - `Devourer of Tax`: Features momentum-based steering (slows down on tight turns) and a high-speed dash mechanic that severely limits turning capacity while active. Includes dash and death SFX.
-  - `Kyren` / `Denzel`: When Kyren splits, Denzel smoothly floats downward from Kyren's exact death location. Kyren plays an anticipation dash sound when entering its charge state.
-- **Projectiles (`Projectiles.js` & `Player.js`)**:
+- **Options & Admin Panel & Developer Tools**: 
+  - The HUD contains an `⚙️ OPCIONES` button (sound sliders, camera zoom, developer tools access) and a `🚀 TESTEO RÁPIDO` button.
+  - The Admin Menu allows toggling God Mode, enemy/boss spawns, a live real-time DPS/damage breakdown HUD overlay (`#testing-panel`), clearing all enemies, spawning dummy targets, and spawning individual enemies/bosses/upgrades via visual card grids.
+- **Boss Mechanics & Snake Movement Architecture (`DevourerOfTaxBoss`, `CarlosMinion`, `SebastianMinion`)**: 
+  - **Eater of Worlds Kinematics, Speed Zones & Low-Speed Exit State Machine**: 
+    - **Inside Arena (`ATTACK`)**: Enters at maximum high speed (`outsideSpeed: 14.0` for Devourer, `13.0 - 13.2` for Minions) in a high-momentum dive towards the player. Applies progressive friction (`friction: 0.045 / frame`) down towards `minSpeed: 2.8`.
+    - **Low-Speed Exit Trigger (`SEEK_EXIT`)**: When the snake's speed decays to `minSpeed + 0.3`, it switches target away from the player to navigate directly towards the nearest outside map boundary to initiate a new dive loop.
+    - **Outside Arena Acceleration (`OUTSIDE_ACCEL`)**: Once across the border, it continues outward accelerating rapidly (`outsideAccel: 0.22`) towards maximum speed.
+    - **Re-Entry Dive (`OUTSIDE_REENTRY`)**: Only when the snake reaches maximum velocity (`speed >= outsideSpeed - 0.3`) does it lock onto the player with agile turn rate (`outsideTurnRate: 0.075`), whipping around to launch an all-out high-speed charge back into the arena.
+  - **Inversely Proportional Turn Rate**: Turning capacity ($\omega$) is inversely proportional to linear speed ($v$): $\text{turnSpeed} = \text{clamp}(\frac{\text{turnRateFactor}}{v}, \text{minTurnRate}, \text{maxTurnRate})$. At high speeds ($v \approx 14$), turn rate is minimal ($0.009$) creating wide arcs; at low speeds ($v \approx 2.8$), turn rate increases ($0.045 - 0.048$) enabling agile maneuvers.
+  - **Collision Balance & Body Hit Cooldown**: Head deals heavy direct impact damage (`headDamage: 28`); body segments have a reduced hitbox radius (`radius * 0.7`), lower damage (`12`), and a global damage cooldown (`30 frames / 0.5s`) to prevent instakills or trapping the player.
+  - **Dynamic Player Proximity Transparency**: Body segments calculate distance to the player and reduce opacity dynamically (`minAlphaOnPlayer: 0.22` within `proximityFadeRadius: 140px`), ensuring the player and active weapons are always visible when underneath worm segments.
+  - **Snake-to-Snake Repulsion & Flanking Separation (`applySnakeRepulsion`)**: 
+    - Active snakes continuously calculate head-to-head and head-to-body proximity vectors (`separationDist = radius * 3.0`).
+    - Applies soft physical displacement and smooth angular steering deflection ($0.4 \times \Delta\theta_{\text{repel}}$) to prevent snakes from following identical trajectories or superimposing on top of each other.
+    - Carlos and Sebastian maintain complementary flanking offsets ($\pm 0.4\pi$ around the player) and divergent perimeter exit points during `SEEK_EXIT`.
+    - **Carlos Salvo Sequence**: Fires accelerating projectiles (`AcceleratingProjectile`) in a progressive wave from the tip of the tail (`segmentCount - 1`) forward to the head (`0`).
+  - **Impulse Split Spawn**: When Devourer of Tax splits at 50% HP (or upon quick lethal damage), Carlos and Sebastian spawn directly on top of Devourer with high-velocity initial impulses (`initialSpeed = 12.0`) along divergent random angles.
+- **Projectiles & Weapons (`Projectiles.js`, `LaserBeam.js` & `Player.js`)**:
+  - **Laser Cannon Damage Falloff**: Piercing laser beam calculates enemies sorted by distance along the beam path. Applies a progressive -5% damage falloff per enemy struck (1st enemy: 100%, 2nd: 95%, 3rd: 90% down to a 10% floor).
   - Missiles use a queue system (`missilesQueue`, `missileFireTimer`) to fire sequentially with a 0.2s delay instead of all at once.
   - Enemy projectiles ignore time-to-live (`life`) checks and only despawn when leaving the screen bounds.
   - The player's main blaster supports a `homingStrength` mechanic for subtly tracking targets.
@@ -93,7 +108,9 @@ This repository contains a browser-based arena survival game ("Neon Survivors").
   - **Multi-Stage Event Handlers**: Listens to `'resize'`, `'orientationchange'`, `visualViewport.onresize`, `visualViewport.onscroll`, and `'visibilitychange'`. Schedules multi-stage execution passes (immediate, 100ms, 200ms, 350ms) to ensure full synchronization with Safari's orientation animations.
   - **Dynamic Viewport Units**: `body` and `#game-container` use `100dvw` and `100dvh` in CSS to adapt to mobile browser chrome changes seamlessly.
 - **Dynamic Mobile UI Scaling & Anti-Collision Architecture**:
-  - **Fluid HUD Layout**: Top HUD (`.level-badge`, `.xp-container`, `.stats-hud`) and Bottom HUD (`.hp-container`, `#options-btn`, `#quick-test-btn`) use CSS `clamp()`, `cqw`, and `cqh` units to prevent element overlaps on constrained screens.
+  - **Fluid HUD Layout**: Top HUD (`.level-badge`, `.xp-container`, `#pause-btn`) and Bottom HUD (`.hp-container`, `.stats-hud` [Time & Kills in bottom center], `#activeSkillHud` [larger skill button on bottom right], `#quick-test-btn` above HP) use CSS `clamp()`, `cqw`, and `cqh` units to prevent element overlaps on constrained screens.
+  - **Skill Button & Responsive Prompts**: Enlarged skill button (`clamp(62px, 7.8cqw, 90px)`); key prompt `[SPACE]` is conditionally shown only on desktop devices and hidden on mobile touch devices.
+  - **Top-Right Pause Button**: Sleek neon pause button with 2 vertical bars (`#pause-btn`) replacing options text button.
   - **Stacked Multi-Boss Bars**: Boss health bars (`#boss-hud-container`) stack cleanly above the Active Skill button (`.active-skill-container`), eliminating visual collisions during boss encounters.
   - **Auto-Contained Dynamic Modals**: Modals (`#levelModal`, `#bossRewardModal`, `#optionsModal`, `#adminModal`, `#gameOverModal`) utilize `max-height: 88cqh; overflow-y: auto;` and styled ultra-thin scrollbars, preventing content from bleeding off-screen on low-resolution landscape phones.
 - **Virtual Joystick Relative Directional Architecture (`Input.js`)**:

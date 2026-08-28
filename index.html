@@ -55,12 +55,27 @@
       <!-- Multi-Boss Health Bars Overlay -->
       <div id="boss-hud-container"></div>
 
-      <!-- Testing Panel (Hidden for production) -->
+      <!-- Testing Panel (DPS & Damage Breakdown) -->
       <div id="testing-panel" style="display: none;">
-        <div id="testTotalDamage">0</div>
-        <div id="testTotalDPS">0.0</div>
-        <div id="testWeaponStats"></div>
+        <div class="testing-panel-header">📊 TEST DPS & DAÑO</div>
+        <div class="testing-panel-row">
+          <span>Daño Total:</span>
+          <span id="testTotalDamage" style="color: #ffff00; font-weight: bold;">0</span>
+        </div>
+        <div class="testing-panel-row">
+          <span>DPS Global:</span>
+          <span id="testTotalDPS" style="color: #00ffcc; font-weight: bold;">0.0</span>
+        </div>
+        <div id="testWeaponStats" style="margin-top: 6px;"></div>
       </div>
+      <!-- Pause Button (Top Right) -->
+      <button id="pause-btn" class="pause-btn" title="Pausa / Opciones" aria-label="Pausa">
+        <span class="pause-bar"></span>
+        <span class="pause-bar"></span>
+      </button>
+
+      <!-- Quick Test Button -->
+      <div id="quick-test-btn">🚀 TESTEO RÁPIDO</div>
     </div>
 
     <!-- Start Screen Overlay -->
@@ -101,16 +116,10 @@
       </div>
     </div>
 
-    <!-- Quick Test Button (Hidden for production) -->
-    <div id="quick-test-btn" style="display: none;">🚀 TESTEO RÁPIDO</div>
-
-    <!-- Options Button -->
-    <div id="options-btn">⚙️ OPCIONES</div>
-
-    <!-- Options Modal -->
+    <!-- Options / Pause Modal -->
     <div class="modal-overlay" id="optionsModal">
       <div class="admin-box">
-        <h2>⚙️ OPCIONES</h2>
+        <h2>⏸️ PAUSA</h2>
         <div class="admin-section">
           <h3>Sonido</h3>
           <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px;">
@@ -129,6 +138,10 @@
             <input type="range" id="optionsCameraZoom" min="0.6" max="2.0" step="0.05" value="1.0" style="width: 60%;">
           </div>
         </div>
+        <div class="admin-section">
+          <h3>Herramientas</h3>
+          <button id="optionsBtnDev" class="admin-action-btn" style="border-color: #00ffff; color: #00ffff; background: rgba(0, 255, 255, 0.15);">🛠️ PANEL DE ADMIN / DEV</button>
+        </div>
         <button id="optionsBtnClose" class="admin-action-btn close-btn">CERRAR</button>
       </div>
     </div>
@@ -141,10 +154,13 @@
           <h3>Switches</h3>
           <label><input type="checkbox" id="adminGodMode"> God Mode (Sin Daño)</label><br>
           <label><input type="checkbox" id="adminDisableSpawns"> Desactivar Spawns Enemigos</label><br>
-          <label><input type="checkbox" id="adminDisableBossSpawns"> Desactivar Spawn Bosses</label>
+          <label><input type="checkbox" id="adminDisableBossSpawns"> Desactivar Spawn Bosses</label><br>
+          <label><input type="checkbox" id="adminToggleTestingPanel"> Panel de DPS / Daño en Pantalla</label>
         </div>
         <div class="admin-section">
           <h3>Botones Rápidos</h3>
+          <button id="adminQuickTest" class="admin-action-btn" style="border-color: #ff00ff; color: #ff00ff; background: rgba(255, 0, 255, 0.15);">🚀 Activar Testeo Rápido (Max Stats)</button>
+          <button id="adminSpawnDummy" class="admin-action-btn">🎯 Spawnear Dummy Target</button>
           <button id="adminKillAll" class="admin-action-btn">💀 Eliminar Todos los Enemigos</button>
         </div>
         <div class="admin-section">

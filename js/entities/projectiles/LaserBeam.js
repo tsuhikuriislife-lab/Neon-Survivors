@@ -43,25 +43,19 @@ export class LaserBeam {
     }
     
     if (canDamageThisFrame) {
-      const endX = this.startX + Math.cos(this.angle) * this.length;
-      const endY = this.startY + Math.sin(this.angle) * this.length;
+      const cosA = Math.cos(this.angle);
+      const sinA = Math.sin(this.angle);
+      const endX = this.startX + cosA * this.length;
+      const endY = this.startY + sinA * this.length;
       
-      const processTarget = (t) => {
-        if (this.hitEnemies.has(t)) return;
-        this.hitEnemies.add(t);
-        t.takeDamage(this.damage, "#00ff00");
-        state.recordDamage('laserCannon', this.damage);
-        
-        if (this.dotDuration > 0) {
-          t.laserDot = { damage: this.dotDamage, duration: this.dotDuration, timer: 60 };
-        }
-        
-        audioManager.playSound('hit_laser_cannon', { volume: 0.5, throttleMs: 30 });
-      };
+      const targetsToHit = [];
 
       // Query enemies via spatial grid
       state.spatialGrid.queryLine(this.startX, this.startY, endX, endY, this.width, (enemy) => {
-        processTarget(enemy);
+        if (!this.hitEnemies.has(enemy)) {
+          const distAlong = (enemy.x - this.startX) * cosA + (enemy.y - this.startY) * sinA;
+          targetsToHit.push({ target: enemy, distAlong });
+        }
       });
 
       // Also check boss targets
@@ -73,10 +67,33 @@ export class LaserBeam {
           const projX = this.startX + tParam * (endX - this.startX);
           const projY = this.startY + tParam * (endY - this.startY);
           if (dist(t.x, t.y, projX, projY) < this.width / 2 + t.radius) {
-            processTarget(t);
+            const distAlong = (t.x - this.startX) * cosA + (t.y - this.startY) * sinA;
+            targetsToHit.push({ target: t, distAlong });
           }
         }
       }
+
+      // Ordenar objetivos por proximidad al origen del láser (el primero en el rayo se procesa primero)
+      targetsToHit.sort((a, b) => a.distAlong - b.distAlong);
+
+      targetsToHit.forEach((item, index) => {
+        const t = item.target;
+        if (this.hitEnemies.has(t)) return;
+        this.hitEnemies.add(t);
+
+        // Reducción de 5% de daño por cada enemigo atravesado (100%, 95%, 90%...)
+        const falloffMult = Math.max(0.1, 1.0 - index * 0.05);
+        const actualDamage = this.damage * falloffMult;
+
+        t.takeDamage(actualDamage, "#00ff00");
+        state.recordDamage('laserCannon', actualDamage);
+        
+        if (this.dotDuration > 0) {
+          t.laserDot = { damage: this.dotDamage * falloffMult, duration: this.dotDuration, timer: 60 };
+        }
+        
+        audioManager.playSound('hit_laser_cannon', { volume: 0.5, throttleMs: 30 });
+      });
     }
     
     if (Math.random() < 0.6 && state.particlePool) {

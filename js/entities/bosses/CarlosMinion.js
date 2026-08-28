@@ -1,25 +1,56 @@
 import { state } from '../../engine/gameState.js';
+import { dist } from '../../engine/Utils.js';
 import { spawnExplosion } from '../effects/spawnExplosion.js';
-import { Projectile } from '../projectiles/Projectile.js';
+import { AcceleratingProjectile } from '../projectiles/AcceleratingProjectile.js';
 import { audioManager } from '../../engine/AudioManager.js';
 import { Boss } from './Boss.js';
 import { textures, drawCachedTexture } from '../../engine/TextureCache.js';
 
 export class CarlosMinion extends Boss {
-  constructor(x, y, hp) {
+  constructor(x, y, hp, initialAngle = Math.random() * Math.PI * 2, initialSpeed = 7.5) {
     super(x, y, "Carlos", hp, 36, "#00ff88");
     this.segmentCount = 15;
     this.segmentLength = 36;
     this.radius = 36;
     this.hp = hp;
     this.maxHp = hp;
-    this.segments = [];
-    for (let i = 0; i < this.segmentCount; i++) {
-      this.segments.push({ x: this.x, y: this.y - i * this.segmentLength, angle: 0 });
-    }
     this.dead = false;
     this.salvoTimer = 0;
     this.texture = textures['boss_carlos_seg'];
+
+    // Físicas Estilo Eater of Worlds (Asemejadas al padre)
+    this.outsideSpeed = 13.0;       // Velocidad máxima incrementada para persecución y embestidas
+    this.minSpeed = 2.8;            // Velocidad mínima dentro del mapa
+    this.friction = 0.045;          // Tasa de desaceleración dentro del mapa
+    this.outsideAccel = 0.22;       // Aceleración rápida afuera
+    this.speed = initialSpeed || this.outsideSpeed;
+    this.aiState = 'ATTACK';        // Estados: 'ATTACK', 'SEEK_EXIT', 'OUTSIDE_ACCEL', 'OUTSIDE_REENTRY'
+
+    this.outsideTurnRate = 0.075;   // Giro ágil fuera del mapa
+    this.minTurnRate = 0.010;
+    this.maxTurnRate = 0.048;
+    this.turnRateFactor = 0.11;
+
+    this.headDamage = 22;
+    this.bodyDamage = 10;
+    this.bodyHitRadius = this.radius * 0.7;
+    this.bodyHitCooldown = 0;
+    this.bodyHitCooldownMax = 30;
+
+    this.proximityFadeRadius = 140;
+    this.minAlphaOnPlayer = 0.22;
+
+    this.vx = Math.cos(initialAngle) * this.speed;
+    this.vy = Math.sin(initialAngle) * this.speed;
+
+    this.segments = [];
+    for (let i = 0; i < this.segmentCount; i++) {
+      this.segments.push({ 
+        x: this.x - Math.cos(initialAngle) * i * this.segmentLength, 
+        y: this.y - Math.sin(initialAngle) * i * this.segmentLength, 
+        angle: initialAngle 
+      });
+    }
   }
 
   getTargetables() {
@@ -66,16 +97,172 @@ export class CarlosMinion extends Boss {
     }
   }
 
-  update(player) {
+  getNearbySnakes(passedSnakes) {
+    if (passedSnakes && passedSnakes.length > 0) return passedSnakes;
+    const list = [];
+    if (!this.dead) list.push(this);
+    for (let b of state.bosses) {
+      if (b && !b.dead) {
+        if (!list.includes(b)) list.push(b);
+        if (b.carlos && !b.carlos.dead && !list.includes(b.carlos)) list.push(b.carlos);
+        if (b.sebastian && !b.sebastian.dead && !list.includes(b.sebastian)) list.push(b.sebastian);
+      }
+    }
+    return list;
+  }
+
+  applySnakeRepulsion(otherSnakes) {
+    let repelX = 0;
+    let repelY = 0;
+    const separationDist = this.radius * 3.0;
+
+    for (const other of otherSnakes) {
+      if (!other || other.dead || other === this) continue;
+
+      // 1. Repulsión Cabeza contra Cabeza
+      const dHead = dist(this.x, this.y, other.x, other.y);
+      if (dHead < separationDist && dHead > 0.1) {
+        const force = (1 - dHead / separationDist) * 4.0;
+        const nx = (this.x - other.x) / dHead;
+        const ny = (this.y - other.y) / dHead;
+        repelX += nx * force;
+        repelY += ny * force;
+      }
+
+      // 2. Repulsión Cabeza contra Segmentos de la otra serpiente
+      if (other.segments) {
+        const checkCount = Math.min(8, other.segments.length);
+        for (let i = 1; i < checkCount; i++) {
+          const seg = other.segments[i];
+          const dSeg = dist(this.x, this.y, seg.x, seg.y);
+          const segSepDist = this.radius * 2.4;
+          if (dSeg < segSepDist && dSeg > 0.1) {
+            const force = (1 - dSeg / segSepDist) * 2.5;
+            const nx = (this.x - seg.x) / dSeg;
+            const ny = (this.y - seg.y) / dSeg;
+            repelX += nx * force;
+            repelY += ny * force;
+          }
+        }
+      }
+    }
+
+    this.x += repelX;
+    this.y += repelY;
+    return { repelX, repelY };
+  }
+
+  update(player, otherSnakes = null) {
     if (this.dead) return;
 
-    const a = Math.atan2(player.y - this.y, player.x - this.x);
-    this.x += Math.cos(a) * 2.2;
-    this.y += Math.sin(a) * 2.2;
+    // Aplicar repulsión física y de trayectoria entre serpientes
+    const activeSnakes = this.getNearbySnakes(otherSnakes);
+    const { repelX, repelY } = this.applySnakeRepulsion(activeSnakes);
 
+    const isOutside = (this.x < 0 || this.x > state.width || this.y < 0 || this.y > state.height);
+    const curAngle = Math.atan2(this.vy, this.vx);
+    let targetAngle = curAngle;
+    let turnSpeed = this.minTurnRate;
+
+    // Flanqueo de Carlos (desplaza su punto de mira hacia un costado del jugador)
+    const basePlayerAngle = Math.atan2(player.y - this.y, player.x - this.x);
+    const flankOffsetAngle = basePlayerAngle + Math.PI * 0.4;
+    const flankDist = 120;
+    const targetX = player.x + Math.cos(flankOffsetAngle) * flankDist;
+    const targetY = player.y + Math.sin(flankOffsetAngle) * flankDist;
+
+    // 1. Control de Estado y Navegación por Zonas
+    if (isOutside) {
+      if (this.speed < this.outsideSpeed - 0.3) {
+        // Fuera del mapa acelerando: sigue hacia afuera hasta alcanzar velocidad máxima
+        this.speed = Math.min(this.outsideSpeed, this.speed + this.outsideAccel);
+        this.aiState = 'OUTSIDE_ACCEL';
+        targetAngle = curAngle;
+        turnSpeed = 0.01;
+      } else {
+        // Ya alcanzó su velocidad máxima: activa el reingreso hacia el jugador flanqueando
+        this.speed = this.outsideSpeed;
+        this.aiState = 'OUTSIDE_REENTRY';
+        targetAngle = Math.atan2(targetY - this.y, targetX - this.x);
+        turnSpeed = this.outsideTurnRate;
+      }
+
+      // Failsafe de seguridad si se aleja demasiado
+      const centerDist = dist(this.x, this.y, state.width / 2, state.height / 2);
+      if (centerDist > 2200) {
+        this.speed = this.outsideSpeed;
+        this.aiState = 'OUTSIDE_REENTRY';
+        targetAngle = Math.atan2(player.y - this.y, player.x - this.x);
+        turnSpeed = 0.12;
+      }
+    } else {
+      // Dentro del mapa:
+      if (this.aiState === 'OUTSIDE_REENTRY' || this.aiState === 'OUTSIDE_ACCEL') {
+        this.aiState = 'ATTACK';
+      }
+
+      if (this.aiState === 'ATTACK') {
+        // Desaceleración progresiva (fricción) hasta minSpeed
+        if (this.speed > this.minSpeed) {
+          this.speed = Math.max(this.minSpeed, this.speed - this.friction);
+        }
+
+        // Si ya perdió toda su inercia y llegó a baja velocidad -> cambiar objetivo a buscar la salida del mapa
+        if (this.speed <= this.minSpeed + 0.3) {
+          this.aiState = 'SEEK_EXIT';
+        }
+
+        targetAngle = Math.atan2(targetY - this.y, targetX - this.x);
+        const rawTurnRate = this.turnRateFactor / Math.max(1.0, this.speed);
+        turnSpeed = Math.min(this.maxTurnRate, Math.max(this.minTurnRate, rawTurnRate));
+      } else if (this.aiState === 'SEEK_EXIT') {
+        // Aceleración ligera hacia la salida con offset diferenciado
+        this.speed = Math.min(5.5, this.speed + 0.04);
+
+        // Apuntar a la salida de perímetro más cercana (offset de Carlos hacia +X / -Y)
+        let exitX = this.x + 180;
+        let exitY = this.y - 180;
+        const distLeft = this.x;
+        const distRight = state.width - this.x;
+        const distTop = this.y;
+        const distBottom = state.height - this.y;
+        const minDist = Math.min(distLeft, distRight, distTop, distBottom);
+
+        if (minDist === distLeft) exitX = -250;
+        else if (minDist === distRight) exitX = state.width + 250;
+        else if (minDist === distTop) exitY = -250;
+        else exitY = state.height + 250;
+
+        targetAngle = Math.atan2(exitY - this.y, exitX - this.x);
+        turnSpeed = this.maxTurnRate;
+      }
+    }
+
+    // Desviar targetAngle suavemente por fuerza de repulsión
+    if (Math.hypot(repelX, repelY) > 0.1) {
+      const repelAngle = Math.atan2(repelY, repelX);
+      let diffRepel = repelAngle - targetAngle;
+      while (diffRepel < -Math.PI) diffRepel += Math.PI * 2;
+      while (diffRepel > Math.PI) diffRepel -= Math.PI * 2;
+      targetAngle += diffRepel * 0.4;
+    }
+
+    // 2. Navegación limitada estrictamente por turnSpeed por frame
+    let diff = targetAngle - curAngle;
+    while (diff < -Math.PI) diff += Math.PI * 2;
+    while (diff > Math.PI) diff -= Math.PI * 2;
+
+    const newAngle = curAngle + Math.sign(diff) * Math.min(turnSpeed, Math.abs(diff));
+    this.vx = Math.cos(newAngle) * this.speed;
+    this.vy = Math.sin(newAngle) * this.speed;
+
+    this.x += this.vx;
+    this.y += this.vy;
+
+    // 4. Cinemática de segmentos
     this.segments[0].x = this.x;
     this.segments[0].y = this.y;
-    this.segments[0].angle = a;
+    this.segments[0].angle = newAngle;
 
     for (let i = 1; i < this.segmentCount; i++) {
       const prev = this.segments[i - 1];
@@ -86,34 +273,75 @@ export class CarlosMinion extends Boss {
       cur.angle = ang;
     }
 
-    this.salvoTimer++;
-    if (this.salvoTimer % 180 < this.segmentCount * 6) {
-      const idx = Math.floor((this.salvoTimer % 180) / 6);
-      if ((this.salvoTimer % 180) % 6 === 0 && idx < this.segmentCount) {
-        const seg = this.segments[idx];
-        const perpA1 = seg.angle + Math.PI / 2;
-        const perpA2 = seg.angle - Math.PI / 2;
-        const spd = 3.5;
+    // 5. Ataques: ONLY when inside the map
+    if (!isOutside) {
+      this.salvoTimer++;
+      if (this.salvoTimer % 180 < this.segmentCount * 6) {
+        const step = Math.floor((this.salvoTimer % 180) / 6);
+        if ((this.salvoTimer % 180) % 6 === 0 && step < this.segmentCount) {
+          // Disparo secuencial desde la cola hacia la cabeza
+          const segIdx = (this.segmentCount - 1) - step;
+          const seg = this.segments[segIdx];
+          if (seg && seg.x >= 0 && seg.x <= state.width && seg.y >= 0 && seg.y <= state.height) {
+            const perpA1 = seg.angle + Math.PI / 2;
+            const perpA2 = seg.angle - Math.PI / 2;
+            const targetX1 = seg.x + Math.cos(perpA1) * 100;
+            const targetY1 = seg.y + Math.sin(perpA1) * 100;
+            const targetX2 = seg.x + Math.cos(perpA2) * 100;
+            const targetY2 = seg.y + Math.sin(perpA2) * 100;
 
-        if (state.projectilePool) {
-          state.projectilePool.acquire(seg.x, seg.y, Math.cos(perpA1) * spd, Math.sin(perpA1) * spd, 12, "#00ff88", 4, true);
-          state.projectilePool.acquire(seg.x, seg.y, Math.cos(perpA2) * spd, Math.sin(perpA2) * spd, 12, "#00ff88", 4, true);
-        } else {
-          state.enemyProjectiles.push(new Projectile(seg.x, seg.y, Math.cos(perpA1) * spd, Math.sin(perpA1) * spd, 12, "#00ff88", 4, true));
-          state.enemyProjectiles.push(new Projectile(seg.x, seg.y, Math.cos(perpA2) * spd, Math.sin(perpA2) * spd, 12, "#00ff88", 4, true));
+            state.acceleratingProjectiles.push(new AcceleratingProjectile(seg.x, seg.y, targetX1, targetY1, 12, "#00ff88"));
+            state.acceleratingProjectiles.push(new AcceleratingProjectile(seg.x, seg.y, targetX2, targetY2, 12, "#00ff88"));
+
+            audioManager.playSound('enemy_projectile', { volume: 0.4, throttleMs: 80 });
+          }
         }
+      }
+    }
 
-        audioManager.playSound('enemy_projectile', { volume: 0.4, throttleMs: 80 });
+    // 6. Colisiones y balance de daño
+    if (this.bodyHitCooldown > 0) this.bodyHitCooldown--;
+
+    const headDistance = dist(this.x, this.y, player.x, player.y);
+    if (headDistance < this.radius + player.radius) {
+      player.takeDamage(this.headDamage, "#00ff88");
+    }
+
+    if (this.bodyHitCooldown <= 0) {
+      for (let i = 1; i < this.segmentCount; i++) {
+        const seg = this.segments[i];
+        if (dist(seg.x, seg.y, player.x, player.y) < this.bodyHitRadius + player.radius) {
+          player.takeDamage(this.bodyDamage, "#00ff88");
+          this.bodyHitCooldown = this.bodyHitCooldownMax;
+          break;
+        }
       }
     }
   }
 
   draw(ctx) {
     if (this.dead) return;
+    const player = state.player;
+
     for (let i = this.segmentCount - 1; i >= 0; i--) {
       const seg = this.segments[i];
       if (this.texture) {
-        drawCachedTexture(ctx, this.texture, seg.x, seg.y, seg.angle);
+        let alpha = 1.0;
+        if (player && i > 0) {
+          const d = dist(seg.x, seg.y, player.x, player.y);
+          if (d < this.proximityFadeRadius) {
+            alpha = Math.max(this.minAlphaOnPlayer, d / this.proximityFadeRadius);
+          }
+        }
+
+        if (alpha < 1.0) {
+          ctx.save();
+          ctx.globalAlpha = alpha;
+          drawCachedTexture(ctx, this.texture, seg.x, seg.y, seg.angle);
+          ctx.restore();
+        } else {
+          drawCachedTexture(ctx, this.texture, seg.x, seg.y, seg.angle);
+        }
       }
     }
   }

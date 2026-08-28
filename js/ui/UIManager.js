@@ -226,8 +226,8 @@ export function initUIListeners() {
     activeSkillBtn.addEventListener('touchstart', triggerSkill, { passive: false });
   }
 
-  // OPTIONS & ADMIN PANEL LOGIC
-  const optionsBtn = document.getElementById("options-btn");
+  // PAUSE / OPTIONS & ADMIN PANEL LOGIC
+  const pauseBtn = document.getElementById("pause-btn") || document.getElementById("options-btn");
   const optionsModal = document.getElementById("optionsModal");
   const adminModal = document.getElementById("adminModal");
   const adminSubModal = document.getElementById("adminSubModal");
@@ -261,61 +261,72 @@ export function initUIListeners() {
     };
   }
 
+  const executeQuickTest = () => {
+    // 1. Spawn Dummy Boss
+    state.bosses.push(new TestingBoss());
+
+    // 2. Max out all available capped upgrades
+    let upgraded = true;
+    let safetyCounter = 0;
+    while (upgraded && safetyCounter < 50) {
+      safetyCounter++;
+      upgraded = false;
+      upgradeDatabase.forEach(upg => {
+        if (upg.isAvailable && !upg.isInfinite && upg.isAvailable(state.player)) {
+          upg.apply(state.player);
+          state.player.acquiredUpgrades = state.player.acquiredUpgrades || {};
+          state.player.acquiredUpgrades[upg.id] = (state.player.acquiredUpgrades[upg.id] || 0) + 1;
+          upgraded = true;
+        }
+      });
+    }
+
+    // 3. Apply infinite upgrades a few times for testing
+    upgradeDatabase.forEach(upg => {
+      if (upg.isInfinite) {
+        for (let i = 0; i < 10; i++) {
+          upg.apply(state.player);
+          state.player.acquiredUpgrades = state.player.acquiredUpgrades || {};
+          state.player.acquiredUpgrades[upg.id] = (state.player.acquiredUpgrades[upg.id] || 0) + 1;
+        }
+      }
+    });
+
+    const panel = document.getElementById("testing-panel");
+    if (panel) panel.style.display = "block";
+    const panelCheck = document.getElementById("adminToggleTestingPanel");
+    if (panelCheck) panelCheck.checked = true;
+
+    updateHUD();
+    audioManager.playSound('level_up', { volume: 0.8, throttleMs: 50 });
+  };
+
   const quickTestBtn = document.getElementById("quick-test-btn");
   if (quickTestBtn) {
     quickTestBtn.onclick = () => {
-      // 1. Spawn Dummy Boss
-      state.bosses.push(new TestingBoss());
-
-      // 2. Max out all available capped upgrades
-      let upgraded = true;
-      let safetyCounter = 0;
-      while (upgraded && safetyCounter < 50) {
-          safetyCounter++;
-          upgraded = false;
-          upgradeDatabase.forEach(upg => {
-              if (upg.isAvailable && !upg.isInfinite && upg.isAvailable(state.player)) {
-                  upg.apply(state.player);
-                  state.player.acquiredUpgrades = state.player.acquiredUpgrades || {};
-                  state.player.acquiredUpgrades[upg.id] = (state.player.acquiredUpgrades[upg.id] || 0) + 1;
-                  upgraded = true;
-              }
-          });
-      }
-
-      // 3. Apply infinite upgrades a few times for testing
-      upgradeDatabase.forEach(upg => {
-          if (upg.isInfinite) {
-              for(let i=0; i<10; i++) {
-                  upg.apply(state.player);
-                  state.player.acquiredUpgrades = state.player.acquiredUpgrades || {};
-                  state.player.acquiredUpgrades[upg.id] = (state.player.acquiredUpgrades[upg.id] || 0) + 1;
-              }
-          }
-      });
-
-      updateHUD();
-      audioManager.playSound('level_up', { volume: 0.8, throttleMs: 50 });
+      executeQuickTest();
     };
   }
 
-  optionsBtn.onclick = () => {
-    state.isPaused = true;
-    optionsModal.style.display = "flex";
-    audioManager.setMusicMuffled(true);
-    
-    bgmVol.value = audioManager.bgmVolume;
-    sfxVol.value = audioManager.sfxVolume;
-    bgmMute.checked = audioManager.bgmMuted;
-    sfxMute.checked = audioManager.sfxMuted;
+  if (pauseBtn) {
+    pauseBtn.onclick = () => {
+      state.isPaused = true;
+      optionsModal.style.display = "flex";
+      audioManager.setMusicMuffled(true);
+      
+      bgmVol.value = audioManager.bgmVolume;
+      sfxVol.value = audioManager.sfxVolume;
+      bgmMute.checked = audioManager.bgmMuted;
+      sfxMute.checked = audioManager.sfxMuted;
 
-    if (cameraZoomSlider && state.camera) {
-      cameraZoomSlider.value = state.camera.userZoom || 1.0;
-      if (cameraZoomValue) {
-        cameraZoomValue.innerText = `${(state.camera.userZoom || 1.0).toFixed(2)}x`;
+      if (cameraZoomSlider && state.camera) {
+        cameraZoomSlider.value = state.camera.userZoom || 1.0;
+        if (cameraZoomValue) {
+          cameraZoomValue.innerText = `${(state.camera.userZoom || 1.0).toFixed(2)}x`;
+        }
       }
-    }
-  };
+    };
+  }
 
   document.getElementById("optionsBtnClose").onclick = () => {
     optionsModal.style.display = "none";
@@ -333,6 +344,11 @@ export function initUIListeners() {
       document.getElementById("adminGodMode").checked = state.godMode;
       document.getElementById("adminDisableSpawns").checked = state.disableSpawns;
       document.getElementById("adminDisableBossSpawns").checked = state.disableBossSpawns;
+      const testPanelElem = document.getElementById("testing-panel");
+      const testToggleElem = document.getElementById("adminToggleTestingPanel");
+      if (testPanelElem && testToggleElem) {
+        testToggleElem.checked = (testPanelElem.style.display !== 'none');
+      }
     };
   }
 
@@ -345,6 +361,40 @@ export function initUIListeners() {
   document.getElementById("adminGodMode").onchange = (e) => state.godMode = e.target.checked;
   document.getElementById("adminDisableSpawns").onchange = (e) => state.disableSpawns = e.target.checked;
   document.getElementById("adminDisableBossSpawns").onchange = (e) => state.disableBossSpawns = e.target.checked;
+
+  const adminToggleTestingPanel = document.getElementById("adminToggleTestingPanel");
+  if (adminToggleTestingPanel) {
+    adminToggleTestingPanel.onchange = (e) => {
+      const panel = document.getElementById("testing-panel");
+      if (panel) panel.style.display = e.target.checked ? "block" : "none";
+    };
+  }
+
+  const adminQuickTest = document.getElementById("adminQuickTest");
+  if (adminQuickTest) {
+    adminQuickTest.onclick = () => {
+      executeQuickTest();
+      adminModal.style.display = "none";
+      optionsModal.style.display = "none";
+      audioManager.setMusicMuffled(false);
+      state.isPaused = false;
+    };
+  }
+
+  const adminSpawnDummy = document.getElementById("adminSpawnDummy");
+  if (adminSpawnDummy) {
+    adminSpawnDummy.onclick = () => {
+      state.bosses.push(new TestingBoss());
+      const panel = document.getElementById("testing-panel");
+      if (panel) panel.style.display = "block";
+      const panelCheck = document.getElementById("adminToggleTestingPanel");
+      if (panelCheck) panelCheck.checked = true;
+      adminModal.style.display = "none";
+      optionsModal.style.display = "none";
+      audioManager.setMusicMuffled(false);
+      state.isPaused = false;
+    };
+  }
 
   document.getElementById("adminKillAll").onclick = () => {
     state.enemies.forEach(e => e.takeDamage(e.hp));
@@ -522,13 +572,13 @@ export function initUIListeners() {
 
   // Global sound listeners for UI
   document.body.addEventListener('mousedown', (e) => {
-    if (e.target.closest('.card') || e.target.closest('button') || e.target.closest('#options-btn') || e.target.closest('input[type="checkbox"]')) {
+    if (e.target.closest('.card') || e.target.closest('button') || e.target.closest('#options-btn') || e.target.closest('#pause-btn') || e.target.closest('.pause-btn') || e.target.closest('input[type="checkbox"]')) {
       audioManager.playSound('ui_click', { volume: 0.8, throttleMs: 50 });
     }
   });
 
   document.body.addEventListener('mouseover', (e) => {
-    const target = e.target.closest('.card') || e.target.closest('button') || e.target.closest('#options-btn');
+    const target = e.target.closest('.card') || e.target.closest('button') || e.target.closest('#options-btn') || e.target.closest('#pause-btn') || e.target.closest('.pause-btn');
     if (target && !target._hasHoverSound) {
       target._hasHoverSound = true;
       audioManager.playSound('ui_hover', { volume: 0.5, throttleMs: 50 });
@@ -801,8 +851,9 @@ export function showBossRewardMenu(bossName) {
 export function updateActiveSkillHUD() {
   if (!state.player) return;
   const activeSkillHud = document.getElementById("activeSkillHud");
+  const keyLabel = document.getElementById("hudActiveSkillKey");
   if (state.player.activeSkill && state.player.activeSkill.id) {
-    activeSkillHud.style.display = "block";
+    activeSkillHud.style.display = "flex";
     document.getElementById("hudActiveSkillEmoji").innerText = state.player.activeSkill.emoji;
     const cdElement = document.getElementById("hudActiveSkillCooldown");
     if (state.player.activeSkill.timer > 0) {
@@ -810,6 +861,11 @@ export function updateActiveSkillHUD() {
       cdElement.style.height = `${pct}%`;
     } else {
       cdElement.style.height = `0%`;
+    }
+
+    if (keyLabel) {
+      const isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+      keyLabel.style.display = isTouch ? 'none' : 'block';
     }
   } else {
     activeSkillHud.style.display = "none";
