@@ -1,6 +1,3 @@
-import { state } from '../../engine/gameState.js';
-import { drawPolygon } from '../../engine/Utils.js';
-
 export class FloatingText {
   constructor(x, y, text, color = "#fff", size = 14) {
     this.x = x;
@@ -18,8 +15,7 @@ export class FloatingText {
   draw(ctx) {
     ctx.save();
     ctx.globalAlpha = Math.max(0, this.alpha);
-    ctx.shadowColor = this.color;
-    ctx.shadowBlur = 6;
+    ctx.shadowBlur = 0;
     ctx.fillStyle = this.color;
     ctx.font = `bold ${this.size}px 'Segoe UI', sans-serif`;
     ctx.fillText(this.text, this.x, this.y);

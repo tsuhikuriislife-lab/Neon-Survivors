@@ -1,5 +1,4 @@
 import { state } from '../../engine/gameState.js';
-import { FloatingText } from '../effects/FloatingText.js'; // Will update to specific file later
 
 export class Boss {
   constructor(x, y, name, maxHp, radius, color) {
@@ -11,6 +10,8 @@ export class Boss {
     this.radius = radius;
     this.color = color;
     this.dead = false;
+    this.texture = null;
+    this._spatialStamp = 0;
   }
 
   getTargetables() {
@@ -20,33 +21,29 @@ export class Boss {
   takeDamage(amt, damageColor = this.color, hitX = this.x, hitY = this.y) {
     if (this.dead || this.hp <= 0) return false;
     let finalAmount = amt;
-
     let isCrit = false;
 
     if (state.player && Math.random() < (state.player.critChance || 0)) {
-
-        finalAmount *= (state.player.critDamage || 1.5);
-
-        isCrit = true;
-
+      finalAmount *= (state.player.critDamage || 1.5);
+      isCrit = true;
     }
 
     this.hp -= finalAmount;
     const offsetX = (Math.random() * 2 - 1) * (this.radius * 0.8);
     const offsetY = (Math.random() * 2 - 1) * (this.radius * 0.8);
     const dmgColor = isCrit ? "#ffff00" : damageColor;
+    const fontSize = isCrit ? 22 : 16;
 
-    const fontSize = isCrit ? parseInt(16) + 6 : 16;
-
-    state.floatingTexts.push(new FloatingText(hitX + offsetX, hitY + offsetY, Math.round(finalAmount), dmgColor, fontSize));
+    if (state.floatingTextPool) {
+      state.floatingTextPool.acquire(hitX + offsetX, hitY + offsetY, Math.round(finalAmount), dmgColor, fontSize);
+    }
   }
 
   update(player) {
-    // To be implemented by subclasses
+    // Implemented by subclasses
   }
 
   draw(ctx) {
-    // To be implemented by subclasses
+    // Implemented by subclasses
   }
 }
-

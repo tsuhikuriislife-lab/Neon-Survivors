@@ -1,27 +1,18 @@
 import { state } from '../../engine/gameState.js';
-import { dist, drawPolygon } from '../../engine/Utils.js';
 import { spawnExplosion } from '../effects/spawnExplosion.js';
-import { FloatingText } from '../effects/FloatingText.js';
 import { HazardArea } from '../effects/HazardArea.js';
-import { Gem } from '../collectibles/Gem.js';
-import { Projectile } from '../projectiles/Projectile.js';
-import { AcceleratingProjectile } from '../projectiles/AcceleratingProjectile.js';
-import { FallingProjectile } from '../projectiles/FallingProjectile.js';
-
-
+import { audioManager } from '../../engine/AudioManager.js';
 import { Boss } from './Boss.js';
+import { textures, drawCachedTexture } from '../../engine/TextureCache.js';
 
 export class SebastianMinion extends Boss {
   constructor(x, y, hp) {
-    super();
-    this.name = "Sebastian";
+    super(x, y, "Sebastian", hp, 36, "#ff5500");
     this.segmentCount = 15;
     this.segmentLength = 36;
     this.radius = 36;
     this.hp = hp;
     this.maxHp = hp;
-    this.x = x;
-    this.y = y;
     this.angle = Math.random() * Math.PI * 2;
     this.segments = [];
     for (let i = 0; i < this.segmentCount; i++) {
@@ -29,7 +20,9 @@ export class SebastianMinion extends Boss {
     }
     this.dead = false;
     this.smokeTimer = 0;
+    this.texture = textures['boss_sebastian_seg'];
   }
+
   getTargetables() {
     const list = [];
     if (!this.dead) {
@@ -49,28 +42,27 @@ export class SebastianMinion extends Boss {
   takeDamage(amt, damageColor = "#a855f7", hitX = this.x, hitY = this.y) {
     if (this.dead || this.hp <= 0) return false;
     let finalAmount = amt;
-
     let isCrit = false;
 
     if (state.player && Math.random() < (state.player.critChance || 0)) {
-
-        finalAmount *= (state.player.critDamage || 1.5);
-
-        isCrit = true;
-
+      finalAmount *= (state.player.critDamage || 1.5);
+      isCrit = true;
     }
 
     this.hp -= finalAmount;
     const offsetX = (Math.random() * 2 - 1) * (this.radius * 0.8);
     const offsetY = (Math.random() * 2 - 1) * (this.radius * 0.8);
     const dmgColor = isCrit ? "#ffff00" : damageColor;
+    const fontSize = isCrit ? 20 : 14;
 
-    const fontSize = isCrit ? parseInt(14) + 6 : 14;
+    if (state.floatingTextPool) {
+      state.floatingTextPool.acquire(hitX + offsetX, hitY + offsetY, Math.round(finalAmount), dmgColor, fontSize);
+    }
 
-    state.floatingTexts.push(new FloatingText(hitX + offsetX, hitY + offsetY, Math.round(finalAmount), dmgColor, fontSize));
     if (this.hp <= 0) {
       this.hp = 0;
-      this.dead = true; import('../../engine/AudioManager.js').then(({ audioManager }) => audioManager.playSound('enemy_death_boss', { volume: 0.8, throttleMs: 200 }));
+      this.dead = true;
+      audioManager.playSound('enemy_death_boss', { volume: 0.8, throttleMs: 200 });
       spawnExplosion(this.x, this.y, "#a855f7", 20, 4);
     }
   }
@@ -101,18 +93,10 @@ export class SebastianMinion extends Boss {
     }
 
     this.smokeTimer++;
-    if (this.smokeTimer >= 140) {
+    if (this.smokeTimer >= 40) {
       this.smokeTimer = 0;
-      for (let seg of this.segments) {
-        state.hazardAreas.push(new HazardArea(seg.x, seg.y, 40, 300, "rgb(168, 85, 247)", 0.25, false));
-      }
-    }
-
-    for (let seg of this.segments) {
-      if (dist(seg.x, seg.y, player.x, player.y) < this.radius + player.radius) {
-        player.takeDamage(18, "#a855f7");
-        break;
-      }
+      const tail = this.segments[this.segmentCount - 1];
+      state.hazardAreas.push(new HazardArea(tail.x, tail.y, 45, 300, "rgb(168, 85, 247)", 0.2, false));
     }
   }
 
@@ -120,8 +104,9 @@ export class SebastianMinion extends Boss {
     if (this.dead) return;
     for (let i = this.segmentCount - 1; i >= 0; i--) {
       const seg = this.segments[i];
-      drawPolygon(ctx, seg.x, seg.y, this.radius, 3, seg.angle, "#a855f7", 8, "rgba(168, 85, 247, 0.2)");
+      if (this.texture) {
+        drawCachedTexture(ctx, this.texture, seg.x, seg.y, seg.angle);
+      }
     }
   }
 }
-

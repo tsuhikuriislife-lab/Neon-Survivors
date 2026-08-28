@@ -1,22 +1,14 @@
 import { state } from '../../engine/gameState.js';
-import { dist, drawPolygon } from '../../engine/Utils.js';
+import { dist } from '../../engine/Utils.js';
 import { spawnExplosion } from '../effects/spawnExplosion.js';
-import { FloatingText } from '../effects/FloatingText.js';
-import { HazardArea } from '../effects/HazardArea.js';
-import { Gem } from '../collectibles/Gem.js';
 import { Projectile } from '../projectiles/Projectile.js';
-import { AcceleratingProjectile } from '../projectiles/AcceleratingProjectile.js';
-import { FallingProjectile } from '../projectiles/FallingProjectile.js';
-
-
+import { audioManager } from '../../engine/AudioManager.js';
 import { Boss } from './Boss.js';
+import { textures, drawCachedTexture } from '../../engine/TextureCache.js';
 
 export class AmalgamNode extends Boss {
   constructor(name, x, y, hp, maxHp, stage, vx, vy) {
-    super();
-    this.name = name;
-    this.x = x;
-    this.y = y;
+    super(x, y, name, maxHp, 160, "#ff0033");
     this.hp = hp;
     this.maxHp = maxHp;
     this.stage = stage;
@@ -26,18 +18,22 @@ export class AmalgamNode extends Boss {
       this.radius = 160;
       this.speed = 1.6;
       this.sprayCount = 15;
+      this.texture = textures['boss_amalgam_1'];
     } else if (stage === 2) {
       this.radius = 56;
       this.speed = 3.7;
       this.sprayCount = 8;
+      this.texture = textures['boss_amalgam_2'];
     } else if (stage === 3) {
       this.radius = 33;
       this.speed = 4.5;
       this.sprayCount = 5;
+      this.texture = textures['boss_amalgam_3'];
     } else {
       this.radius = 14;
       this.speed = 6.6;
       this.sprayCount = 3;
+      this.texture = textures['boss_amalgam_4'];
     }
 
     const ang = Math.random() * Math.PI * 2;
@@ -50,25 +46,22 @@ export class AmalgamNode extends Boss {
   takeDamage(amt, damageColor = "#ff0033") {
     if (this.dead || this.hp <= 0) return false;
     let finalAmount = amt;
-
     let isCrit = false;
 
     if (state.player && Math.random() < (state.player.critChance || 0)) {
-
-        finalAmount *= (state.player.critDamage || 1.5);
-
-        isCrit = true;
-
+      finalAmount *= (state.player.critDamage || 1.5);
+      isCrit = true;
     }
 
     this.hp -= finalAmount;
     const offsetX = (Math.random() * 2 - 1) * (this.radius * 0.8);
     const offsetY = (Math.random() * 2 - 1) * (this.radius * 0.8);
     const dmgColor = isCrit ? "#ffff00" : damageColor;
+    const fontSize = isCrit ? 21 : 15;
 
-    const fontSize = isCrit ? parseInt(15) + 6 : 15;
-
-    state.floatingTexts.push(new FloatingText(this.x + offsetX, this.y + offsetY, Math.round(finalAmount), dmgColor, fontSize));
+    if (state.floatingTextPool) {
+      state.floatingTextPool.acquire(this.x + offsetX, this.y + offsetY, Math.round(finalAmount), dmgColor, fontSize);
+    }
 
     if (this.stage === 1 && this.hp <= this.maxHp * 0.75) {
       this.subdivide();
@@ -76,14 +69,20 @@ export class AmalgamNode extends Boss {
       this.subdivide();
     } else if (this.hp <= 0) {
       this.hp = 0;
-      this.dead = true; import('../../engine/AudioManager.js').then(({ audioManager }) => audioManager.playSound('enemy_death_boss', { volume: 0.8, throttleMs: 200 }));
+      this.dead = true;
+      audioManager.playSound('enemy_death_boss', { volume: 0.8, throttleMs: 200 });
       spawnExplosion(this.x, this.y, this.color, 20, 4);
-      for (let i = 0; i < 4; i++) state.gems.push(new Gem(this.x + (Math.random()*20-10), this.y + (Math.random()*20-10), 6));
+      for (let i = 0; i < 4; i++) {
+        if (state.gemPool) {
+          state.gemPool.acquire(this.x + (Math.random() * 20 - 10), this.y + (Math.random() * 20 - 10), 6);
+        }
+      }
     }
   }
 
   subdivide() {
-    this.dead = true; import('../../engine/AudioManager.js').then(({ audioManager }) => audioManager.playSound('enemy_death_boss', { volume: 0.8, throttleMs: 200 }));
+    this.dead = true;
+    audioManager.playSound('enemy_death_boss', { volume: 0.8, throttleMs: 200 });
     const nextStage = this.stage + 1;
     if (nextStage > 4) return;
 
@@ -147,16 +146,22 @@ export class AmalgamNode extends Boss {
       const spread = (Math.random() - 0.5) * 1.2;
       const a = baseAngle + spread;
       const spd = 3.5 + Math.random() * 1.8;
-      state.enemyProjectiles.push(new Projectile(this.x, this.y, Math.cos(a) * spd, Math.sin(a) * spd, 12, "#ff0033", 4, true));
+      const vx = Math.cos(a) * spd;
+      const vy = Math.sin(a) * spd;
+
+      if (state.projectilePool) {
+        state.projectilePool.acquire(this.x, this.y, vx, vy, 12, "#ff0033", 4, true);
+      } else {
+        state.enemyProjectiles.push(new Projectile(this.x, this.y, vx, vy, 12, "#ff0033", 4, true));
+      }
     }
-    import('../../engine/AudioManager.js').then(({ audioManager }) => {
-        audioManager.playSound('enemy_projectile', { volume: 0.7, throttleMs: 80 });
-    });
+    audioManager.playSound('enemy_projectile', { volume: 0.7, throttleMs: 80 });
   }
 
   draw(ctx) {
     if (this.dead) return;
-    drawPolygon(ctx, this.x, this.y, this.radius, 10, this.angle, this.color, 14, "rgba(255, 0, 51, 0.2)");
+    if (this.texture) {
+      drawCachedTexture(ctx, this.texture, this.x, this.y, this.angle);
+    }
   }
 }
-

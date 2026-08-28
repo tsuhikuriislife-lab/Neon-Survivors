@@ -1,8 +1,8 @@
 import { state } from '../../engine/gameState.js';
-import { dist, drawPolygon } from '../../engine/Utils.js';
+import { dist } from '../../engine/Utils.js';
 import { spawnExplosion } from '../effects/spawnExplosion.js';
-import { FloatingText } from '../effects/FloatingText.js';
-import { Gem } from '../collectibles/Gem.js';
+import { audioManager } from '../../engine/AudioManager.js';
+import { textures, drawCachedTexture, getOrCachePolygon } from '../../engine/TextureCache.js';
 
 export class Enemy {
   constructor(x, y) {
@@ -29,6 +29,8 @@ export class Enemy {
     this.xpValue = 1;
     this.damage = 10;
     this.deathSoundKey = 'enemy_death_small';
+    this.texture = null;
+    this._spatialStamp = 0;
   }
 
   update(player) {
@@ -44,17 +46,20 @@ export class Enemy {
     let isCrit = false;
 
     if (state.player && Math.random() < (state.player.critChance || 0)) {
-        finalAmount *= (state.player.critDamage || 1.5);
-        isCrit = true;
+      finalAmount *= (state.player.critDamage || 1.5);
+      isCrit = true;
     }
 
     this.hp -= finalAmount;
     const offsetX = (Math.random() * 2 - 1) * (this.radius * 0.8);
     const offsetY = (Math.random() * 2 - 1) * (this.radius * 0.8);
     const dmgColor = isCrit ? "#ffff00" : damageColor;
-    const fontSize = isCrit ? parseInt(12) + 6 : 12;
+    const fontSize = isCrit ? 18 : 12;
 
-    state.floatingTexts.push(new FloatingText(this.x + offsetX, this.y + offsetY, Math.round(finalAmount), dmgColor, fontSize));
+    if (state.floatingTextPool) {
+      state.floatingTextPool.acquire(this.x + offsetX, this.y + offsetY, Math.round(finalAmount), dmgColor, fontSize);
+    }
+
     if (this.hp <= 0) {
       this.die();
       return false;
@@ -70,25 +75,29 @@ export class Enemy {
   }
 
   dropLoot() {
+    if (this.xpValue <= 0) return;
     const dropGem = () => {
       const offsetX = (Math.random() * 2 - 1) * this.radius;
       const offsetY = (Math.random() * 2 - 1) * this.radius;
-      state.gems.push(new Gem(this.x + offsetX, this.y + offsetY, this.xpValue));
+      if (state.gemPool) {
+        state.gemPool.acquire(this.x + offsetX, this.y + offsetY, this.xpValue);
+      }
     };
     
     dropGem();
-    if (Math.random() < (state.player.doubleGemChance || 0)) {
+    if (Math.random() < (state.player?.doubleGemChance || 0)) {
       dropGem();
     }
   }
 
   playDeathSound() {
-    import('../../engine/AudioManager.js').then(({ audioManager }) => {
-      audioManager.playSound(this.deathSoundKey, { volume: 0.5, throttleMs: 80 });
-    });
+    audioManager.playSound(this.deathSoundKey, { volume: 0.5, throttleMs: 80 });
   }
 
   draw(ctx) {
-    drawPolygon(ctx, this.x, this.y, this.radius, this.sides, this.angle, this.color, 8, "rgba(20,0,30,0.3)");
+    if (!this.texture) {
+      this.texture = getOrCachePolygon(this.radius, this.sides, this.color, 8, "rgba(20,0,30,0.3)");
+    }
+    drawCachedTexture(ctx, this.texture, this.x, this.y, this.angle);
   }
 }

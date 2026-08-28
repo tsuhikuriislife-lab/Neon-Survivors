@@ -1,6 +1,3 @@
-import { state } from '../../engine/gameState.js';
-import { drawPolygon } from '../../engine/Utils.js';
-
 export class Particle {
   constructor(x, y, color, speed = 2, decay = 0.02, size = 3) {
     this.x = x;
@@ -24,8 +21,7 @@ export class Particle {
   draw(ctx) {
     ctx.save();
     ctx.globalAlpha = Math.max(0, this.alpha);
-    ctx.shadowColor = this.color;
-    ctx.shadowBlur = 8;
+    ctx.shadowBlur = 0;
     ctx.fillStyle = this.color;
     ctx.fillRect(this.x - this.size / 2, this.y - this.size / 2, this.size, this.size);
     ctx.restore();

@@ -1,5 +1,6 @@
 import { state } from '../../engine/gameState.js';
 import { Enemy } from './Enemy.js';
+import { textures } from '../../engine/TextureCache.js';
 
 export class StandardEnemy extends Enemy {
   constructor(type, x, y) {
@@ -15,6 +16,7 @@ export class StandardEnemy extends Enemy {
       this.xpValue = 2;
       this.damage = 10;
       this.deathSoundKey = 'enemy_death_small';
+      this.texture = textures['enemy_standard_small'];
     } else if (type === 'medium') {
       this.radius = 21;
       this.sides = 5;
@@ -24,6 +26,7 @@ export class StandardEnemy extends Enemy {
       this.xpValue = 6;
       this.damage = 20;
       this.deathSoundKey = 'enemy_death_medium';
+      this.texture = textures['enemy_standard_medium'];
     } else { // large
       this.radius = 45;
       this.sides = 6;
@@ -33,6 +36,7 @@ export class StandardEnemy extends Enemy {
       this.xpValue = 15;
       this.damage = 40;
       this.deathSoundKey = 'enemy_death_big';
+      this.texture = textures['enemy_standard_large'];
     }
     this.hp = this.maxHp;
   }
@@ -44,4 +48,3 @@ export class StandardEnemy extends Enemy {
     super.update(player);
   }
 }
-

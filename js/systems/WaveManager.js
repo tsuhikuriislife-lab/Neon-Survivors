@@ -1,11 +1,11 @@
 import { state } from '../engine/gameState.js';
-import { FloatingText } from '../entities/effects/FloatingText.js';
 import { spawnExplosion } from '../entities/effects/spawnExplosion.js';
 import { StandardEnemy } from '../entities/enemies/StandardEnemy.js';
 import { SwarmerEnemy } from '../entities/enemies/SwarmerEnemy.js';
 import { RangerEnemy } from '../entities/enemies/RangerEnemy.js';
 import { MotherEnemy } from '../entities/enemies/MotherEnemy.js';
 import { getBossById, getMainBosses } from '../data/bossRegistry.js';
+import { audioManager } from '../engine/AudioManager.js';
 
 export function triggerBossSpawnSequence(bossType, customX, customY) {
   if (state.pendingBossSpawn) return;
@@ -35,9 +35,7 @@ export function triggerBossSpawnSequence(bossType, customX, customY) {
   const banner = document.getElementById("boss-warning-banner");
   if (banner) banner.style.display = "block";
 
-  import('../engine/AudioManager.js').then(({ audioManager }) => {
-    audioManager.playSound('boss_spawn_warning', { volume: 0.9, throttleMs: 200 });
-  });
+  audioManager.playSound('boss_spawn_warning', { volume: 0.9, throttleMs: 200 });
 }
 
 export function spawnRandomBoss() {
@@ -69,20 +67,19 @@ export function updatePendingBossSpawn(dt) {
 
     // Spawn explosion & particles
     spawnExplosion(pending.x, pending.y, "#ff0055", 55, 6);
-    import('../entities/effects/Particle.js').then(({ Particle }) => {
+    if (state.particlePool) {
       for (let i = 0; i < 40; i++) {
         const a = Math.random() * Math.PI * 2;
         const s = Math.random() * 8 + 2;
-        const p = new Particle(pending.x, pending.y, "#ff0055", 4, 0.03, 3);
-        p.vx = Math.cos(a) * s;
-        p.vy = Math.sin(a) * s;
-        state.particles.push(p);
+        const p = state.particlePool.acquire(pending.x, pending.y, "#ff0055", 4, 0.03, 3);
+        if (p) {
+          p.vx = Math.cos(a) * s;
+          p.vy = Math.sin(a) * s;
+        }
       }
-    });
+    }
 
-    import('../engine/AudioManager.js').then(({ audioManager }) => {
-      audioManager.playSound('enemy_death_boss', { volume: 0.9, throttleMs: 200 });
-    });
+    audioManager.playSound('enemy_death_boss', { volume: 0.9, throttleMs: 200 });
 
     const bossDef = getBossById(pending.bossType);
     if (bossDef && typeof bossDef.instantiate === 'function') {
@@ -152,4 +149,3 @@ export function handleSpawning() {
     state.enemies.push(new StandardEnemy(enemyType));
   }
 }
-

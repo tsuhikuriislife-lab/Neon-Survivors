@@ -1,6 +1,9 @@
 import { state } from '../../engine/gameState.js';
 import { Enemy } from './Enemy.js';
 import { dist } from '../../engine/Utils.js';
+import { Projectile } from '../projectiles/Projectile.js';
+import { audioManager } from '../../engine/AudioManager.js';
+import { textures } from '../../engine/TextureCache.js';
 
 export class RangerEnemy extends Enemy {
   constructor(x, y) {
@@ -12,7 +15,7 @@ export class RangerEnemy extends Enemy {
     this.speed = 1.0 + (scaleLevel * 0.2);
     this.maxHp = 60 + state.gameTime * 0.1;
     this.hp = this.maxHp;
-    this.color = "#00ccff"; // Light blue
+    this.color = "#00ccff";
     this.xpValue = 6; 
     this.damage = 15;
     this.fireRate = Math.max(30, 90 - (scaleLevel * 10)); 
@@ -20,6 +23,7 @@ export class RangerEnemy extends Enemy {
     this.projectileSpeed = 4 + (scaleLevel * 0.5);
     this.projectileDamage = 20 + (scaleLevel * 5);
     this.deathSoundKey = 'enemy_death_medium';
+    this.texture = textures['enemy_ranger'];
   }
 
   update(player) {
@@ -38,24 +42,19 @@ export class RangerEnemy extends Enemy {
       this.fireTimer--;
       if (this.fireTimer <= 0) {
         this.fireTimer = this.fireRate;
-        import('../projectiles/Projectile.js').then(({ Projectile }) => {
-           const pa = Math.atan2(player.y - this.y, player.x - this.x);
-           state.enemyProjectiles.push(new Projectile(
-             this.x, this.y,
-             Math.cos(pa) * this.projectileSpeed,
-             Math.sin(pa) * this.projectileSpeed,
-             this.projectileDamage,
-             this.color,
-             5,
-             true
-           ));
-        });
-        import('../../engine/AudioManager.js').then(({ audioManager }) => {
-          audioManager.playSound('enemy_projectile', { volume: 0.3, throttleMs: 50 });
-        });
+        const pa = Math.atan2(player.y - this.y, player.x - this.x);
+        const vx = Math.cos(pa) * this.projectileSpeed;
+        const vy = Math.sin(pa) * this.projectileSpeed;
+
+        if (state.projectilePool) {
+          state.projectilePool.acquire(this.x, this.y, vx, vy, this.projectileDamage, this.color, 5, true);
+        } else {
+          state.enemyProjectiles.push(new Projectile(this.x, this.y, vx, vy, this.projectileDamage, this.color, 5, true));
+        }
+
+        audioManager.playSound('enemy_projectile', { volume: 0.3, throttleMs: 50 });
       }
     }
     super.update(player);
   }
 }
-

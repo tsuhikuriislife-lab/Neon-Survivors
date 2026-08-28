@@ -1,6 +1,5 @@
 import { state } from '../../engine/gameState.js';
 import { dist } from '../../engine/Utils.js';
-import { Particle } from '../effects/Particle.js';
 import { audioManager } from '../../engine/AudioManager.js';
 
 export class LaserBeam {
@@ -47,39 +46,49 @@ export class LaserBeam {
       const endX = this.startX + Math.cos(this.angle) * this.length;
       const endY = this.startY + Math.sin(this.angle) * this.length;
       
-      const targets = [...state.enemies, ...state.bosses.flatMap(b => b.getTargetables())];
-      for (let t of targets) {
-        if (this.hitEnemies.has(t)) continue;
+      const processTarget = (t) => {
+        if (this.hitEnemies.has(t)) return;
+        this.hitEnemies.add(t);
+        t.takeDamage(this.damage, "#00ff00");
+        state.recordDamage('laserCannon', this.damage);
         
-        const l2 = this.length * this.length;
-        let tParam = Math.max(0, Math.min(1, ((t.x - this.startX) * (endX - this.startX) + (t.y - this.startY) * (endY - this.startY)) / l2));
-        const projX = this.startX + tParam * (endX - this.startX);
-        const projY = this.startY + tParam * (endY - this.startY);
+        if (this.dotDuration > 0) {
+          t.laserDot = { damage: this.dotDamage, duration: this.dotDuration, timer: 60 };
+        }
         
-        const d = dist(t.x, t.y, projX, projY);
-        if (d < this.width / 2 + t.radius) {
-           this.hitEnemies.add(t);
-           t.takeDamage(this.damage, "#00ff00");
-           state.recordDamage('laserCannon', this.damage);
-           
-           if (this.dotDuration > 0) {
-             t.laserDot = { damage: this.dotDamage, duration: this.dotDuration, timer: 60 };
-           }
-           
-           audioManager.playSound('hit_laser_cannon', { volume: 0.5, throttleMs: 30 });
+        audioManager.playSound('hit_laser_cannon', { volume: 0.5, throttleMs: 30 });
+      };
+
+      // Query enemies via spatial grid
+      state.spatialGrid.queryLine(this.startX, this.startY, endX, endY, this.width, (enemy) => {
+        processTarget(enemy);
+      });
+
+      // Also check boss targets
+      for (let b of state.bosses) {
+        for (let t of b.getTargetables()) {
+          if (this.hitEnemies.has(t)) continue;
+          const l2 = this.length * this.length;
+          let tParam = Math.max(0, Math.min(1, ((t.x - this.startX) * (endX - this.startX) + (t.y - this.startY) * (endY - this.startY)) / l2));
+          const projX = this.startX + tParam * (endX - this.startX);
+          const projY = this.startY + tParam * (endY - this.startY);
+          if (dist(t.x, t.y, projX, projY) < this.width / 2 + t.radius) {
+            processTarget(t);
+          }
         }
       }
     }
     
-    if (Math.random() < 0.6) {
+    if (Math.random() < 0.6 && state.particlePool) {
        const d = Math.random() * this.length;
        const px = this.startX + Math.cos(this.angle) * d;
        const py = this.startY + Math.sin(this.angle) * d;
        const transAng = this.angle + (Math.random() > 0.5 ? Math.PI/2 : -Math.PI/2);
-       state.particles.push(new Particle(px, py, "#00ff00", 2 + Math.random()*2, 0.05, 3));
-       const p = state.particles[state.particles.length-1];
-       p.vx = Math.cos(transAng) * (Math.random() * 4 + 1);
-       p.vy = Math.sin(transAng) * (Math.random() * 4 + 1);
+       const p = state.particlePool.acquire(px, py, "#00ff00", 2 + Math.random()*2, 0.05, 3);
+       if (p) {
+         p.vx = Math.cos(transAng) * (Math.random() * 4 + 1);
+         p.vy = Math.sin(transAng) * (Math.random() * 4 + 1);
+       }
     }
     
     return true;
@@ -100,7 +109,7 @@ export class LaserBeam {
     ctx.globalCompositeOperation = "lighter";
     ctx.strokeStyle = "#00ff00";
     ctx.shadowColor = "#00ff00";
-    ctx.shadowBlur = 15;
+    ctx.shadowBlur = 10;
     ctx.lineWidth = this.width;
     ctx.beginPath();
     ctx.moveTo(this.startX, this.startY);
@@ -110,4 +119,3 @@ export class LaserBeam {
     ctx.restore();
   }
 }
-

@@ -1,17 +1,10 @@
 import { Projectile } from './Projectile.js';
 import { state } from '../../engine/gameState.js';
-import { dist, drawPolygon } from '../../engine/Utils.js';
-import { Particle } from '../effects/Particle.js';
-
+import { textures, drawCachedTexture } from '../../engine/TextureCache.js';
 
 export class NovaProjectile extends Projectile {
   constructor(x, y, vx, vy, damage, isSpiral = false) {
-    super();
-    this.x = x;
-    this.y = y;
-    this.vx = vx;
-    this.vy = vy;
-    this.damage = damage;
+    super(x, y, vx, vy, damage, "#0088ff", 12, false, 0);
     this.isSpiral = isSpiral;
     this.radius = 12;
     this.life = 4000;
@@ -28,6 +21,7 @@ export class NovaProjectile extends Projectile {
     this.speed = Math.hypot(vx, vy);
     this.pierce = true;
     this.hitCooldowns = new Map();
+    this.texture = textures['proj_nova'];
   }
 
   canHit(target) {
@@ -57,14 +51,16 @@ export class NovaProjectile extends Projectile {
       this.y = this.baseY;
     }
 
-    if (this.time % 2 === 0) {
-      state.particles.push(new Particle(this.x, this.y, this.color, 0.2, 0.08, 3));
+    if (this.time % 2 === 0 && state.particlePool) {
+      state.particlePool.acquire(this.x, this.y, this.color, 0.2, 0.08, 3);
     }
 
     return this.life > 0 && this.x >= -50 && this.x <= state.width + 50 && this.y >= -50 && this.y <= state.height + 50;
   }
+
   draw(ctx) {
-    drawPolygon(ctx, this.x, this.y, this.radius + 2, 4, this.time * 0.2, this.color, 12, "rgba(0, 136, 255, 0.5)");
+    if (this.texture) {
+      drawCachedTexture(ctx, this.texture, this.x, this.y, this.time * 0.2);
+    }
   }
 }
-

@@ -26,10 +26,10 @@ export const upgradeDatabase = [
     rarity: 'legendary',
     name: 'Nanobots Reparadores',
     icon: '💉',
-    desc: '+3.0 Regeneración de HP por segundo (Máx. 3).',
-    isAvailable: (p) => (p.regenUpgradesCount || 0) < 3,
+    desc: '+1.0 Regeneración de HP por segundo. (Max. 3)',
+    isAvailable: (p) => p.regenUpgradesCount  === 0,
     apply: (p) => { 
-        p.hpRegen += 3.0; 
+        p.hpRegen += 1.0; 
         p.regenUpgradesCount = (p.regenUpgradesCount || 0) + 1;
     }
   },
@@ -465,9 +465,7 @@ export const upgradeDatabase = [
     icon: '📡',
     desc: '+10% Enemigos, pero -5% Experiencia.',
     apply: (p) => { 
-        import('../../engine/gameState.js').then(({ state }) => {
-            state.spawnRateMultiplier = (state.spawnRateMultiplier || 1.0) + 0.10;
-        });
+        state.spawnRateMultiplier = (state.spawnRateMultiplier || 1.0) + 0.10;
         p.xpMultiplier = (p.xpMultiplier || 1.0) - 0.05;
     }
   },
@@ -479,9 +477,7 @@ export const upgradeDatabase = [
     icon: '👻',
     desc: '-5% Enemigos, pero +10% Experiencia.',
     apply: (p) => { 
-        import('../../engine/gameState.js').then(({ state }) => {
-            state.spawnRateMultiplier = (state.spawnRateMultiplier || 1.0) - 0.05;
-        });
+        state.spawnRateMultiplier = (state.spawnRateMultiplier || 1.0) - 0.05;
         p.xpMultiplier = (p.xpMultiplier || 1.0) + 0.10;
     }
   },
@@ -503,19 +499,17 @@ export const upgradeDatabase = [
     desc: 'Reduce a la mitad la vida actual de todos los jefes activos.',
     isAvailable: (p) => state.bosses.length > 0,
     apply: (p) => {
-        import('../../engine/gameState.js').then(({ state }) => {
-            if (state.bosses.length > 0) {
-                state.bosses.forEach(b => {
-                    b.getTargetables().forEach(t => {
-                        const target = t.parent || t;
-                        target.hp = Math.floor(target.hp / 2);
-                        import('../entities/effects/FloatingText.js').then(({ FloatingText }) => {
-                            state.floatingTexts.push(new FloatingText(target.x, target.y - 40, "HP HALVED!", "#ffaa00", 20));
-                        });
-                    });
+        if (state.bosses.length > 0) {
+            state.bosses.forEach(b => {
+                b.getTargetables().forEach(t => {
+                    const target = t.parent || t;
+                    target.hp = Math.floor(target.hp / 2);
+                    if (state.floatingTextPool) {
+                        state.floatingTextPool.acquire(target.x, target.y - 40, "HP HALVED!", "#ffaa00", 20);
+                    }
                 });
-            }
-        });
+            });
+        }
     }
   },
   {

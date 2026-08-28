@@ -1,7 +1,7 @@
 import { state } from '../../engine/gameState.js';
 import { Enemy } from './Enemy.js';
-import { Gem } from '../collectibles/Gem.js';
-import { spawnExplosion } from '../effects/spawnExplosion.js';
+import { MotherChildEnemy } from './MotherChildEnemy.js';
+import { textures } from '../../engine/TextureCache.js';
 
 export class MotherEnemy extends Enemy {
   constructor(x, y) {
@@ -12,10 +12,11 @@ export class MotherEnemy extends Enemy {
     this.speed = 0.8;
     this.maxHp = 300 + state.gameTime * 0.5;
     this.hp = this.maxHp;
-    this.color = "#004400"; // Dark green
+    this.color = "#004400";
     this.xpValue = 0; 
     this.damage = 50;
     this.deathSoundKey = 'enemy_death_big';
+    this.texture = textures['enemy_mother'];
   }
 
   update(player) {
@@ -29,16 +30,15 @@ export class MotherEnemy extends Enemy {
     const scaleLevel = state.bossDefeatTimes.amalgam ? Math.floor((state.gameTime - state.bossDefeatTimes.amalgam) / 150) : 0;
     const childCount = Math.min(8, 3 + scaleLevel);
     
-    import('./MotherChildEnemy.js').then(({ MotherChildEnemy }) => {
-      for (let i = 0; i < childCount; i++) {
-        const child = new MotherChildEnemy(this.x, this.y);
-        state.enemies.push(child);
-      }
-    });
+    for (let i = 0; i < childCount; i++) {
+      const child = new MotherChildEnemy(this.x, this.y);
+      state.enemies.push(child);
+    }
     
-    for(let i = 0; i < 3; i++) {
-      state.gems.push(new Gem(this.x + (Math.random()*40-20), this.y + (Math.random()*40-20), 15));
+    for (let i = 0; i < 3; i++) {
+      if (state.gemPool) {
+        state.gemPool.acquire(this.x + (Math.random() * 40 - 20), this.y + (Math.random() * 40 - 20), 15);
+      }
     }
   }
 }
-
