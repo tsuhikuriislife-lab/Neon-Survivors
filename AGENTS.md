@@ -72,4 +72,16 @@ This repository contains a browser-based arena survival game ("Neon Survivors").
   - **Spatial Partitioning (`SpatialHashGrid.js`)**: 120x120px uniform grid (16x16 cells) over the 1920x1920 arena. Reduces projectile, laser, shockwave, orbital, and auto-aim collision queries from $O(N \times M)$ to $O(1)$ average.
   - **Object Pooling (`Pool.js`)**: Fixed-size preallocated pools with `active` flags for particles (1500), projectiles (400), XP gems (500), and floating texts (300). Eliminates runtime heap allocations and Garbage Collection pauses.
   - **Fast Removals & Batch Rendering**: Replaces $O(N)$ `splice()` with $O(1)$ swap-and-pop on active entity arrays. Renders particles grouped by color in batches with `shadowBlur = 0`.
+- **Dynamic Camera & Screenshake Architecture (`Camera.js`)**:
+  - `state.camera` is managed by `CameraController`.
+  - **Screenshake**: `camera.shake({ strength, duration, rotation, scale })` applies quadratic ease-out decay with translation jitter, rotational roll, and punch-scale perturbation.
+  - **Dynamic Zoom**: `camera.setZoom(zoomAmount, duration, fadeInDuration, fadeOutDuration)` allows temporary or permanent camera zoom with smooth easing.
+  - **Cinematic Focus**: `camera.focusOn({ x, y, zoom, duration, fadeInDuration, fadeOutDuration })` smoothly pans the camera to objectives (e.g. boss spawn beacons) and returns to the player with `easeInOutQuad`.
+- **Map Environment Visual Effects (`EnvironmentManager.js`)**:
+  - `state.environment` manages independent dynamic properties (`color`, `brightness`, `pulse`, `duration`, `fadeInDuration`, `fadeOutDuration`) for:
+    - **Background**: `environment.setBackground(...)`
+    - **Grid Lines**: `environment.setGridLines(...)`
+    - **Perimeter Borders & Corners**: `environment.setBorders(...)`
+  - Supports permanent changes (`duration: 0`) or temporary alerts with smooth fade transitions.
+
 

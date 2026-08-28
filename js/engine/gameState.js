@@ -1,5 +1,7 @@
 import { spatialGrid } from './SpatialHashGrid.js';
 import { particlePool, projectilePool, gemPool, floatingTextPool } from './Pool.js';
+import { cameraController } from './Camera.js';
+import { environment } from './EnvironmentManager.js';
 
 export const state = {
   isInMenu: true,
@@ -38,17 +40,11 @@ export const state = {
 
   width: 1920,
   height: 1920,
-  camera: {
-    x: 960,
-    y: 960,
-    targetX: 960,
-    targetY: 960,
-    baseScale: 1.0,
-    userZoom: 1.0,
-    dpr: 1,
-    screenWidth: typeof window !== 'undefined' ? window.innerWidth : 1920,
-    screenHeight: typeof window !== 'undefined' ? window.innerHeight : 1080
-  },
+  
+  // Camera & Environment
+  camera: cameraController,
+  cameraController: cameraController,
+  environment: environment,
 
   pendingBossSpawn: null,
 
@@ -99,6 +95,8 @@ export const state = {
     this.projectilePool.clear();
     this.gemPool.clear();
     this.floatingTextPool.clear();
+    this.cameraController.reset();
+    this.environment.reset();
 
     this.gameTime = 0;
     this.killCount = 0;
@@ -115,11 +113,6 @@ export const state = {
       amalgam: null
     };
     this.spawnRateMultiplier = 1.0;
-
-    this.camera.x = 960;
-    this.camera.y = 960;
-    this.camera.targetX = 960;
-    this.camera.targetY = 960;
 
     this.damageStats = {
       blaster: 0,

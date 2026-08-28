@@ -1,4 +1,4 @@
-import { state } from '../engine/gameState.js';
+  import { state } from '../engine/gameState.js';
 import { spawnExplosion } from '../entities/effects/spawnExplosion.js';
 import { StandardEnemy } from '../entities/enemies/StandardEnemy.js';
 import { SwarmerEnemy } from '../entities/enemies/SwarmerEnemy.js';
@@ -35,6 +35,40 @@ export function triggerBossSpawnSequence(bossType, customX, customY) {
   const banner = document.getElementById("boss-warning-banner");
   if (banner) banner.style.display = "block";
 
+  // 1. Cinematic Camera Focus on Boss Spawn Beacon
+  if (state.camera && typeof state.camera.focusOn === 'function') {
+    state.camera.focusOn({
+      x: spawnX,
+      y: spawnY,
+      zoom: 1.28,
+      duration: 3.4,
+      fadeInDuration: 0.6,
+      fadeOutDuration: 0.9
+    });
+  }
+
+  // 2. Alert Environment Effects (Pulsing Red Hazard Theme)
+  if (state.environment) {
+    state.environment.setBorders({
+      color: "rgba(255, 0, 85, 0.75)",
+      innerColor: "rgba(255, 100, 150, 0.9)",
+      cornerColor: "#ff0055",
+      glow: 26,
+      pulse: { rate: 3, amplitude: 0.5 },
+      duration: 5.0,
+      fadeInDuration: 0.4,
+      fadeOutDuration: 0.8
+    });
+
+    state.environment.setGridLines({
+      color: "rgba(255, 0, 85, 0.12)",
+      pulse: { rate: 3, amplitude: 0.4 },
+      duration: 5.0,
+      fadeInDuration: 0.4,
+      fadeOutDuration: 0.8
+    });
+  }
+
   audioManager.playSound('boss_spawn_warning', { volume: 0.9, throttleMs: 200 });
 }
 
@@ -64,6 +98,24 @@ export function updatePendingBossSpawn(dt) {
 
     const banner = document.getElementById("boss-warning-banner");
     if (banner) banner.style.display = "none";
+
+    // 1. Heavy Screenshake on Boss Detonation
+    if (state.camera && typeof state.camera.shake === 'function') {
+      state.camera.shake({ strength: 24, duration: 0.65, rotation: 0.08, scale: 0.06 });
+    }
+
+    // 2. Flash Arena Borders White/Neon
+    if (state.environment) {
+      state.environment.setBorders({
+        color: "rgba(255, 255, 255, 0.9)",
+        innerColor: "rgba(255, 255, 255, 1.0)",
+        cornerColor: "#ffffff",
+        glow: 35,
+        duration: 0.35,
+        fadeInDuration: 0.05,
+        fadeOutDuration: 0.45
+      });
+    }
 
     // Spawn explosion & particles
     spawnExplosion(pending.x, pending.y, "#ff0055", 55, 6);
@@ -111,7 +163,7 @@ export function handleSpawning() {
     state.spawnTimer = 0;
     
     if (state.bossDefeatTimes.first && Math.random() < 0.15) {
-       const count = 5 + Math.floor(Math.random() * 4); // 5 to 8 swarmers
+       const count = 5 + Math.floor(Math.random() * 4);
        const dummy = new StandardEnemy('small');
        const sx = dummy.x; const sy = dummy.y;
        for (let i = 0; i < count; i++) {
