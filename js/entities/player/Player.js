@@ -26,6 +26,7 @@ export class Player {
     this.nextXp = 10;
     this.pickupRadius = 130;
     this.angle = 0;
+    this.hasRevivedOnce = false;
     
     this.missilesQueue = 0;
     this.missileFireTimer = 0;

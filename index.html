@@ -8,6 +8,38 @@
   <meta name="mobile-web-app-capable" content="yes" />
   <title>Neon Survivors - Balanced Waves</title>
   <link rel="stylesheet" href="css/styles.css" />
+  <script>
+    window["GD_OPTIONS"] = {
+      "gameId": "1b6352eb1a5b43cd820af68a59048b11",
+      "onEvent": function(event) {
+        switch (event.name) {
+          case "SDK_GAME_START":
+            if (window.gdsdkOnResume) {
+              window.gdsdkOnResume();
+            }
+            break;
+          case "SDK_GAME_PAUSE":
+            if (window.gdsdkOnPause) {
+              window.gdsdkOnPause();
+            }
+            break;
+          case "SDK_REWARDED_WATCH_COMPLETE":
+            if (window.gdsdkOnRewardedComplete) {
+              window.gdsdkOnRewardedComplete();
+            }
+            break;
+        }
+      }
+    };
+    (function(d, s, id) {
+      var js, fjs = d.getElementsByTagName(s)[0];
+      if (d.getElementById(id)) return;
+      js = d.createElement(s);
+      js.id = id;
+      js.src = 'https://html5.api.gamedistribution.com/main.min.js';
+      fjs.parentNode.insertBefore(js, fjs);
+    }(document, 'script', 'gamedistribution-jssdk'));
+  </script>
 </head>
 <body>
   <div id="game-container">
@@ -95,6 +127,7 @@
         <h1 style="color: #ff2255; font-size: 30px; font-weight: 900; text-shadow: 0 0 20px #ff2255; margin-bottom: 15px;">SISTEMA COMPROMETIDO</h1>
         <p style="color: #cbd5e0; margin-bottom: 8px;">Tiempo de supervivencia: <span id="finalTime" style="color: #00ffff; font-weight: 700;">00:00</span></p>
         <p style="color: #cbd5e0; margin-bottom: 20px;">Enemigos eliminados: <span id="finalKills" style="color: #ff00ff; font-weight: 700;">0</span></p>
+        <button class="btn-revive" id="btnRevive">📹 REVIVIR (VER ANUNCIO)</button>
         <button class="btn-restart" id="btnRestart">REINICIAR PARTIDA</button>
         <button class="btn-menu" id="btnGameOverMenu">MENÚ PRINCIPAL</button>
       </div>
