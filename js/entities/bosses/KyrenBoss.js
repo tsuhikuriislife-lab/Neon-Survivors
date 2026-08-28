@@ -8,8 +8,12 @@ import { Boss } from './Boss.js';
 import { textures, drawCachedTexture } from '../../engine/TextureCache.js';
 
 export class KyrenBoss extends Boss {
-  constructor(x, y) {
-    super(0, 0, "Kyren", 12000, 150, "#00ffcc");
+  constructor(x, y, hp, maxHp) {
+    const multiplier = state.bossScaling['KyrenBoss'] || 1.0;
+    const defaultMaxHp = 12000 * multiplier;
+    const finalMaxHp = maxHp !== undefined ? maxHp : defaultMaxHp;
+    const finalHp = hp !== undefined ? hp : finalMaxHp;
+    super(0, 0, "Kyren", finalMaxHp, 150, "#00ffcc", finalHp);
     const cx = state.width / 2;
     const cy = state.height / 2;
     this.orbitRadius = Math.min(state.width, state.height) * 0.35;
@@ -25,9 +29,6 @@ export class KyrenBoss extends Boss {
     }
 
     this.radius = 150;
-    const multiplier = state.bossScaling['KyrenBoss'] || 1.0;
-    this.maxHp = 12000 * multiplier;
-    this.hp = this.maxHp;
     this.color = "#00ffcc";
     this.angle = 0;
     this.innerAngle = 0;
@@ -94,8 +95,6 @@ export class KyrenBoss extends Boss {
   split() {
     this.isSplit = true;
     const sharedHp = this.hp / 2;
-    this.hp = sharedHp;
-    this.maxHp = this.maxHp / 2;
     this.denzel = new DenzelBoss(this.x, this.y, sharedHp, sharedHp);
   }
 
@@ -118,7 +117,7 @@ export class KyrenBoss extends Boss {
       this.x = cx + Math.cos(this.orbitAngle) * this.orbitRadius;
       this.y = cy + Math.sin(this.orbitAngle) * this.orbitRadius;
 
-      if (this.stateTimer % 75 === 0) {
+      if (this.stateTimer % 100 === 0) {
         this.fireWave();
       }
 

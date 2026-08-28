@@ -153,6 +153,7 @@ export function initTextureCache() {
   textures['proj_nova'] = createPolygonTexture(14, 4, "#0088ff", 12, "rgba(0, 136, 255, 0.5)", 2.5);
   textures['proj_missile'] = createMissileTexture("#ff4400", 10);
   textures['proj_accelerating'] = createCircleTexture(5, "#00ff66", "#ffffff", 10, 2);
+  textures['proj_accelerating_amalgam'] = createCircleTexture(5, "#ff0033", "#ffffff", 10, 2);
   textures['proj_enemy_ranger'] = createCircleTexture(5, "#00ccff", "#ffffff", 10, 2);
   textures['proj_enemy_child'] = createCircleTexture(4, "#00ff00", "#ffffff", 8, 2);
   textures['proj_enemy_amalgam'] = createCircleTexture(4, "#ff0033", "#ffffff", 8, 2);
@@ -163,9 +164,9 @@ export function initTextureCache() {
   textures['boss_kyren_inner'] = createPolygonTexture(78, 8, "#ffffff", 10, "rgba(255, 255, 255, 0.2)", 2.5);
   textures['boss_denzel'] = createPolygonTexture(75, 8, "#ffffff", 12, "rgba(255, 255, 255, 0.3)", 2.5);
   textures['boss_amalgam_1'] = createPolygonTexture(160, 10, "#ff0033", 14, "rgba(255, 0, 51, 0.2)", 3);
-  textures['boss_amalgam_2'] = createPolygonTexture(56, 10, "#ff0033", 14, "rgba(255, 0, 51, 0.2)", 2.5);
-  textures['boss_amalgam_3'] = createPolygonTexture(33, 10, "#ff0033", 14, "rgba(255, 0, 51, 0.2)", 2.5);
-  textures['boss_amalgam_4'] = createPolygonTexture(14, 10, "#ff0033", 14, "rgba(255, 0, 51, 0.2)", 2.5);
+  textures['boss_amalgam_2'] = createPolygonTexture(80, 10, "#ff0033", 14, "rgba(255, 0, 51, 0.2)", 2.5);
+  textures['boss_amalgam_3'] = createPolygonTexture(40, 10, "#ff0033", 14, "rgba(255, 0, 51, 0.2)", 2.5);
+  textures['boss_amalgam_4'] = createPolygonTexture(20, 10, "#ff0033", 14, "rgba(255, 0, 51, 0.2)", 2.5);
   textures['boss_carlos_seg'] = createPolygonTexture(36, 3, "#00ff88", 8, "rgba(0, 255, 136, 0.2)", 2.5);
   textures['boss_sebastian_seg'] = createPolygonTexture(36, 3, "#ff5500", 8, "rgba(255, 85, 0, 0.2)", 2.5);
   textures['boss_testing'] = createPolygonTexture(160, 10, "#00ffff", 14, "rgba(0, 255, 255, 0.2)", 3);

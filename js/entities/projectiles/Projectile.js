@@ -1,4 +1,5 @@
 import { state } from '../../engine/gameState.js';
+import { dist } from '../../engine/Utils.js';
 import { textures, drawCachedTexture } from '../../engine/TextureCache.js';
 
 export class Projectile {
@@ -27,7 +28,22 @@ export class Projectile {
 
   update() {
     if (this.homingStrength > 0 && !this.isEnemy) {
-      const closest = state.spatialGrid.getNearest(this.x, this.y, 800);
+      let closest = state.spatialGrid ? state.spatialGrid.getNearest(this.x, this.y, 800) : null;
+      let minD = closest ? dist(this.x, this.y, closest.x, closest.y) : 800;
+
+      if (state.bosses && state.bosses.length > 0) {
+        for (let b of state.bosses) {
+          for (let target of b.getTargetables()) {
+            if (target.dead || target.hp <= 0) continue;
+            const d = dist(this.x, this.y, target.x, target.y);
+            if (d < minD) {
+              minD = d;
+              closest = target;
+            }
+          }
+        }
+      }
+
       if (closest) {
         const speed = Math.hypot(this.vx, this.vy);
         const targetAngle = Math.atan2(closest.y - this.y, closest.x - this.x);

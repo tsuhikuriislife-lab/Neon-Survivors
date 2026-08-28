@@ -9,14 +9,15 @@ import { Boss } from './Boss.js';
 import { getOrCachePolygon, drawCachedTexture } from '../../engine/TextureCache.js';
 
 export class DevourerOfTaxBoss extends Boss {
-  constructor(x, y) {
-    super(0, 0, "Devourer of Tax", 15000, 36, "#39ff14");
+  constructor(x, y, hp, maxHp) {
+    const multiplier = state.bossScaling['DevourerOfTaxBoss'] || 1.0;
+    const defaultMaxHp = 15000 * multiplier;
+    const finalMaxHp = maxHp !== undefined ? maxHp : defaultMaxHp;
+    const finalHp = hp !== undefined ? hp : finalMaxHp;
+    super(0, 0, "Devourer of Tax", finalMaxHp, 36, "#39ff14", finalHp);
     this.segmentCount = 90;
     this.segmentLength = 36;
     this.radius = 36;
-    const multiplier = state.bossScaling['DevourerOfTaxBoss'] || 1.0;
-    this.maxHp = 15000 * multiplier;
-    this.hp = this.maxHp;
     this.color = "#39ff14";
     this.dead = false;
 
@@ -123,7 +124,6 @@ export class DevourerOfTaxBoss extends Boss {
   split() {
     this.isSplit = true;
     const subHp = this.maxHp * 0.25;
-    this.hp = this.hp * 0.5;
 
     const angleCarlos = Math.random() * Math.PI * 2;
     const angleSebastian = angleCarlos + Math.PI + (Math.random() - 0.5) * 1.0;

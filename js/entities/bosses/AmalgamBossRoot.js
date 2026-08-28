@@ -18,7 +18,7 @@ export class AmalgamBossRoot {
     const multiplier = state.bossScaling['AmalgamBossRoot'] || 1.0;
     const startX = x !== undefined ? x : state.width / 2;
     const startY = y !== undefined ? y : state.height / 2;
-    this.nodes = [new AmalgamNode("Amalgam", startX, startY, 35000 * multiplier, 35000 * multiplier, 1, 2, 2)];
+    this.nodes = [new AmalgamNode("Amalgam", startX, startY, 25000 * multiplier, 25000 * multiplier, 1)];
   }
 
   getTargetables() {

@@ -1,12 +1,12 @@
 import { state } from '../../engine/gameState.js';
 
 export class Boss {
-  constructor(x, y, name, maxHp, radius, color) {
+  constructor(x, y, name, maxHp, radius, color, hp = maxHp) {
     this.name = name;
     this.x = x;
     this.y = y;
     this.maxHp = maxHp;
-    this.hp = maxHp;
+    this.hp = hp !== undefined ? hp : maxHp;
     this.radius = radius;
     this.color = color;
     this.dead = false;

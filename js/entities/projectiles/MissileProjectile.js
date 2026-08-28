@@ -48,11 +48,59 @@ export class MissileProjectile extends Projectile {
     }
   }
 
+  findTarget() {
+    let closest = null;
+    let minD = Infinity;
+
+    // 1. Search regular enemies
+    if (state.spatialGrid) {
+      const nearestEnemy = state.spatialGrid.getNearest(this.x, this.y, 3000);
+      if (nearestEnemy && !nearestEnemy.dead && nearestEnemy.hp > 0) {
+        closest = nearestEnemy;
+        minD = dist(this.x, this.y, nearestEnemy.x, nearestEnemy.y);
+      }
+    }
+
+    if (!closest && state.enemies && state.enemies.length > 0) {
+      const len = state.enemies.length;
+      for (let i = 0; i < len; i++) {
+        const e = state.enemies[i];
+        if (e.dead || e.hp <= 0) continue;
+        const d = dist(this.x, this.y, e.x, e.y);
+        if (d < minD) {
+          minD = d;
+          closest = e;
+        }
+      }
+    }
+
+    // 2. Search all boss targetables
+    if (state.bosses && state.bosses.length > 0) {
+      const bossLen = state.bosses.length;
+      for (let i = 0; i < bossLen; i++) {
+        const b = state.bosses[i];
+        const targetables = b.getTargetables ? b.getTargetables() : (b.dead ? [] : [b]);
+        const tLen = targetables.length;
+        for (let j = 0; j < tLen; j++) {
+          const t = targetables[j];
+          if (t.dead || t.hp <= 0) continue;
+          const d = dist(this.x, this.y, t.x, t.y);
+          if (d < minD) {
+            minD = d;
+            closest = t;
+          }
+        }
+      }
+    }
+
+    return closest;
+  }
+
   update() {
     if (this.homingStrength > 0) {
-      const closest = state.spatialGrid.getNearest(this.x, this.y, 800);
+      const closest = this.findTarget();
       if (closest) {
-        const speed = Math.hypot(this.vx, this.vy);
+        const speed = Math.hypot(this.vx, this.vy) || 7;
         const targetAngle = Math.atan2(closest.y - this.y, closest.x - this.x);
         const curAngle = Math.atan2(this.vy, this.vx);
         let diff = targetAngle - curAngle;

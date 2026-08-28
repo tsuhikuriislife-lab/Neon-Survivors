@@ -7,13 +7,11 @@ import { Boss } from './Boss.js';
 import { textures, drawCachedTexture } from '../../engine/TextureCache.js';
 
 export class CarlosMinion extends Boss {
-  constructor(x, y, hp, initialAngle = Math.random() * Math.PI * 2, initialSpeed = 7.5) {
-    super(x, y, "Carlos", hp, 36, "#00ff88");
+  constructor(x, y, hp, initialAngle = Math.random() * Math.PI * 2, initialSpeed = 7.5, maxHp = hp) {
+    super(x, y, "Carlos", maxHp, 36, "#00ff88", hp);
     this.segmentCount = 15;
     this.segmentLength = 36;
     this.radius = 36;
-    this.hp = hp;
-    this.maxHp = hp;
     this.dead = false;
     this.salvoTimer = 0;
     this.texture = textures['boss_carlos_seg'];

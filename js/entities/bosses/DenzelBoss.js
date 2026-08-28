@@ -8,11 +8,9 @@ import { textures, drawCachedTexture } from '../../engine/TextureCache.js';
 
 export class DenzelBoss extends Boss {
   constructor(x, y, hp, maxHp) {
-    super(x, y, "Denzel", maxHp, 75, "#ffffff");
+    super(x, y, "Denzel", maxHp, 75, "#ffffff", hp);
     this.targetY = 160;
     this.radius = 75;
-    this.hp = hp;
-    this.maxHp = maxHp;
     this.color = "#ffffff";
     this.vx = 4.2;
     this.angle = 0;

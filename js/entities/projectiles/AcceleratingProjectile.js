@@ -12,7 +12,11 @@ export class AcceleratingProjectile extends Projectile {
     this.dirY = Math.sin(angle);
     this.currentSpeed = initialSpeed;
     this.accel = accel;
-    this.texture = textures['proj_accelerating'];
+    if (color === '#ff0033' || color === '#ff0055') {
+      this.texture = textures['proj_accelerating_amalgam'] || textures['proj_enemy_amalgam'];
+    } else {
+      this.texture = textures['proj_accelerating'];
+    }
   }
   update() {
     this.currentSpeed += this.accel;
@@ -21,7 +25,7 @@ export class AcceleratingProjectile extends Projectile {
     return this.x >= -50 && this.x <= state.width + 50 && this.y >= -50 && this.y <= state.height + 50;
   }
   draw(ctx) {
-    const tex = this.texture || textures['proj_accelerating'];
+    const tex = this.texture || (this.color === '#ff0033' ? (textures['proj_accelerating_amalgam'] || textures['proj_enemy_amalgam']) : textures['proj_accelerating']);
     if (tex) {
       drawCachedTexture(ctx, tex, this.x, this.y);
     } else {
