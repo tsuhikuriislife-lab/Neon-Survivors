@@ -6,7 +6,7 @@ import { spawnExplosion } from '../effects/spawnExplosion.js';
 import { HazardArea } from '../effects/HazardArea.js';
 import { audioManager } from '../../engine/AudioManager.js';
 import { Boss } from './Boss.js';
-import { getOrCachePolygon, drawCachedTexture } from '../../engine/TextureCache.js';
+import { proceduralBatch, hslToRgb } from '../../engine/ProceduralBatchRenderer.js';
 
 export class DevourerOfTaxBoss extends Boss {
   constructor(x, y, hp, maxHp) {
@@ -25,6 +25,13 @@ export class DevourerOfTaxBoss extends Boss {
     this.y = y !== undefined ? y : 250;
     this.vx = 0;
     this.vy = 2;
+
+    // Precalcular colores RGB estáticos para cada segmento (Zero GC en render)
+    this.segmentRgb = new Array(this.segmentCount);
+    for (let i = 0; i < this.segmentCount; i++) {
+      const hue = Math.floor((i / this.segmentCount) * 12) * 30;
+      this.segmentRgb[i] = hslToRgb(hue / 360, 1.0, 0.55);
+    }
 
     // Físicas y Mecánicas Estilo Eater of Worlds
     this.outsideSpeed = 14.0;       // Velocidad máxima incrementada para embestidas
@@ -376,10 +383,7 @@ export class DevourerOfTaxBoss extends Boss {
 
     for (let i = this.segmentCount - 1; i >= 0; i--) {
       const seg = this.segments[i];
-      const hue = Math.floor((i / this.segmentCount) * 12) * 30;
-      const color = `hsl(${hue}, 100%, 55%)`;
-      const fill = `hsla(${hue}, 100%, 55%, 0.3)`;
-      const tex = getOrCachePolygon(this.radius, 3, color, 10, fill);
+      const rgb = this.segmentRgb[i] || { r: 57, g: 255, b: 20 };
 
       // Transparencia dinámica en segmentos del cuerpo que se superpongan con el jugador
       let alpha = 1.0;
@@ -390,14 +394,21 @@ export class DevourerOfTaxBoss extends Boss {
         }
       }
 
-      if (alpha < 1.0) {
-        ctx.save();
-        ctx.globalAlpha = alpha;
-        drawCachedTexture(ctx, tex, seg.x, seg.y, seg.angle);
-        ctx.restore();
-      } else {
-        drawCachedTexture(ctx, tex, seg.x, seg.y, seg.angle);
-      }
+      // La cabeza (i=0) tiene radio ligeramente mayor o forma de rombo/triángulo
+      const sides = i === 0 ? 4 : 3;
+      const radius = i === 0 ? this.radius * 1.15 : this.radius;
+
+      proceduralBatch.submit(
+        sides,
+        seg.x,
+        seg.y,
+        radius,
+        seg.angle,
+        rgb.r,
+        rgb.g,
+        rgb.b,
+        alpha
+      );
     }
   }
 }

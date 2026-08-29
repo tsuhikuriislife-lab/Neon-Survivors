@@ -7,6 +7,7 @@ import { dist } from './Utils.js';
 import { spawnExplosion } from '../entities/effects/spawnExplosion.js';
 import { MenuBackgroundShowcase, VectorTitleRenderer } from './MenuScene.js';
 import { audioManager } from './AudioManager.js';
+import { proceduralBatch } from './ProceduralBatchRenderer.js';
 
 export const menuShowcase = new MenuBackgroundShowcase();
 export const vectorTitle = new VectorTitleRenderer("NEON SURVIVORS");
@@ -759,7 +760,9 @@ export function loop(timestamp, ctx) {
     state.gems[i].draw(ctx);
   }
 
-  // 3. Enemies & Bosses
+  // 3. Enemies & Bosses (Dynamic Batching & Instanced Geometry)
+  proceduralBatch.beginFrame(state.camera);
+
   ctx.save();
   ctx.beginPath();
   ctx.rect(0, 0, state.width, state.height);
@@ -772,6 +775,8 @@ export function loop(timestamp, ctx) {
   for (let i = 0; i < state.bosses.length; i++) {
     state.bosses[i].draw(ctx);
   }
+
+  proceduralBatch.flush(ctx);
 
   // 4. Projectiles
   if (state.projectilePool) {

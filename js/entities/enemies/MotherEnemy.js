@@ -13,6 +13,7 @@ export class MotherEnemy extends Enemy {
     this.maxHp = 300 + state.gameTime * 0.5;
     this.hp = this.maxHp;
     this.color = "#004400";
+    this.rgb = { r: 0, g: 68, b: 0 };
     this.xpValue = 0; 
     this.damage = 50;
     this.deathSoundKey = 'enemy_death_big';

@@ -4,7 +4,7 @@ import { spawnExplosion } from '../effects/spawnExplosion.js';
 import { HazardArea } from '../effects/HazardArea.js';
 import { audioManager } from '../../engine/AudioManager.js';
 import { Boss } from './Boss.js';
-import { textures, drawCachedTexture } from '../../engine/TextureCache.js';
+import { proceduralBatch } from '../../engine/ProceduralBatchRenderer.js';
 
 export class SebastianMinion extends Boss {
   constructor(x, y, hp, initialAngle = Math.random() * Math.PI * 2, initialSpeed = 7.5, maxHp = hp) {
@@ -14,7 +14,7 @@ export class SebastianMinion extends Boss {
     this.radius = 36;
     this.dead = false;
     this.smokeTimer = 0;
-    this.texture = textures['boss_sebastian_seg'];
+    this.rgb = { r: 255, g: 85, b: 0 };
 
     // Físicas Estilo Eater of Worlds (Asemejadas al padre)
     this.outsideSpeed = 13.2;       // Velocidad máxima incrementada para persecución y embestidas
@@ -306,24 +306,28 @@ export class SebastianMinion extends Boss {
 
     for (let i = this.segmentCount - 1; i >= 0; i--) {
       const seg = this.segments[i];
-      if (this.texture) {
-        let alpha = 1.0;
-        if (player && i > 0) {
-          const d = dist(seg.x, seg.y, player.x, player.y);
-          if (d < this.proximityFadeRadius) {
-            alpha = Math.max(this.minAlphaOnPlayer, d / this.proximityFadeRadius);
-          }
-        }
-
-        if (alpha < 1.0) {
-          ctx.save();
-          ctx.globalAlpha = alpha;
-          drawCachedTexture(ctx, this.texture, seg.x, seg.y, seg.angle);
-          ctx.restore();
-        } else {
-          drawCachedTexture(ctx, this.texture, seg.x, seg.y, seg.angle);
+      let alpha = 1.0;
+      if (player && i > 0) {
+        const d = dist(seg.x, seg.y, player.x, player.y);
+        if (d < this.proximityFadeRadius) {
+          alpha = Math.max(this.minAlphaOnPlayer, d / this.proximityFadeRadius);
         }
       }
+
+      const sides = i === 0 ? 4 : 3;
+      const radius = i === 0 ? this.radius * 1.15 : this.radius;
+
+      proceduralBatch.submit(
+        sides,
+        seg.x,
+        seg.y,
+        radius,
+        seg.angle,
+        this.rgb.r,
+        this.rgb.g,
+        this.rgb.b,
+        alpha
+      );
     }
   }
 }

@@ -11,30 +11,94 @@ import { getAllEnemies } from '../data/enemyRegistry.js';
 import { spawnExplosion } from '../entities/effects/spawnExplosion.js';
 
 
-export function renderBossBars() {
-  const container = document.getElementById("boss-hud-container");
-  const activeBosses = [];
+let dom = null;
+function getDom() {
+  if (!dom) {
+    dom = {
+      hudLevel: document.getElementById("hudLevel"),
+      hudXpBar: document.getElementById("hudXpBar"),
+      hudHpBar: document.getElementById("hudHpBar"),
+      hudHpText: document.getElementById("hudHpText"),
+      hudTime: document.getElementById("hudTime"),
+      hudKills: document.getElementById("hudKills"),
+      hudShieldContainer: document.getElementById("hudShieldContainer"),
+      hudShieldPips: document.getElementById("hudShieldPips"),
+      hudShieldText: document.getElementById("hudShieldText"),
+      bossContainer: document.getElementById("boss-hud-container"),
+      activeSkillHud: document.getElementById("activeSkillHud"),
+      hudActiveSkillEmoji: document.getElementById("hudActiveSkillEmoji"),
+      hudActiveSkillCooldown: document.getElementById("hudActiveSkillCooldown"),
+      hudActiveSkillKey: document.getElementById("hudActiveSkillKey"),
+      testDamageElem: document.getElementById("testTotalDamage"),
+      testDpsElem: document.getElementById("testTotalDPS"),
+      weaponsContainer: document.getElementById("testWeaponStats"),
+      testingPanel: document.getElementById("testing-panel")
+    };
+  }
+  return dom;
+}
 
+const _uiCache = {
+  level: -1,
+  xpPct: -1,
+  hpPct: -1,
+  hpText: '',
+  timeText: '',
+  kills: -1,
+  shieldVisible: null,
+  shieldText: '',
+  shieldColor: '',
+  shieldPipsHtml: '',
+  activeSkillVisible: null,
+  activeSkillEmoji: '',
+  activeSkillCooldownPct: -1,
+  bossBarsSignature: '',
+  testLastUpdateTime: 0,
+  testSignature: ''
+};
+
+export function renderBossBars() {
+  const d = getDom();
+  const container = d.bossContainer;
+  if (!container) return;
+
+  const activeBosses = [];
   const addedBosses = new Set();
-  state.bosses.forEach(b => {
-    b.getTargetables().forEach(t => {
-      const actualTarget = t.parent || t;
+  for (let i = 0; i < state.bosses.length; i++) {
+    const b = state.bosses[i];
+    const targets = b.getTargetables();
+    for (let j = 0; j < targets.length; j++) {
+      const actualTarget = targets[j].parent || targets[j];
       if (!addedBosses.has(actualTarget)) {
         addedBosses.add(actualTarget);
         activeBosses.push(actualTarget);
       }
-    });
-  });
+    }
+  }
 
   if (activeBosses.length === 0) {
-    container.innerHTML = "";
+    if (_uiCache.bossBarsSignature !== 'empty') {
+      _uiCache.bossBarsSignature = 'empty';
+      container.innerHTML = "";
+    }
     return;
   }
 
   activeBosses.sort((a, b) => b.hp - a.hp);
 
+  // Firma ligera para dirty-checking instantáneo sin mutaciones DOM innecesarias
+  let signature = "";
+  for (let i = 0; i < activeBosses.length; i++) {
+    const boss = activeBosses[i];
+    signature += `${boss.name}_${Math.ceil(boss.hp)}_${Math.ceil(boss.maxHp)}|`;
+  }
+
+  if (_uiCache.bossBarsSignature === signature) return;
+  _uiCache.bossBarsSignature = signature;
+
   let html = "";
-  activeBosses.forEach((boss, idx) => {
+  for (let idx = 0; idx < activeBosses.length; idx++) {
+    const boss = activeBosses[idx];
     const isMain = (idx === 0);
     const wrapperClass = isMain ? "boss-bar-wrapper boss-bar-main" : "boss-bar-wrapper boss-bar-sub";
     const percent = Math.max(0, Math.min(100, (boss.hp / boss.maxHp) * 100));
@@ -51,7 +115,7 @@ export function renderBossBars() {
         </div>
       </div>
     `;
-  });
+  }
   container.innerHTML = html;
 }
 

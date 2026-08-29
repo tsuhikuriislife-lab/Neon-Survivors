@@ -4,7 +4,7 @@ import { spawnExplosion } from '../effects/spawnExplosion.js';
 import { AcceleratingProjectile } from '../projectiles/AcceleratingProjectile.js';
 import { audioManager } from '../../engine/AudioManager.js';
 import { Boss } from './Boss.js';
-import { textures, drawCachedTexture } from '../../engine/TextureCache.js';
+import { proceduralBatch } from '../../engine/ProceduralBatchRenderer.js';
 
 export class CarlosMinion extends Boss {
   constructor(x, y, hp, initialAngle = Math.random() * Math.PI * 2, initialSpeed = 7.5, maxHp = hp) {
@@ -14,7 +14,7 @@ export class CarlosMinion extends Boss {
     this.radius = 36;
     this.dead = false;
     this.salvoTimer = 0;
-    this.texture = textures['boss_carlos_seg'];
+    this.rgb = { r: 0, g: 255, b: 136 };
 
     // Físicas Estilo Eater of Worlds (Asemejadas al padre)
     this.outsideSpeed = 13.0;       // Velocidad máxima incrementada para persecución y embestidas
@@ -322,24 +322,28 @@ export class CarlosMinion extends Boss {
 
     for (let i = this.segmentCount - 1; i >= 0; i--) {
       const seg = this.segments[i];
-      if (this.texture) {
-        let alpha = 1.0;
-        if (player && i > 0) {
-          const d = dist(seg.x, seg.y, player.x, player.y);
-          if (d < this.proximityFadeRadius) {
-            alpha = Math.max(this.minAlphaOnPlayer, d / this.proximityFadeRadius);
-          }
-        }
-
-        if (alpha < 1.0) {
-          ctx.save();
-          ctx.globalAlpha = alpha;
-          drawCachedTexture(ctx, this.texture, seg.x, seg.y, seg.angle);
-          ctx.restore();
-        } else {
-          drawCachedTexture(ctx, this.texture, seg.x, seg.y, seg.angle);
+      let alpha = 1.0;
+      if (player && i > 0) {
+        const d = dist(seg.x, seg.y, player.x, player.y);
+        if (d < this.proximityFadeRadius) {
+          alpha = Math.max(this.minAlphaOnPlayer, d / this.proximityFadeRadius);
         }
       }
+
+      const sides = i === 0 ? 4 : 3;
+      const radius = i === 0 ? this.radius * 1.15 : this.radius;
+
+      proceduralBatch.submit(
+        sides,
+        seg.x,
+        seg.y,
+        radius,
+        seg.angle,
+        this.rgb.r,
+        this.rgb.g,
+        this.rgb.b,
+        alpha
+      );
     }
   }
 }

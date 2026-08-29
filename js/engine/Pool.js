@@ -453,11 +453,19 @@ export class FloatingTextPool {
     ctx.textBaseline = "middle";
 
     const len = this.pool.length;
+    let lastFont = "";
+    let lastColor = "";
+    let lastAlpha = -1;
+
     for (let i = 0; i < len; i++) {
       const ft = this.pool[i];
       if (!ft.active) continue;
 
-      ctx.globalAlpha = Math.max(0, ft.alpha);
+      const alpha = Math.max(0, ft.alpha);
+      if (lastAlpha !== alpha) {
+        ctx.globalAlpha = alpha;
+        lastAlpha = alpha;
+      }
 
       if (ft.isCrit) {
         ctx.save();
@@ -465,7 +473,7 @@ export class FloatingTextPool {
         if (ft.rotation !== 0) {
           ctx.rotate(ft.rotation);
         }
-        ctx.font = `900 ${ft.size}px 'Segoe UI', sans-serif`;
+        ctx.font = getFont900(ft.size);
 
         // Vibrant neon glow matching the weapon's color
         ctx.shadowColor = ft.color;
@@ -476,15 +484,25 @@ export class FloatingTextPool {
         // Bright white core highlight for punchy luminosity
         ctx.shadowBlur = 0;
         ctx.fillStyle = "#ffffff";
-        ctx.globalAlpha = Math.max(0, ft.alpha * 0.7);
-        ctx.font = `bold ${Math.max(10, ft.size - 4)}px 'Segoe UI', sans-serif`;
+        ctx.globalAlpha = Math.max(0, alpha * 0.7);
+        ctx.font = getFontBold(Math.max(10, ft.size - 4));
         ctx.fillText(ft.text, 0, 0);
 
         ctx.restore();
+        lastFont = "";
+        lastColor = "";
+        lastAlpha = -1;
       } else {
         ctx.shadowBlur = 0;
-        ctx.fillStyle = ft.color;
-        ctx.font = `bold ${ft.size}px 'Segoe UI', sans-serif`;
+        if (lastColor !== ft.color) {
+          ctx.fillStyle = ft.color;
+          lastColor = ft.color;
+        }
+        const fontStr = getFontBold(ft.size);
+        if (lastFont !== fontStr) {
+          ctx.font = fontStr;
+          lastFont = fontStr;
+        }
         ctx.fillText(ft.text, ft.x, ft.y);
       }
     }

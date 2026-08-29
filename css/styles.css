@@ -135,6 +135,7 @@
       text-shadow: 0 0 8px #ff00ff;
       box-shadow: 0 0 12px rgba(255, 0, 255, 0.3);
       z-index: 30;
+      pointer-events: none;
     }
     .stats-hud {
       position: absolute;
@@ -160,6 +161,7 @@
       box-shadow: 0 0 10px rgba(0, 255, 255, 0.15);
       backdrop-filter: blur(4px);
       -webkit-backdrop-filter: blur(4px);
+      pointer-events: none;
     }
     .stat-box span {
       color: #00ffff;
@@ -177,6 +179,7 @@
       padding: clamp(5px, 0.8cqh, 8px);
       box-shadow: 0 0 15px rgba(255, 34, 85, 0.2);
       z-index: 30;
+      pointer-events: none;
     }
     .hp-title {
       font-size: clamp(10px, 1cqw, 12px);
@@ -211,6 +214,7 @@
       gap: clamp(4px, 0.8cqh, 8px);
       align-items: flex-end;
       z-index: 30;
+      pointer-events: none;
     }
     .boss-bar-wrapper {
       background: rgba(12, 10, 26, 0.9);
@@ -513,7 +517,7 @@
       box-shadow: 0 0 15px rgba(0, 255, 255, 0.3);
       font-family: monospace;
       z-index: 45;
-      pointer-events: auto;
+      pointer-events: none;
       backdrop-filter: blur(4px);
     }
     .testing-panel-header {

@@ -13,6 +13,7 @@ export class MotherChildEnemy extends Enemy {
     this.maxHp = 25 + state.gameTime * 0.05;
     this.hp = this.maxHp;
     this.color = "#00ff00";
+    this.rgb = { r: 0, g: 255, b: 0 };
     this.xpValue = 2; 
     this.damage = 15;
     this.directionChangeTimer = 0;

@@ -12,6 +12,7 @@ export class SwarmerEnemy extends Enemy {
     this.maxHp = 10 + state.gameTime * 0.04;
     this.hp = this.maxHp;
     this.color = "#ff9900";
+    this.rgb = { r: 255, g: 153, b: 0 };
     this.xpValue = 2;
     this.damage = 12;
     this.deathSoundKey = 'enemy_death_small';

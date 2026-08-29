@@ -16,6 +16,7 @@ export class RangerEnemy extends Enemy {
     this.maxHp = 60 + state.gameTime * 0.1;
     this.hp = this.maxHp;
     this.color = "#00ccff";
+    this.rgb = { r: 0, g: 204, b: 255 };
     this.xpValue = 6; 
     this.damage = 15;
     this.fireRate = Math.max(30, 90 - (scaleLevel * 10)); 

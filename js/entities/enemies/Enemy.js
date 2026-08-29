@@ -2,7 +2,7 @@ import { state } from '../../engine/gameState.js';
 import { dist } from '../../engine/Utils.js';
 import { spawnExplosion } from '../effects/spawnExplosion.js';
 import { audioManager } from '../../engine/AudioManager.js';
-import { textures, drawCachedTexture, getOrCachePolygon } from '../../engine/TextureCache.js';
+import { proceduralBatch, parseColorToRgb } from '../../engine/ProceduralBatchRenderer.js';
 
 export class Enemy {
   constructor(x, y) {
@@ -36,6 +36,7 @@ export class Enemy {
     this.maxHp = 10;
     this.hp = 10;
     this.color = "#ffffff";
+    this.rgb = { r: 255, g: 255, b: 255 };
     this.xpValue = 1;
     this.damage = 10;
     this.deathSoundKey = 'enemy_death_small';
@@ -116,13 +117,19 @@ export class Enemy {
   }
 
   draw(ctx) {
-    if (this.x + this.radius < 0 || this.x - this.radius > state.width ||
-        this.y + this.radius < 0 || this.y - this.radius > state.height) {
-      return;
+    if (!this.rgb) {
+      this.rgb = parseColorToRgb(this.color);
     }
-    if (!this.texture) {
-      this.texture = getOrCachePolygon(this.radius, this.sides, this.color, 8, "rgba(20,0,30,0.3)");
-    }
-    drawCachedTexture(ctx, this.texture, this.x, this.y, this.angle);
+    proceduralBatch.submit(
+      this.sides,
+      this.x,
+      this.y,
+      this.radius,
+      this.angle,
+      this.rgb.r,
+      this.rgb.g,
+      this.rgb.b,
+      1.0
+    );
   }
 }
