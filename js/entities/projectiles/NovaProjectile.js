@@ -55,10 +55,11 @@ export class NovaProjectile extends Projectile {
       state.particlePool.acquire(this.x, this.y, this.color, 0.2, 0.08, 3);
     }
 
-    return this.life > 0 && this.x >= -50 && this.x <= state.width + 50 && this.y >= -50 && this.y <= state.height + 50;
+    return this.life > 0 && this.x >= 0 && this.x <= state.width && this.y >= 0 && this.y <= state.height;
   }
 
   draw(ctx) {
+    if (this.x < 0 || this.x > state.width || this.y < 0 || this.y > state.height) return;
     if (this.texture) {
       drawCachedTexture(ctx, this.texture, this.x, this.y, this.time * 0.2);
     }

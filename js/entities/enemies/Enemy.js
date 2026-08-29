@@ -63,11 +63,10 @@ export class Enemy {
     this.hp -= finalAmount;
     const offsetX = (Math.random() * 2 - 1) * (this.radius * 0.8);
     const offsetY = (Math.random() * 2 - 1) * (this.radius * 0.8);
-    const dmgColor = isCrit ? "#ffff00" : damageColor;
-    const fontSize = isCrit ? 18 : 12;
+    const fontSize = isCrit ? 22 : 12;
 
     if (state.floatingTextPool) {
-      state.floatingTextPool.acquire(this.x + offsetX, this.y + offsetY, Math.round(finalAmount), dmgColor, fontSize);
+      state.floatingTextPool.acquire(this.x + offsetX, this.y + offsetY, Math.round(finalAmount), damageColor, fontSize, isCrit);
     }
 
     if (this.hp <= 0) {
@@ -86,11 +85,23 @@ export class Enemy {
 
   dropLoot() {
     if (this.xpValue <= 0) return;
+    const isOutsideMap = this.x < 0 || this.x > state.width || this.y < 0 || this.y > state.height;
+
     const dropGem = () => {
-      const offsetX = (Math.random() * 2 - 1) * this.radius;
-      const offsetY = (Math.random() * 2 - 1) * this.radius;
+      let gx, gy;
+      if (isOutsideMap) {
+        const margin = 80;
+        gx = margin + Math.random() * (state.width - margin * 2);
+        gy = margin + Math.random() * (state.height - margin * 2);
+      } else {
+        const offsetX = (Math.random() * 2 - 1) * this.radius;
+        const offsetY = (Math.random() * 2 - 1) * this.radius;
+        gx = this.x + offsetX;
+        gy = this.y + offsetY;
+      }
+
       if (state.gemPool) {
-        state.gemPool.acquire(this.x + offsetX, this.y + offsetY, this.xpValue);
+        state.gemPool.acquire(gx, gy, this.xpValue);
       }
     };
     

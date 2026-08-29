@@ -22,9 +22,10 @@ export class AcceleratingProjectile extends Projectile {
     this.currentSpeed += this.accel;
     this.x += this.dirX * this.currentSpeed;
     this.y += this.dirY * this.currentSpeed;
-    return this.x >= -50 && this.x <= state.width + 50 && this.y >= -50 && this.y <= state.height + 50;
+    return this.x >= 0 && this.x <= state.width && this.y >= 0 && this.y <= state.height;
   }
   draw(ctx) {
+    if (this.x < 0 || this.x > state.width || this.y < 0 || this.y > state.height) return;
     const tex = this.texture || (this.color === '#ff0033' ? (textures['proj_accelerating_amalgam'] || textures['proj_enemy_amalgam']) : textures['proj_accelerating']);
     if (tex) {
       drawCachedTexture(ctx, tex, this.x, this.y);

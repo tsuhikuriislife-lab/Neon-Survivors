@@ -81,7 +81,7 @@ This repository contains a browser-based arena survival game ("Neon Survivors").
   - Automatically resumes when rotated back to landscape mode. Calls `screen.orientation?.lock('landscape')` on user interactions.
 - **Critical Hit System**:
   - Players have `critChance` (base 0) and `critDamage` (base 1.5).
-  - Computed on impact inside `Enemy.js` and `Boss.js` `takeDamage` methods. Crits trigger larger, yellow `#ffff00` floating damage text.
+  - Computed on impact inside `Enemy.js` and `Boss.js` `takeDamage` methods. Crits trigger larger, punchier floating damage text matching the hitting weapon's color with higher brightness (neon glow and luminous white core) and subtle randomized rotation tilt ($\pm 10^\circ$).
 - **60 FPS Performance Optimization Architecture**:
   - **Texture Caching (`TextureCache.js`)**: Pre-computes offscreen canvases with baked neon `shadowBlur` for player ship, orbitals, all enemy tiers, gems, projectiles, and boss parts. Replaces runtime `drawPolygon` / vector paths with direct `ctx.drawImage` calls.
   - **Spatial Partitioning (`SpatialHashGrid.js`)**: 120x120px uniform grid (16x16 cells) over the 1920x1920 arena. Reduces projectile, laser, shockwave, orbital, and auto-aim collision queries from $O(N \times M)$ to $O(1)$ average.
@@ -113,10 +113,17 @@ This repository contains a browser-based arena survival game ("Neon Survivors").
   - **Top-Right Pause Button**: Sleek neon pause button with 2 vertical bars (`#pause-btn`) replacing options text button.
   - **Stacked Multi-Boss Bars**: Boss health bars (`#boss-hud-container`) stack cleanly above the Active Skill button (`.active-skill-container`), eliminating visual collisions during boss encounters.
   - **Auto-Contained Dynamic Modals**: Modals (`#levelModal`, `#bossRewardModal`, `#optionsModal`, `#adminModal`, `#gameOverModal`) utilize `max-height: 88cqh; overflow-y: auto;` and styled ultra-thin scrollbars, preventing content from bleeding off-screen on low-resolution landscape phones.
-- **Virtual Joystick Relative Directional Architecture (`Input.js`)**:
-  - Joysticks use nested DOM structures (`#virtual-joystick-knob` inside `#virtual-joystick-base`).
-  - Base positions to touch origin (`(startX / 1920) * 100%`, `(startY / 1080) * 100%`).
-  - The knob calculates its positional displacement directly from the normalized directional vector: `left: calc(50% + dx * 35%)` and `top: calc(50% + dy * 35%)` (or polar $(\cos\theta, \sin\theta) \times \text{norm} \times 35\%$ for laser aiming), ensuring faithful directional alignment under the thumb.
+- **Force Field / Shield Architecture (`Campo de Fuerza`)**:
+  - **Charge Absorption & Invulnerability**: Absorbs all projectile/contact damage without losing player HP. When taking damage with active shield charges, player invulnerability time (`invulnerabilityTimer`) is halved (`invulnerabilityMaxTime / 2`).
+  - **Dynamic Charge Colors & Explosions**:
+    - **1 Charge**: Blue (`#00aaff`)
+    - **2 Charges**: Light Blue / Celeste (`#70d6ff`)
+    - **3 Charges**: White (`#ffffff`)
+    - All defensive explosions and shockwaves match the color of the active charge at impact.
+  - **1200 Base Explosion Damage**: Rare `shield_explosion` triggers an AoE shockwave dealing 1200 base damage scaled by `player.getEffectiveDamageMult()` to all nearby enemies and bosses.
+  - **Charge Preservation Deflexion**: 5% per level (max 2 = 10%) chance to deflect without consuming charge. When deflected, the explosion still occurs and the charge remains intact.
+  - **Active Stat Buffs**: +5% weapon damage (max 5) and +5% weapon fire speed (max 5) while shield charges are active; bonuses turn off if charges drop to 0 until regenerated.
+  - **Under-Ship Shield Cooldown Indicator**: Renders directly under the Laser Cannon cooldown bar (or under the ship if no laser), colored dynamically with the hue of the specific charge currently being regenerated.
 
 
 

@@ -17,9 +17,10 @@ export class FallingProjectile extends Projectile {
     this.vy += this.gravity;
     this.x += this.vx;
     this.y += this.vy;
-    return this.y <= state.height + 50;
+    return this.x >= 0 && this.x <= state.width && this.y >= 0 && this.y <= state.height;
   }
   draw(ctx) {
+    if (this.x < 0 || this.x > state.width || this.y < 0 || this.y > state.height) return;
     if (this.history.length > 1) {
       ctx.save();
       ctx.beginPath();

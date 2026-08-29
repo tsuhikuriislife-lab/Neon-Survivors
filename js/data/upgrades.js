@@ -392,6 +392,89 @@ export const upgradeDatabase = [
     }
   },
 
+  // CAMPO DE FUERZA (ESCUDO)
+  {
+    id: 'shield_unlock',
+    rarity: 'common',
+    name: 'Campo de Fuerza',
+    icon: '🛡️',
+    desc: 'Desbloquea un escudo protector que absorbe disparos y contacto enemigo.',
+    isAvailable: (p) => !p.shield || !p.shield.unlocked,
+    apply: (p) => {
+      p.unlockShield();
+    }
+  },
+  {
+    id: 'shield_damage_boost',
+    rarity: 'common',
+    name: 'Potencia de Escudo',
+    icon: '⚔️',
+    desc: '+5% de daño general mientras el escudo esté activo (Máx. 5).',
+    isAvailable: (p) => p.shield && p.shield.unlocked && (p.shield.damageBonusUpgrades || 0) < 5,
+    apply: (p) => {
+      p.shield.damageBonusUpgrades = (p.shield.damageBonusUpgrades || 0) + 1;
+    }
+  },
+  {
+    id: 'shield_rate_boost',
+    rarity: 'common',
+    name: 'Cadencia Fortificada',
+    icon: '💨',
+    desc: '+5% de velocidad de disparo de armas mientras el escudo esté activo (Máx. 5).',
+    isAvailable: (p) => p.shield && p.shield.unlocked && (p.shield.rateBonusUpgrades || 0) < 5,
+    apply: (p) => {
+      p.shield.rateBonusUpgrades = (p.shield.rateBonusUpgrades || 0) + 1;
+    }
+  },
+  {
+    id: 'shield_recharge_speed',
+    rarity: 'uncommon',
+    name: 'Recarga de Escudo Acelerada',
+    icon: '🔋',
+    desc: '+15% de velocidad de regeneración de escudo (Máx. 2).',
+    isAvailable: (p) => p.shield && p.shield.unlocked && (p.shield.rechargeUpgrades || 0) < 2,
+    apply: (p) => {
+      p.shield.rechargeSpeedMult *= 1.15;
+      p.shield.rechargeUpgrades = (p.shield.rechargeUpgrades || 0) + 1;
+    }
+  },
+  {
+    id: 'shield_explosion',
+    rarity: 'rare',
+    name: 'Detonación de Escudo',
+    icon: '💥',
+    desc: 'Al romper el escudo, este explota infligiendo daño en gran área (Único).',
+    isAvailable: (p) => p.shield && p.shield.unlocked && !p.shield.explodeOnBreak,
+    apply: (p) => {
+      p.shield.explodeOnBreak = true;
+    }
+  },
+  {
+    id: 'shield_save_chance',
+    rarity: 'rare',
+    name: 'Deflexión Cuántica',
+    icon: '✨',
+    desc: '5% de probabilidad de no romper el escudo al recibir daño (Máx. 2).',
+    isAvailable: (p) => p.shield && p.shield.unlocked && (p.shield.saveChanceUpgrades || 0) < 2,
+    apply: (p) => {
+      p.shield.saveChargeChance = (p.shield.saveChargeChance || 0) + 0.05;
+      p.shield.saveChanceUpgrades = (p.shield.saveChanceUpgrades || 0) + 1;
+    }
+  },
+  {
+    id: 'shield_extra_charge',
+    rarity: 'legendary',
+    name: 'Batería de Campo Extra',
+    icon: '💠',
+    desc: 'Aumenta las cargas del escudo en +1 (Máx. 2).',
+    isAvailable: (p) => p.shield && p.shield.unlocked && (p.shield.extraChargesUpgrades || 0) < 2,
+    apply: (p) => {
+      p.shield.maxCharges += 1;
+      p.shield.charges += 1;
+      p.shield.extraChargesUpgrades = (p.shield.extraChargesUpgrades || 0) + 1;
+    }
+  },
+
   // NUEVAS MEJORAS INFINITAS
   {
     id: 'damage_small',
@@ -419,8 +502,8 @@ export const upgradeDatabase = [
     rarity: 'common',
     name: 'Precisión Letal',
     icon: '🎯',
-    desc: '+1% Probabilidad de Golpe Crítico.',
-    apply: (p) => { p.critChance = (p.critChance || 0) + 0.01; }
+    desc: '+5% Probabilidad de Golpe Crítico.',
+    apply: (p) => { p.critChance = (p.critChance || 0) + 0.05; }
   },
   {
     id: 'damage_med',

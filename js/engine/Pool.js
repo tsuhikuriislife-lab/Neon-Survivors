@@ -183,7 +183,7 @@ class PooledProjectile {
     this.y += this.vy;
     this.life--;
 
-    const inBounds = this.x >= -50 && this.x <= worldWidth + 50 && this.y >= -50 && this.y <= worldHeight + 50;
+    const inBounds = this.x >= 0 && this.x <= worldWidth && this.y >= 0 && this.y <= worldHeight;
     if (this.isEnemy) {
       if (!inBounds) {
         this.active = false;
@@ -200,6 +200,7 @@ class PooledProjectile {
 
   draw(ctx) {
     if (!this.active) return;
+    if (this.x < 0 || this.x > 1920 || this.y < 0 || this.y > 1920) return;
     if (this.texture) {
       drawCachedTexture(ctx, this.texture, this.x, this.y);
     } else {
@@ -373,26 +374,30 @@ class PooledFloatingText {
     this.text = "";
     this.color = "#fff";
     this.size = 14;
+    this.isCrit = false;
+    this.rotation = 0;
     this.alpha = 0;
     this.vy = -1.2;
     this.active = false;
   }
 
-  reset(x, y, text, color = "#fff", size = 14) {
+  reset(x, y, text, color = "#fff", size = 14, isCrit = false) {
     this.x = x;
     this.y = y;
     this.text = text;
     this.color = color;
     this.size = size;
+    this.isCrit = isCrit;
+    this.rotation = isCrit ? (Math.random() - 0.5) * 0.35 : 0;
     this.alpha = 1.0;
-    this.vy = -1.2;
+    this.vy = isCrit ? -1.6 : -1.2;
     this.active = true;
   }
 
   update() {
     if (!this.active) return;
     this.y += this.vy;
-    this.alpha -= 0.02;
+    this.alpha -= this.isCrit ? 0.015 : 0.02;
     if (this.alpha <= 0) {
       this.active = false;
     }
@@ -408,19 +413,19 @@ export class FloatingTextPool {
     this.searchIndex = 0;
   }
 
-  acquire(x, y, text, color = "#fff", size = 14) {
+  acquire(x, y, text, color = "#fff", size = 14, isCrit = false) {
     const len = this.pool.length;
     for (let i = 0; i < len; i++) {
       const idx = (this.searchIndex + i) % len;
       const ft = this.pool[idx];
       if (!ft.active) {
-        ft.reset(x, y, text, color, size);
+        ft.reset(x, y, text, color, size, isCrit);
         this.searchIndex = (idx + 1) % len;
         return ft;
       }
     }
     const ft = this.pool[this.searchIndex];
-    ft.reset(x, y, text, color, size);
+    ft.reset(x, y, text, color, size, isCrit);
     this.searchIndex = (this.searchIndex + 1) % len;
     return ft;
   }
@@ -444,7 +449,6 @@ export class FloatingTextPool {
 
   drawBatch(ctx) {
     ctx.save();
-    ctx.shadowBlur = 0;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
 
@@ -454,9 +458,35 @@ export class FloatingTextPool {
       if (!ft.active) continue;
 
       ctx.globalAlpha = Math.max(0, ft.alpha);
-      ctx.fillStyle = ft.color;
-      ctx.font = `bold ${ft.size}px 'Segoe UI', sans-serif`;
-      ctx.fillText(ft.text, ft.x, ft.y);
+
+      if (ft.isCrit) {
+        ctx.save();
+        ctx.translate(ft.x, ft.y);
+        if (ft.rotation !== 0) {
+          ctx.rotate(ft.rotation);
+        }
+        ctx.font = `900 ${ft.size}px 'Segoe UI', sans-serif`;
+
+        // Vibrant neon glow matching the weapon's color
+        ctx.shadowColor = ft.color;
+        ctx.shadowBlur = 12;
+        ctx.fillStyle = ft.color;
+        ctx.fillText(ft.text, 0, 0);
+
+        // Bright white core highlight for punchy luminosity
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = "#ffffff";
+        ctx.globalAlpha = Math.max(0, ft.alpha * 0.7);
+        ctx.font = `bold ${Math.max(10, ft.size - 4)}px 'Segoe UI', sans-serif`;
+        ctx.fillText(ft.text, 0, 0);
+
+        ctx.restore();
+      } else {
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = ft.color;
+        ctx.font = `bold ${ft.size}px 'Segoe UI', sans-serif`;
+        ctx.fillText(ft.text, ft.x, ft.y);
+      }
     }
 
     ctx.restore();

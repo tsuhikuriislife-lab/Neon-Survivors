@@ -25,6 +25,7 @@ export class MissileProjectile extends Projectile {
 
     // Query enemies via spatial grid
     state.spatialGrid.queryRadius(this.x, this.y, this.aoeRadius, (target) => {
+      if (target.hp <= 0) return;
       const actualTarget = target.parent || target;
       if (damagedParents.has(actualTarget)) return;
 
@@ -124,10 +125,11 @@ export class MissileProjectile extends Projectile {
       state.particlePool.acquire(this.x, this.y, "#ff8800", 0.5, 0.1, 2);
     }
 
-    return this.x >= -50 && this.x <= state.width + 50 && this.y >= -50 && this.y <= state.height + 50;
+    return this.x >= 0 && this.x <= state.width && this.y >= 0 && this.y <= state.height;
   }
 
   draw(ctx) {
+    if (this.x < 0 || this.x > state.width || this.y < 0 || this.y > state.height) return;
     if (this.texture) {
       const angle = Math.atan2(this.vy, this.vx);
       drawCachedTexture(ctx, this.texture, this.x, this.y, angle);

@@ -34,6 +34,7 @@
         <div class="xp-bar" id="hudXpBar"></div>
       </div>
       <div id="boss-warning-banner" class="boss-warning-banner" style="display: none;">⚠️ ¡ALERTA: UN JEFE SE APROXIMA! ⚠️</div>
+      <div id="wave-warning-banner" class="wave-warning-banner" style="display: none;">🌊 ¡OLEADA ENEMIGA EN CURSO (x4 SPAWN)! 🌊</div>
       <div class="stats-hud">
         <div class="stat-box"><span id="hudTime">00:00</span></div>
         <div class="stat-box"><span id="hudKills">0</span> Kills</div>
@@ -45,6 +46,13 @@
         </div>
         <div class="hp-bar-bg">
           <div class="hp-bar-fill" id="hudHpBar"></div>
+        </div>
+        <div id="hudShieldContainer" style="display: none; align-items: center; justify-content: space-between; margin-top: 4px;">
+          <div style="font-size: 11px; font-weight: bold; color: #00aaff; display: flex; align-items: center; gap: 6px;">
+            <span>🛡️ ESCUDO</span>
+            <div id="hudShieldPips" style="display: flex; gap: 4px;"></div>
+          </div>
+          <span id="hudShieldText" style="font-size: 11px; color: #cbd5e0; font-family: monospace;">1 / 1</span>
         </div>
       </div>
 
@@ -167,6 +175,7 @@
           <h3>Botones Rápidos</h3>
           <button id="adminQuickTest" class="admin-action-btn" style="border-color: #ff00ff; color: #ff00ff; background: rgba(255, 0, 255, 0.15);">🚀 Activar Testeo Rápido (Max Stats)</button>
           <button id="adminSpawnDummy" class="admin-action-btn">🎯 Spawnear Dummy Target</button>
+          <button id="adminTriggerWave" class="admin-action-btn">🌊 Forzar Oleada (20s)</button>
           <button id="adminKillAll" class="admin-action-btn">💀 Eliminar Todos los Enemigos</button>
         </div>
         <div class="admin-section">

@@ -32,11 +32,10 @@ export class DenzelBoss extends Boss {
     this.hp -= finalAmount;
     const offsetX = (Math.random() * 2 - 1) * (this.radius * 0.8);
     const offsetY = (Math.random() * 2 - 1) * (this.radius * 0.8);
-    const dmgColor = isCrit ? "#ffff00" : damageColor;
-    const fontSize = isCrit ? 20 : 14;
+    const fontSize = isCrit ? 24 : 14;
 
     if (state.floatingTextPool) {
-      state.floatingTextPool.acquire(this.x + offsetX, this.y + offsetY, Math.round(finalAmount), dmgColor, fontSize);
+      state.floatingTextPool.acquire(this.x + offsetX, this.y + offsetY, Math.round(finalAmount), damageColor, fontSize, isCrit);
     }
 
     if (this.hp <= 0) {

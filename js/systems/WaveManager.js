@@ -140,6 +140,68 @@ export function updatePendingBossSpawn(dt) {
   }
 }
 
+export function startWave(duration = 60) {
+  state.isWaveActive = true;
+  state.waveTimer = duration;
+  state.waveDuration = duration;
+
+  const banner = document.getElementById("wave-warning-banner");
+  if (banner) banner.style.display = "block";
+
+  // 1. Camera pulse on wave trigger
+  if (state.camera && typeof state.camera.shake === 'function') {
+    state.camera.shake({ strength: 5, duration: 5, rotation: 0.04, scale: 0.03 });
+  }
+
+  // 2. Alert Environment Effects (Pulsing Amber/Orange Wave Theme)
+  if (state.environment) {
+    state.environment.setBorders({
+      color: "rgba(255, 140, 0, 0.8)",
+      innerColor: "rgba(255, 180, 50, 0.9)",
+      cornerColor: "#ff9900",
+      glow: 24,
+      pulse: { rate: 4, amplitude: 0.45 },
+      duration: duration,
+      fadeInDuration: 0.5,
+      fadeOutDuration: 1.0
+    });
+
+    state.environment.setGridLines({
+      color: "rgba(255, 140, 0, 0.12)",
+      pulse: { rate: 4, amplitude: 0.35 },
+      duration: duration,
+      fadeInDuration: 0.5,
+      fadeOutDuration: 1.0
+    });
+  }
+
+  audioManager.playSound('boss_spawn_warning', { volume: 0.75, throttleMs: 200 });
+}
+
+export function endWave() {
+  state.isWaveActive = false;
+  state.waveTimer = 0;
+
+  const banner = document.getElementById("wave-warning-banner");
+  if (banner) banner.style.display = "none";
+}
+
+export function updateWave(dt) {
+  if (state.isWaveActive) {
+    state.waveTimer -= dt;
+    if (state.waveTimer <= 0) {
+      endWave();
+    }
+  } else {
+    if (state.gameTime >= state.nextWaveTime) {
+      if (!state.disableSpawns) {
+        startWave(state.waveDuration || 20);
+      }
+      state.nextWaveTime += 300; // Next wave in 5 minutes
+    }
+  }
+}
+
 export function handleSpawning() {
   if (state.disableSpawns) return;
   
@@ -159,7 +221,8 @@ export function handleSpawning() {
   }
 
   const mult = state.spawnRateMultiplier || 1.0;
-  baseInterval = Math.max(2, Math.floor(baseInterval / mult));
+  const waveMult = state.isWaveActive ? 4.0 : 1.0;
+  baseInterval = Math.max(2, Math.floor(baseInterval / (mult * waveMult)));
 
   if (hasActiveBoss) {
     baseInterval = Math.floor(baseInterval * 2.5);

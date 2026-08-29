@@ -62,11 +62,12 @@ export class Projectile {
     this.x += this.vx;
     this.y += this.vy;
     this.life--;
-    const inBounds = this.x >= -50 && this.x <= state.width + 50 && this.y >= -50 && this.y <= state.height + 50;
+    const inBounds = this.x >= 0 && this.x <= state.width && this.y >= 0 && this.y <= state.height;
     return this.isEnemy ? inBounds : (this.life > 0 && inBounds);
   }
 
   draw(ctx) {
+    if (this.x < 0 || this.x > state.width || this.y < 0 || this.y > state.height) return;
     if (this.texture) {
       drawCachedTexture(ctx, this.texture, this.x, this.y);
     } else {

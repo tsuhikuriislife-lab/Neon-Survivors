@@ -29,15 +29,32 @@ export class MotherEnemy extends Enemy {
   dropLoot() {
     const scaleLevel = state.bossDefeatTimes.amalgam ? Math.floor((state.gameTime - state.bossDefeatTimes.amalgam) / 150) : 0;
     const childCount = Math.min(8, 3 + scaleLevel);
+    const isOutsideMap = this.x < 0 || this.x > state.width || this.y < 0 || this.y > state.height;
     
     for (let i = 0; i < childCount; i++) {
-      const child = new MotherChildEnemy(this.x, this.y);
+      let cx = this.x;
+      let cy = this.y;
+      if (isOutsideMap) {
+        const margin = 80;
+        cx = margin + Math.random() * (state.width - margin * 2);
+        cy = margin + Math.random() * (state.height - margin * 2);
+      }
+      const child = new MotherChildEnemy(cx, cy);
       state.enemies.push(child);
     }
     
     for (let i = 0; i < 3; i++) {
+      let gx, gy;
+      if (isOutsideMap) {
+        const margin = 80;
+        gx = margin + Math.random() * (state.width - margin * 2);
+        gy = margin + Math.random() * (state.height - margin * 2);
+      } else {
+        gx = this.x + (Math.random() * 40 - 20);
+        gy = this.y + (Math.random() * 40 - 20);
+      }
       if (state.gemPool) {
-        state.gemPool.acquire(this.x + (Math.random() * 40 - 20), this.y + (Math.random() * 40 - 20), 15);
+        state.gemPool.acquire(gx, gy, 15);
       }
     }
   }

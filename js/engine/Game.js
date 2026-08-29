@@ -2,7 +2,7 @@ import { state } from './gameState.js';
 import { resetInputState } from './Input.js';
 import { Player } from '../entities/player/Player.js';
 import { updateHUD, updateActiveSkillHUD, showBossRewardMenu } from '../ui/UIManager.js';
-import { handleSpawning, spawnRandomBoss, updatePendingBossSpawn } from '../systems/WaveManager.js';
+import { handleSpawning, spawnRandomBoss, updatePendingBossSpawn, updateWave } from '../systems/WaveManager.js';
 import { dist } from './Utils.js';
 import { spawnExplosion } from '../entities/effects/spawnExplosion.js';
 import { MenuBackgroundShowcase, VectorTitleRenderer } from './MenuScene.js';
@@ -410,6 +410,7 @@ export function loop(timestamp, ctx) {
     }
 
     updatePendingBossSpawn(dt);
+    updateWave(dt);
     handleSpawning();
 
     // Update Environment Transitions (Background, Lines, Borders)
@@ -468,13 +469,13 @@ export function loop(timestamp, ctx) {
         if (!p.isEnemy) {
           let hit = false;
           state.spatialGrid.queryRadius(p.x, p.y, p.radius, (e) => {
+            if (e.hp <= 0) return false;
+
             spawnExplosion(p.x, p.y, "#00ffff", 4, 2);
             audioManager.playSound('hit_main_gun', { volume: 0.4, throttleMs: 40 });
             state.recordDamage('blaster', p.damage);
 
-            if (!e.takeDamage(p.damage, p.color)) {
-              // Enemy died
-            }
+            e.takeDamage(p.damage, p.color);
 
             p.active = false;
             hit = true;
@@ -520,6 +521,7 @@ export function loop(timestamp, ctx) {
 
       let hit = false;
       state.spatialGrid.queryRadius(p.x, p.y, p.radius, (e) => {
+        if (e.hp <= 0) return false;
         if (p.canHit && !p.canHit(e)) return false;
 
         spawnExplosion(p.x, p.y, "#00ffff", 4, 2);
@@ -537,9 +539,7 @@ export function loop(timestamp, ctx) {
           state.recordDamage('blaster', p.damage);
         }
 
-        if (!e.takeDamage(p.damage, p.color)) {
-          // Enemy dead
-        }
+        e.takeDamage(p.damage, p.color);
         
         if (!p.pierce) {
           state.projectiles[i] = state.projectiles[state.projectiles.length - 1];

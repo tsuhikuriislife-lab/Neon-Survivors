@@ -52,6 +52,7 @@ export class LaserBeam {
 
       // Query enemies via spatial grid
       state.spatialGrid.queryLine(this.startX, this.startY, endX, endY, this.width, (enemy) => {
+        if (enemy.hp <= 0) return;
         if (!this.hitEnemies.has(enemy)) {
           const distAlong = (enemy.x - this.startX) * cosA + (enemy.y - this.startY) * sinA;
           targetsToHit.push({ target: enemy, distAlong });

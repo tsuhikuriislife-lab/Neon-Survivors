@@ -68,11 +68,10 @@ export class KyrenBoss extends Boss {
     this.hp -= finalAmount;
     const offsetX = (Math.random() * 2 - 1) * (this.radius * 0.8);
     const offsetY = (Math.random() * 2 - 1) * (this.radius * 0.8);
-    const dmgColor = isCrit ? "#ffff00" : damageColor;
-    const fontSize = isCrit ? 22 : 16;
+    const fontSize = isCrit ? 26 : 16;
 
     if (state.floatingTextPool) {
-      state.floatingTextPool.acquire(this.x + offsetX, this.y + offsetY, Math.round(finalAmount), dmgColor, fontSize);
+      state.floatingTextPool.acquire(this.x + offsetX, this.y + offsetY, Math.round(finalAmount), damageColor, fontSize, isCrit);
     }
 
     if (!this.isSplit && this.hp <= this.maxHp * 0.5) {

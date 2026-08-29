@@ -14,6 +14,10 @@ export const state = {
   lastFrameTime: performance.now(),
   hasRerolledCurrentLevel: false,
   nextBossTime: 300,
+  nextWaveTime: 150,
+  isWaveActive: false,
+  waveTimer: 0,
+  waveDuration: 20,
   spawnTimer: 0,
   
   godMode: false,
@@ -37,7 +41,8 @@ export const state = {
     nova: 0,
     shockwave: 0,
     missiles: 0,
-    laserCannon: 0
+    laserCannon: 0,
+    shield: 0
   },
 
   width: 1920,
@@ -103,6 +108,9 @@ export const state = {
     this.gameTime = 0;
     this.killCount = 0;
     this.nextBossTime = 300;
+    this.nextWaveTime = 150;
+    this.isWaveActive = false;
+    this.waveTimer = 0;
     this.spawnTimer = 0;
     this.isPaused = false;
     this.isGameOver = false;
@@ -124,7 +132,8 @@ export const state = {
       nova: 0,
       shockwave: 0,
       missiles: 0,
-      laserCannon: 0
+      laserCannon: 0,
+      shield: 0
     };
   },
   recordDamage(weapon, amount) {

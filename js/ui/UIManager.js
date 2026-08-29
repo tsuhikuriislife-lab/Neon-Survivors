@@ -5,7 +5,7 @@ import { upgradeDatabase } from '../data/upgrades.js';
 import { initGame } from '../engine/Game.js';
 import { Enemy } from '../entities/enemies/Enemy.js';
 import { audioManager } from '../engine/AudioManager.js';
-import { triggerBossSpawnSequence } from '../systems/WaveManager.js';
+import { triggerBossSpawnSequence, startWave } from '../systems/WaveManager.js';
 import { getAllBosses } from '../data/bossRegistry.js';
 import { getAllEnemies } from '../data/enemyRegistry.js';
 import { spawnExplosion } from '../entities/effects/spawnExplosion.js';
@@ -103,7 +103,11 @@ export function showUpgradeMenu() {
       upg.apply(state.player);
       state.player.acquiredUpgrades = state.player.acquiredUpgrades || {};
       state.player.acquiredUpgrades[upg.id] = (state.player.acquiredUpgrades[upg.id] || 0) + 1;
-      modal.style.display = "none"; audioManager.setMusicMuffled(false);
+      if (state.player && typeof state.player.grantUpgradeInvulnerability === 'function') {
+        state.player.grantUpgradeInvulnerability();
+      }
+      modal.style.display = "none"; 
+      audioManager.setMusicMuffled(false);
       state.isPaused = false;
     };
     container.appendChild(card);
@@ -407,6 +411,17 @@ export function initUIListeners() {
     };
   }
 
+  const adminTriggerWave = document.getElementById("adminTriggerWave");
+  if (adminTriggerWave) {
+    adminTriggerWave.onclick = () => {
+      startWave(20);
+      adminModal.style.display = "none";
+      optionsModal.style.display = "none";
+      audioManager.setMusicMuffled(false);
+      state.isPaused = false;
+    };
+  }
+
   document.getElementById("adminKillAll").onclick = () => {
     state.enemies.forEach(e => e.takeDamage(e.hp));
   };
@@ -675,6 +690,36 @@ export function updateHUD() {
   document.getElementById("hudKills").innerText = state.killCount;
   renderBossBars();
 
+  // Shield HUD
+  const shieldContainer = document.getElementById("hudShieldContainer");
+  if (shieldContainer) {
+    if (state.player.shield && state.player.shield.unlocked) {
+      shieldContainer.style.display = "flex";
+      const pipsContainer = document.getElementById("hudShieldPips");
+      const textElem = document.getElementById("hudShieldText");
+      const charges = state.player.shield.charges;
+      const maxCharges = state.player.shield.maxCharges;
+      const chargeColor = state.player.getShieldColor(charges);
+      
+      if (textElem) {
+        textElem.innerText = `${charges} / ${maxCharges}`;
+        textElem.style.color = charges > 0 ? chargeColor : "#718096";
+      }
+      if (pipsContainer) {
+        let pipsHtml = "";
+        for (let i = 0; i < maxCharges; i++) {
+          const isFilled = i < charges;
+          const pipColor = isFilled ? chargeColor : "rgba(255, 255, 255, 0.15)";
+          const shadow = isFilled ? `box-shadow: 0 0 6px ${chargeColor};` : "";
+          pipsHtml += `<div style="width: 8px; height: 8px; border-radius: 50%; background: ${pipColor}; ${shadow}"></div>`;
+        }
+        pipsContainer.innerHTML = pipsHtml;
+      }
+    } else {
+      shieldContainer.style.display = "none";
+    }
+  }
+
   // Update Testing Panel (if present and active)
   const testDamageElem = document.getElementById("testTotalDamage");
   const testDpsElem = document.getElementById("testTotalDPS");
@@ -696,7 +741,9 @@ export function updateHUD() {
       orbitals: "#ff00ff",
       nova: "#ffffff",
       shockwave: "#00ffb4",
-      missiles: "#ff4400"
+      missiles: "#ff4400",
+      laserCannon: "#00ff66",
+      shield: "#00aaff"
     };
     let weaponsHtml = "";
     for (let key in state.damageStats) {
@@ -853,6 +900,9 @@ export function showBossRewardMenu(bossName) {
   // Close logic
   modal.onclick = () => {
     if (picksLeft <= 0 || cardsProcessed === choices.length) {
+      if (state.player && typeof state.player.grantUpgradeInvulnerability === 'function') {
+        state.player.grantUpgradeInvulnerability();
+      }
       modal.style.display = "none";
       particles.innerHTML = "";
       state.isPaused = false;

@@ -18,13 +18,17 @@ export class Player {
     this.radius = 16;
     this.baseSpeed = 3.8;
     this.speed = 3.8;
+    this.speedUpgradesCount = 0;
     this.maxHp = 100;
     this.hp = 100;
+    this.hullUpgradesCount = 0;
     this.hpRegen = 0;
+    this.regenUpgradesCount = 0;
     this.level = 1;
     this.xp = 0;
     this.nextXp = 10;
     this.pickupRadius = 130;
+    this.magnetUpgrades = 0;
     this.angle = 0;
     this.hasRevivedOnce = false;
     
@@ -37,7 +41,9 @@ export class Player {
 
     this.slowTimer = 0;
     this.damageMult = 1.0;
+    this.damageUpgradesCount = 0;
     this.cooldownMult = 1.0;
+    this.blasterRateUpgrades = 0;
     this.critChance = 0.0;
     this.critDamage = 1.5;
     this.xpMultiplier = 1.0;
@@ -58,14 +64,71 @@ export class Player {
       color: '#ffff00'
     };
 
+    this.shield = {
+      unlocked: false,
+      charges: 0,
+      maxCharges: 1,
+      rechargeTimer: 0,
+      baseRechargeTime: 12,
+      rechargeSpeedMult: 1.0,
+      damageBonusUpgrades: 0,
+      rateBonusUpgrades: 0,
+      rechargeUpgrades: 0,
+      explodeOnBreak: false,
+      explodeRadius: 240,
+      explodeDamage: 1200,
+      saveChargeChance: 0.0,
+      saveChanceUpgrades: 0,
+      extraChargesUpgrades: 0
+    };
+
     this.weapons = {
       blaster: { level: 1, timer: 0, cooldown: 60, projectileCount: 1, damage: 22, range: 500, speed: 12, homing: 0, homingUpgrades: 0 },
-      orbitals: { level: 0, count: 2, radius: 120, angle: 0, speed: 0.05, damage: 35, tickTimer: 0, tickInterval: 10, size: 12 },
+      orbitals: { level: 0, count: 2, radius: 120, angle: 0, speed: 0.05, damage: 35, tickTimer: 0, tickInterval: 10, size: 12, countUpgrades: 0, sizeUpgrades: 0, speedUpgrades: 0 },
       nova: { level: 0, count: 6, timer: 0, cooldown: 400, speed: 6, spiral: false },
-      shockwave: { level: 0, timer: 0, cooldown: 230, radius: 175, damage: 150 },
-      missiles: { level: 0, count: 6, timer: 0, cooldown: 220, speed: 7, homing: 0.05, aoe: 70, damage: 23 },
-      laserCannon: { level: 0, chargeTimer: 0, maxCharge: 1140, fullyCharged: false, damage: 250, width: 25, duration: 24, chargeSpeedMult: 1, damageMult: 1, widthMult: 1, subLasers: false, dot: false, dotDamage: 20, dotDuration: 5, tickDamage: false, soundNode: null }
+      shockwave: { level: 0, timer: 0, cooldown: 230, radius: 175, damage: 150, rangeUpgrades: 0, rateUpgrades: 0 },
+      missiles: { level: 0, count: 6, timer: 0, cooldown: 220, speed: 7, homing: 0.05, aoe: 70, damage: 23, countUpgrades: 0, speedUpgrades: 0, homingUpgrade: false, aoeUpgrades: 0 },
+      laserCannon: { level: 0, chargeTimer: 0, maxCharge: 1140, fullyCharged: false, damage: 250, width: 25, duration: 24, chargeSpeedMult: 1, damageMult: 1, widthMult: 1, subLasers: false, dot: false, dotDamage: 20, dotDuration: 5, tickDamage: false, soundNode: null, chargeUpgrades: 0, dmgUpgrades: 0, widthUpgrades: 0, lifeUpgrades: 0, dotUpgrades: 0 }
     };
+  }
+
+  unlockShield() {
+    this.shield.unlocked = true;
+    this.shield.charges = this.shield.maxCharges;
+    this.shield.rechargeTimer = 0;
+  }
+
+  hasActiveShield() {
+    return !!(this.shield && this.shield.unlocked && this.shield.charges > 0);
+  }
+
+  getShieldColor(charges = (this.shield ? this.shield.charges : 1)) {
+    if (charges >= 3) return "#ffffff"; // 3 cargas: blanco
+    if (charges === 2) return "#70d6ff"; // 2 cargas: celeste
+    return "#00aaff"; // 1 carga: azul
+  }
+
+  getShieldTargetRechargeColor() {
+    if (!this.shield) return "#00aaff";
+    const nextCharge = Math.min(this.shield.maxCharges, this.shield.charges + 1);
+    return this.getShieldColor(nextCharge);
+  }
+
+  getEffectiveDamageMult() {
+    let mult = this.damageMult;
+    if (this.hasActiveShield()) {
+      mult += (this.shield.damageBonusUpgrades || 0) * 0.05;
+    }
+    return mult;
+  }
+
+  getEffectiveCooldownMult() {
+    let mult = this.cooldownMult;
+    if (this.hasActiveShield()) {
+      const speedBonus = (this.shield.rateBonusUpgrades || 0) * 0.05;
+      mult = mult / (1 + speedBonus);
+    }
+    return mult;
   }
 
   update(dt) {
@@ -77,6 +140,26 @@ export class Player {
       this.hp = Math.min(this.maxHp, this.hp + this.hpRegen * dt);
     }
 
+    // Shield passive recharge
+    if (this.shield && this.shield.unlocked) {
+      if (this.shield.charges < this.shield.maxCharges) {
+        this.shield.rechargeTimer += dt * this.shield.rechargeSpeedMult;
+        if (this.shield.rechargeTimer >= this.shield.baseRechargeTime) {
+          this.shield.rechargeTimer = 0;
+          this.shield.charges = Math.min(this.shield.maxCharges, this.shield.charges + 1);
+          const cColor = this.getShieldColor(this.shield.charges);
+          if (state.floatingTextPool) {
+            state.floatingTextPool.acquire(this.x, this.y - 25, "+1 ESCUDO", cColor, 14);
+          }
+          audioManager.playSound('hit_satellite', { volume: 0.6, pitch: 1.4, throttleMs: 100 });
+          spawnExplosion(this.x, this.y, cColor, 12, 2.0);
+          updateHUD();
+        }
+      } else {
+        this.shield.rechargeTimer = 0;
+      }
+    }
+
     if (this.slowTimer > 0) {
       this.slowTimer--;
       this.speed = this.baseSpeed * 0.75;
@@ -86,6 +169,9 @@ export class Player {
 
     if (this.activeSkill && this.activeSkill.isActive && this.activeSkill.id === 'dash') {
       this.speed *= 2.5;
+      if (state.particlePool && Math.random() < 0.65) {
+        state.particlePool.acquire(this.x + (Math.random() * 10 - 5), this.y + (Math.random() * 10 - 5), this.activeSkill.color || "#ffff00", 3, 0.08, 3.5);
+      }
     }
 
     const move = getMovementVector();
@@ -177,7 +263,7 @@ export class Player {
     const w = this.weapons.blaster;
     if (w.level <= 0) return;
     w.timer++;
-    if (w.timer >= w.cooldown * this.cooldownMult) {
+    if (w.timer >= w.cooldown * this.getEffectiveCooldownMult()) {
       w.timer = 0;
       this.fireBlaster();
     }
@@ -205,7 +291,7 @@ export class Player {
 
     const baseAngle = closest ? Math.atan2(closest.y - this.y, closest.x - this.x) : this.angle;
     const count = w.projectileCount;
-    const dmg = w.damage * this.damageMult;
+    const dmg = w.damage * this.getEffectiveDamageMult();
     const homing = w.homing || 0;
 
     for (let i = 0; i < count; i++) {
@@ -243,10 +329,11 @@ export class Player {
         const ox = this.x + Math.cos(curAng) * w.radius;
         const oy = this.y + Math.sin(curAng) * w.radius;
         const orbRadius = w.size;
-        const orbDmg = w.damage * this.damageMult;
+        const orbDmg = w.damage * this.getEffectiveDamageMult();
 
         // Query spatial grid for nearby enemies
         state.spatialGrid.queryRadius(ox, oy, orbRadius, (e) => {
+          if (e.hp <= 0) return;
           e.takeDamage(orbDmg, "#ff00ff");
           state.recordDamage('orbitals', orbDmg);
           spawnExplosion(ox, oy, "#ff00ff", 3, 1.5);
@@ -277,9 +364,9 @@ export class Player {
     const w = this.weapons.shockwave;
     if (w.level <= 0) return;
     w.timer++;
-    if (w.timer >= w.cooldown * this.cooldownMult) {
+    if (w.timer >= w.cooldown * this.getEffectiveCooldownMult()) {
       w.timer = 0;
-      state.shockwaves.push(new Shockwave(this.x, this.y, w.radius, w.damage * this.damageMult));
+      state.shockwaves.push(new Shockwave(this.x, this.y, w.radius, w.damage * this.getEffectiveDamageMult()));
       audioManager.playSound('fire_shockwave', { volume: 0.7, throttleMs: 100 });
     }
   }
@@ -288,7 +375,7 @@ export class Player {
     const w = this.weapons.nova;
     if (w.level <= 0) return;
     w.timer++;
-    if (w.timer >= w.cooldown * this.cooldownMult) {
+    if (w.timer >= w.cooldown * this.getEffectiveCooldownMult()) {
       w.timer = 0;
       this.fireNova();
     }
@@ -296,7 +383,7 @@ export class Player {
 
   fireNova() {
     const w = this.weapons.nova;
-    const damage = this.weapons.blaster.damage * 1.5 * this.damageMult;
+    const damage = this.weapons.blaster.damage * 1.5 * this.getEffectiveDamageMult();
     for (let i = 0; i < w.count; i++) {
       const a = (i * 2 * Math.PI) / w.count;
       state.projectiles.push(new NovaProjectile(
@@ -316,7 +403,7 @@ export class Player {
     if (w.level <= 0) return;
     
     w.timer++;
-    if (w.timer >= w.cooldown * this.cooldownMult) {
+    if (w.timer >= w.cooldown * this.getEffectiveCooldownMult()) {
       w.timer = 0;
       this.missilesQueue = w.count;
     }
@@ -340,7 +427,7 @@ export class Player {
       this.y,
       Math.cos(angle) * w.speed,
       Math.sin(angle) * w.speed,
-      w.damage * this.damageMult,
+      w.damage * this.getEffectiveDamageMult(),
       w.homing,
       w.aoe
     ));
@@ -373,7 +460,8 @@ export class Player {
          if (res) w.soundNode = res.source;
       }
 
-      w.chargeTimer += w.chargeSpeedMult;
+      const rateMult = this.hasActiveShield() ? (1 + (this.shield.rateBonusUpgrades || 0) * 0.05) : 1;
+      w.chargeTimer += w.chargeSpeedMult * rateMult;
       
       const chargeRatio = w.chargeTimer / w.maxCharge;
       if (Math.random() < chargeRatio * 0.8 && state.particlePool) {
@@ -448,9 +536,10 @@ export class Player {
            state.camera.setAimOffset(0, 0);
          }
          
+         const effectiveLaserDmg = w.damage * w.damageMult * this.getEffectiveDamageMult();
          state.laserBeams.push(new LaserBeam(
             this.x, this.y, angle, 
-            w.damage * w.damageMult, 
+            effectiveLaserDmg, 
             w.width * w.widthMult, 
             w.duration, 
             false, 
@@ -461,7 +550,7 @@ export class Player {
          
          if (w.subLasers) {
              const subWidth = (w.width * w.widthMult) * 0.25;
-             const subDmg = (w.damage * w.damageMult) * 0.25;
+             const subDmg = effectiveLaserDmg * 0.25;
              state.laserBeams.push(new LaserBeam(
                 this.x, this.y, angle - Math.PI / 6, 
                 subDmg, subWidth, w.duration, true, 
@@ -502,7 +591,44 @@ export class Player {
   takeDamage(amount, damageColor = "#ff2255") {
     if (state.godMode) return;
     if (this.invulnerabilityTimer > 0) return;
+    if (this.activeSkill && this.activeSkill.isActive && this.activeSkill.id === 'dash') return;
     
+    // Check Active Shield
+    if (this.hasActiveShield()) {
+      const activeColor = this.getShieldColor(this.shield.charges);
+      const isSaved = Math.random() < (this.shield.saveChargeChance || 0);
+
+      if (!isSaved) {
+        this.shield.charges = Math.max(0, this.shield.charges - 1);
+      }
+
+      // Halve invulnerability time when taking damage with shield active
+      this.invulnerabilityTimer = this.invulnerabilityMaxTime / 2;
+
+      // Trigger shield explosion if rare upgrade acquired (or standard burst)
+      if (this.shield.explodeOnBreak) {
+        this.triggerShieldExplosion(activeColor);
+      } else {
+        spawnExplosion(this.x, this.y, activeColor, 18, 3.0);
+      }
+
+      if (state.camera && typeof state.camera.shake === 'function') {
+        state.camera.shake({ strength: 8, duration: 0.25, rotation: 0.03, scale: 0.02 });
+      }
+
+      if (isSaved) {
+        if (state.floatingTextPool) {
+          state.floatingTextPool.acquire(this.x, this.y - 25, "DEFLECTED!", activeColor, 15);
+        }
+        audioManager.playSound('hit_satellite', { volume: 0.7, pitch: 1.3, throttleMs: 50 });
+      } else {
+        audioManager.playSound('hit_satellite', { volume: 0.6, pitch: 0.9, throttleMs: 50 });
+      }
+
+      updateHUD();
+      return; // Damage to HP fully prevented!
+    }
+
     this.hp -= amount;
     this.invulnerabilityTimer = this.invulnerabilityMaxTime;
     const offsetX = (Math.random() * 2 - 1) * (this.radius * 0.8);
@@ -524,6 +650,47 @@ export class Player {
       triggerGameOver();
     }
     updateHUD();
+  }
+
+  triggerShieldExplosion(color) {
+    const explosionRadius = this.shield.explodeRadius || 240;
+    const explosionDamage = (this.shield.explodeDamage || 1200) * this.getEffectiveDamageMult();
+
+    // Visual Explosion in matching charge color
+    spawnExplosion(this.x, this.y, color, 35, 4.5);
+    
+    // Add expanding visual shockwave in charge color
+    state.shockwaves.push(new Shockwave(this.x, this.y, explosionRadius, explosionDamage, color, 'shield'));
+    audioManager.playSound('fire_shockwave', { volume: 0.8, throttleMs: 50 });
+    
+    // Query spatial grid for enemies
+    state.spatialGrid.queryRadius(this.x, this.y, explosionRadius, (e) => {
+      if (e.hp <= 0) return;
+      e.takeDamage(explosionDamage, color);
+      state.recordDamage('shield', explosionDamage);
+    });
+
+    // Check Bosses
+    for (let b of state.bosses) {
+      const damagedParents = new Set();
+      for (let t of b.getTargetables()) {
+        const actualTarget = t.parent || t;
+        if (damagedParents.has(actualTarget)) continue;
+
+        if (dist(this.x, this.y, t.x, t.y) < explosionRadius + t.radius) {
+          t.takeDamage(explosionDamage, color);
+          state.recordDamage('shield', explosionDamage);
+          damagedParents.add(actualTarget);
+        }
+      }
+    }
+  }
+
+  grantUpgradeInvulnerability() {
+    const statTime = this.invulnerabilityMaxTime || 1.5;
+    if (this.invulnerabilityTimer <= statTime) {
+      this.invulnerabilityTimer += statTime;
+    }
   }
 
   gainXP(val) {
@@ -553,38 +720,72 @@ export class Player {
   resetUpgrades() {
     this.baseSpeed = 3.8;
     this.speed = 3.8;
+    this.speedUpgradesCount = 0;
     this.hpRegen = 0;
+    this.regenUpgradesCount = 0;
     this.pickupRadius = 130;
+    this.magnetUpgrades = 0;
     this.invulnerabilityMaxTime = 1.5;
     this.iFrameUpgradesCount = 0;
     this.damageMult = 1.0;
+    this.damageUpgradesCount = 0;
     this.cooldownMult = 1.0;
+    this.blasterRateUpgrades = 0;
+    this.critChance = 0.0;
+    this.critDamage = 1.5;
+    this.xpMultiplier = 1.0;
     this.doubleGemChance = 0;
     this.doubleGemUpgradesCount = 0;
     this.acquiredUpgrades = {};
     this.maxHp = 100;
     this.hp = Math.min(this.hp, 100);
+    this.hullUpgradesCount = 0;
+
+    this.missilesQueue = 0;
+    this.missileFireTimer = 0;
+
+    state.spawnRateMultiplier = 1.0;
+
+    this.shield = {
+      unlocked: false,
+      charges: 0,
+      maxCharges: 1,
+      rechargeTimer: 0,
+      baseRechargeTime: 12,
+      rechargeSpeedMult: 1.0,
+      damageBonusUpgrades: 0,
+      rateBonusUpgrades: 0,
+      rechargeUpgrades: 0,
+      explodeOnBreak: false,
+      explodeRadius: 240,
+      explodeDamage: 1200,
+      saveChargeChance: 0.0,
+      saveChanceUpgrades: 0,
+      extraChargesUpgrades: 0
+    };
+
     this.activeSkill = {
-      id: null,
-      level: 0,
+      id: 'dash',
+      level: 1,
       timer: 0,
-      cooldown: 0,
-      duration: 0,
+      cooldown: 3, 
+      duration: 0.5, 
       activeTimer: 0,
       isActive: false,
-      emoji: '?',
-      color: '#fff'
+      emoji: '⚡',
+      color: '#ffff00'
     };
+
     this.weapons = {
-      blaster: { level: 1, timer: 0, cooldown: 35, projectileCount: 1, damage: 22, range: 500, speed: 9, homing: 0, homingUpgrades: 0 },
-      orbitals: { level: 0, count: 2, radius: 70, angle: 0, speed: 0.05, damage: 14, tickTimer: 0, tickInterval: 12, size: 8 },
-      nova: { level: 0, count: 8, timer: 0, cooldown: 120, speed: 6, spiral: false },
-      shockwave: { level: 0, timer: 0, cooldown: 180, radius: 175, damage: 48 },
-      missiles: { level: 0, count: 6, timer: 0, cooldown: 90, speed: 7, homing: 0.05, aoe: 50, damage: 35 },
-      laserCannon: { level: 0, chargeTimer: 0, maxCharge: 1140, fullyCharged: false, damage: 250, width: 25, duration: 24, chargeSpeedMult: 1, damageMult: 1, widthMult: 1, subLasers: false, dot: false, dotDamage: 20, dotDuration: 5, tickDamage: false, soundNode: null }
+      blaster: { level: 1, timer: 0, cooldown: 60, projectileCount: 1, damage: 22, range: 500, speed: 12, homing: 0, homingUpgrades: 0 },
+      orbitals: { level: 0, count: 2, radius: 120, angle: 0, speed: 0.05, damage: 35, tickTimer: 0, tickInterval: 10, size: 12, countUpgrades: 0, sizeUpgrades: 0, speedUpgrades: 0 },
+      nova: { level: 0, count: 6, timer: 0, cooldown: 400, speed: 6, spiral: false },
+      shockwave: { level: 0, timer: 0, cooldown: 230, radius: 175, damage: 150, rangeUpgrades: 0, rateUpgrades: 0 },
+      missiles: { level: 0, count: 6, timer: 0, cooldown: 220, speed: 7, homing: 0.05, aoe: 70, damage: 23, countUpgrades: 0, speedUpgrades: 0, homingUpgrade: false, aoeUpgrades: 0 },
+      laserCannon: { level: 0, chargeTimer: 0, maxCharge: 1140, fullyCharged: false, damage: 250, width: 25, duration: 24, chargeSpeedMult: 1, damageMult: 1, widthMult: 1, subLasers: false, dot: false, dotDamage: 20, dotDuration: 5, tickDamage: false, soundNode: null, chargeUpgrades: 0, dmgUpgrades: 0, widthUpgrades: 0, lifeUpgrades: 0, dotUpgrades: 0 }
     };
-    this.magnetUpgrades = 0;
-    this.blasterRateUpgrades = 0;
+
+    updateAimJoystickUI();
   }
 
   draw(ctx) {
@@ -641,10 +842,23 @@ export class Player {
       ctx.restore();
     }
 
+    // Draw active shield aura around player
+    if (this.hasActiveShield()) {
+      this.drawShieldAura(ctx);
+    }
+
     if (this.invulnerabilityTimer > 0 && Math.floor(performance.now() / 80) % 2 === 0) {
       // Blinking i-frame
     } else {
-      if (textures['player_ship']) {
+      if (this.activeSkill && this.activeSkill.isActive && this.activeSkill.id === 'dash') {
+        ctx.save();
+        ctx.shadowColor = this.activeSkill.color || "#ffff00";
+        ctx.shadowBlur = 18;
+        if (textures['player_ship']) {
+          drawCachedTexture(ctx, textures['player_ship'], this.x, this.y, this.angle);
+        }
+        ctx.restore();
+      } else if (textures['player_ship']) {
         drawCachedTexture(ctx, textures['player_ship'], this.x, this.y, this.angle);
       }
     }
@@ -664,6 +878,49 @@ export class Player {
 
     // Draw Laser Cannon charge bar under player
     this.drawLaserChargeBar(ctx);
+
+    // Draw Shield Recharge Cooldown Bar directly below laser bar
+    this.drawShieldRechargeBar(ctx);
+  }
+
+  drawShieldAura(ctx) {
+    const chargeColor = this.getShieldColor(this.shield.charges);
+    const shieldRadius = this.radius + 10;
+    const t = performance.now() * 0.003;
+    const pulse = Math.sin(t * 3) * 1.5;
+
+    ctx.save();
+    ctx.shadowColor = chargeColor;
+    ctx.shadowBlur = 12 + Math.abs(pulse) * 3;
+    ctx.strokeStyle = chargeColor;
+    ctx.lineWidth = 2;
+    
+    // Outer shield perimeter
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, shieldRadius + pulse, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // Translucent shield energy fill
+    ctx.fillStyle = chargeColor;
+    ctx.globalAlpha = 0.06 + (this.shield.charges * 0.04);
+    ctx.fill();
+    ctx.globalAlpha = 1.0;
+
+    // Orbiting charge indicator pips around shield rim
+    const charges = this.shield.charges;
+    for (let i = 0; i < charges; i++) {
+      const pipAngle = t * 2 + (i * 2 * Math.PI / charges);
+      const px = this.x + Math.cos(pipAngle) * (shieldRadius + 4);
+      const py = this.y + Math.sin(pipAngle) * (shieldRadius + 4);
+
+      ctx.beginPath();
+      ctx.arc(px, py, 2.5, 0, Math.PI * 2);
+      ctx.fillStyle = chargeColor;
+      ctx.shadowBlur = 8;
+      ctx.fill();
+    }
+
+    ctx.restore();
   }
 
   drawLaserChargeBar(ctx) {
@@ -745,6 +1002,53 @@ export class Player {
         }
         ctx.fill();
       }
+    }
+
+    ctx.restore();
+  }
+
+  drawShieldRechargeBar(ctx) {
+    if (!this.shield || !this.shield.unlocked) return;
+    if (this.shield.charges >= this.shield.maxCharges) return;
+
+    const hasLaser = this.weapons.laserCannon && this.weapons.laserCannon.level > 0;
+    const barWidth = 36;
+    const barHeight = 4;
+    const barX = this.x - barWidth / 2;
+    const barY = hasLaser ? (this.y + 32) : (this.y + 24);
+    const radius = 2;
+
+    const chargeColor = this.getShieldTargetRechargeColor();
+    const rechargeRatio = Math.min(1.0, Math.max(0.0, this.shield.rechargeTimer / this.shield.baseRechargeTime));
+
+    ctx.save();
+    ctx.shadowColor = chargeColor;
+    ctx.shadowBlur = 4;
+    ctx.fillStyle = "rgba(10, 20, 25, 0.75)";
+    ctx.strokeStyle = chargeColor;
+    ctx.lineWidth = 1;
+
+    ctx.beginPath();
+    if (ctx.roundRect) {
+      ctx.roundRect(barX, barY, barWidth, barHeight, radius);
+    } else {
+      ctx.rect(barX, barY, barWidth, barHeight);
+    }
+    ctx.fill();
+    ctx.stroke();
+
+    // Progressive fill in target charge color
+    const fillW = Math.max(0, barWidth * rechargeRatio);
+    if (fillW > 0) {
+      ctx.fillStyle = chargeColor;
+      ctx.shadowBlur = 6;
+      ctx.beginPath();
+      if (ctx.roundRect) {
+        ctx.roundRect(barX, barY, fillW, barHeight, radius);
+      } else {
+        ctx.rect(barX, barY, fillW, barHeight);
+      }
+      ctx.fill();
     }
 
     ctx.restore();
