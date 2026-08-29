@@ -660,19 +660,23 @@ export function initUIListeners() {
     adminSubModal.style.display = "flex";
   };
 
-  // Global sound listeners for UI
+  // Global sound listeners for UI (filtrado para evitar traversals innecesarios en movimiento de mouse)
   document.body.addEventListener('mousedown', (e) => {
-    if (e.target.closest('.card') || e.target.closest('button') || e.target.closest('#options-btn') || e.target.closest('#pause-btn') || e.target.closest('.pause-btn') || e.target.closest('input[type="checkbox"]')) {
+    const target = e.target;
+    if (!target) return;
+    if (target.tagName === 'BUTTON' || target.tagName === 'INPUT' || target.closest('.card, .hud-btn, #options-btn, #pause-btn, .pause-btn, #btnRevive, #btnReroll')) {
       audioManager.playSound('ui_click', { volume: 0.8, throttleMs: 50 });
     }
   });
 
   document.body.addEventListener('mouseover', (e) => {
-    const target = e.target.closest('.card') || e.target.closest('button') || e.target.closest('#options-btn') || e.target.closest('#pause-btn') || e.target.closest('.pause-btn');
-    if (target && !target._hasHoverSound) {
-      target._hasHoverSound = true;
+    const target = e.target;
+    if (!target || target.tagName === 'BODY' || target.tagName === 'CANVAS') return;
+    const btn = target.closest('.card, button, .hud-btn, #options-btn, #pause-btn, .pause-btn, #btnRevive, #btnReroll');
+    if (btn && !btn._hasHoverSound) {
+      btn._hasHoverSound = true;
       audioManager.playSound('ui_hover', { volume: 0.5, throttleMs: 50 });
-      target.addEventListener('mouseleave', () => target._hasHoverSound = false, {once:true});
+      btn.addEventListener('mouseleave', () => btn._hasHoverSound = false, { once: true });
     }
   });
 }
@@ -744,32 +748,137 @@ export function revivePlayer() {
   updateHUD();
 }
 
+function updateTestingPanelHUD() {
+  const d = getDom();
+  if (!d.testDamageElem || !d.testDpsElem || !d.weaponsContainer) return;
+
+  let totalDamage = 0;
+  for (let key in state.damageStats) {
+    totalDamage += state.damageStats[key];
+  }
+  const totalDPS = state.gameTime > 0 ? (totalDamage / state.gameTime).toFixed(1) : "0.0";
+  const roundedDmg = Math.round(totalDamage);
+
+  // Firma ligera para dirty check
+  let testSig = `${roundedDmg}_${totalDPS}`;
+  for (let key in state.damageStats) {
+    testSig += `_${Math.round(state.damageStats[key])}`;
+  }
+
+  if (_uiCache.testSignature === testSig) return;
+  _uiCache.testSignature = testSig;
+
+  d.testDamageElem.textContent = roundedDmg;
+  d.testDpsElem.textContent = totalDPS;
+
+  const weaponColors = {
+    blaster: "#00ffff",
+    orbitals: "#ff00ff",
+    nova: "#ffffff",
+    shockwave: "#00ffb4",
+    missiles: "#ff4400",
+    laserCannon: "#00ff66",
+    shield: "#00aaff"
+  };
+  let weaponsHtml = "";
+  for (let key in state.damageStats) {
+    const dmg = state.damageStats[key];
+    if (dmg > 0) {
+      const dps = state.gameTime > 0 ? (dmg / state.gameTime).toFixed(1) : "0.0";
+      const percent = totalDamage > 0 ? ((dmg / totalDamage) * 100).toFixed(1) : 0;
+      const barColor = weaponColors[key] || "#00ffff";
+      weaponsHtml += `
+        <div style="margin-top: 8px;">
+          <div style="display: flex; justify-content: space-between; font-size: 11px;">
+            <span style="text-transform: capitalize; color: ${barColor}">${key}</span>
+            <span>${Math.round(dmg)} (${dps}/s)</span>
+          </div>
+          <div style="width: 100%; height: 5px; background: rgba(255,255,255,0.2); margin-top: 2px;">
+            <div style="width: ${percent}%; height: 100%; background: ${barColor}; box-shadow: 0 0 5px ${barColor};"></div>
+          </div>
+        </div>
+      `;
+    }
+  }
+  d.weaponsContainer.innerHTML = weaponsHtml;
+}
+
 export function updateHUD() {
   if (!state.player) return;
-  document.getElementById("hudLevel").innerText = `LVL ${state.player.level}`;
-  document.getElementById("hudXpBar").style.width = `${Math.min(100, (state.player.xp / state.player.nextXp) * 100)}%`;
-  document.getElementById("hudHpBar").style.width = `${Math.max(0, (state.player.hp / state.player.maxHp) * 100)}%`;
-  document.getElementById("hudHpText").innerText = `${Math.ceil(state.player.hp)} / ${state.player.maxHp}`;
-  document.getElementById("hudTime").innerText = formatTime(state.gameTime);
-  document.getElementById("hudKills").innerText = state.killCount;
+  const d = getDom();
+  const player = state.player;
+
+  // 1. Level (Dirty checked)
+  if (_uiCache.level !== player.level) {
+    _uiCache.level = player.level;
+    if (d.hudLevel) d.hudLevel.textContent = `LVL ${player.level}`;
+  }
+
+  // 2. XP Bar (Dirty checked)
+  const xpPct = Math.min(100, (player.xp / player.nextXp) * 100).toFixed(1);
+  if (_uiCache.xpPct !== xpPct) {
+    _uiCache.xpPct = xpPct;
+    if (d.hudXpBar) d.hudXpBar.style.width = `${xpPct}%`;
+  }
+
+  // 3. HP Bar & Text (Dirty checked)
+  const hpCeil = Math.ceil(player.hp);
+  const hpPct = Math.max(0, (player.hp / player.maxHp) * 100).toFixed(1);
+  if (_uiCache.hpPct !== hpPct) {
+    _uiCache.hpPct = hpPct;
+    if (d.hudHpBar) d.hudHpBar.style.width = `${hpPct}%`;
+  }
+
+  const hpText = `${hpCeil} / ${player.maxHp}`;
+  if (_uiCache.hpText !== hpText) {
+    _uiCache.hpText = hpText;
+    if (d.hudHpText) d.hudHpText.textContent = hpText;
+  }
+
+  // 4. Time (Dirty checked - updates at most once per second)
+  const timeText = formatTime(state.gameTime);
+  if (_uiCache.timeText !== timeText) {
+    _uiCache.timeText = timeText;
+    if (d.hudTime) d.hudTime.textContent = timeText;
+  }
+
+  // 5. Kills (Dirty checked)
+  if (_uiCache.kills !== state.killCount) {
+    _uiCache.kills = state.killCount;
+    if (d.hudKills) d.hudKills.textContent = state.killCount;
+  }
+
+  // 6. Boss Bars (Smart diff / keyed signature)
   renderBossBars();
 
-  // Shield HUD
-  const shieldContainer = document.getElementById("hudShieldContainer");
-  if (shieldContainer) {
-    if (state.player.shield && state.player.shield.unlocked) {
-      shieldContainer.style.display = "flex";
-      const pipsContainer = document.getElementById("hudShieldPips");
-      const textElem = document.getElementById("hudShieldText");
-      const charges = state.player.shield.charges;
-      const maxCharges = state.player.shield.maxCharges;
-      const chargeColor = state.player.getShieldColor(charges);
-      
-      if (textElem) {
-        textElem.innerText = `${charges} / ${maxCharges}`;
-        textElem.style.color = charges > 0 ? chargeColor : "#718096";
+  // 7. Shield HUD (Dirty checked)
+  const isShieldUnlocked = !!(player.shield && player.shield.unlocked);
+  if (_uiCache.shieldVisible !== isShieldUnlocked) {
+    _uiCache.shieldVisible = isShieldUnlocked;
+    if (d.hudShieldContainer) {
+      d.hudShieldContainer.style.display = isShieldUnlocked ? "flex" : "none";
+    }
+  }
+
+  if (isShieldUnlocked) {
+    const charges = player.shield.charges;
+    const maxCharges = player.shield.maxCharges;
+    const chargeColor = player.getShieldColor(charges);
+    const shieldText = `${charges} / ${maxCharges}`;
+
+    if (_uiCache.shieldText !== shieldText || _uiCache.shieldColor !== chargeColor) {
+      _uiCache.shieldText = shieldText;
+      _uiCache.shieldColor = chargeColor;
+      if (d.hudShieldText) {
+        d.hudShieldText.textContent = shieldText;
+        d.hudShieldText.style.color = charges > 0 ? chargeColor : "#718096";
       }
-      if (pipsContainer) {
+    }
+
+    const pipsKey = `${charges}_${maxCharges}_${chargeColor}`;
+    if (_uiCache.shieldPipsHtml !== pipsKey) {
+      _uiCache.shieldPipsHtml = pipsKey;
+      if (d.hudShieldPips) {
         let pipsHtml = "";
         for (let i = 0; i < maxCharges; i++) {
           const isFilled = i < charges;
@@ -777,59 +886,18 @@ export function updateHUD() {
           const shadow = isFilled ? `box-shadow: 0 0 6px ${chargeColor};` : "";
           pipsHtml += `<div style="width: 8px; height: 8px; border-radius: 50%; background: ${pipColor}; ${shadow}"></div>`;
         }
-        pipsContainer.innerHTML = pipsHtml;
+        d.hudShieldPips.innerHTML = pipsHtml;
       }
-    } else {
-      shieldContainer.style.display = "none";
     }
   }
 
-  // Update Testing Panel (if present and active)
-  const testDamageElem = document.getElementById("testTotalDamage");
-  const testDpsElem = document.getElementById("testTotalDPS");
-  const weaponsContainer = document.getElementById("testWeaponStats");
-  const testingPanel = document.getElementById("testing-panel");
-
-  if (testingPanel && testingPanel.style.display !== 'none' && testDamageElem && testDpsElem && weaponsContainer) {
-    let totalDamage = 0;
-    for (let key in state.damageStats) {
-      totalDamage += state.damageStats[key];
+  // 8. Testing Panel (Throttled to 10 FPS with dirty checking)
+  if (d.testingPanel && d.testingPanel.style.display !== 'none') {
+    const now = performance.now();
+    if (now - _uiCache.testLastUpdateTime > 100) {
+      _uiCache.testLastUpdateTime = now;
+      updateTestingPanelHUD();
     }
-    let totalDPS = state.gameTime > 0 ? (totalDamage / state.gameTime).toFixed(1) : "0.0";
-    
-    testDamageElem.innerText = Math.round(totalDamage);
-    testDpsElem.innerText = totalDPS;
-
-    const weaponColors = {
-      blaster: "#00ffff",
-      orbitals: "#ff00ff",
-      nova: "#ffffff",
-      shockwave: "#00ffb4",
-      missiles: "#ff4400",
-      laserCannon: "#00ff66",
-      shield: "#00aaff"
-    };
-    let weaponsHtml = "";
-    for (let key in state.damageStats) {
-      const dmg = state.damageStats[key];
-      if (dmg > 0) {
-        const dps = state.gameTime > 0 ? (dmg / state.gameTime).toFixed(1) : "0.0";
-        const percent = totalDamage > 0 ? ((dmg / totalDamage) * 100).toFixed(1) : 0;
-        const barColor = weaponColors[key] || "#00ffff";
-        weaponsHtml += `
-          <div style="margin-top: 8px;">
-            <div style="display: flex; justify-content: space-between; font-size: 11px;">
-              <span style="text-transform: capitalize; color: ${barColor}">${key}</span>
-              <span>${Math.round(dmg)} (${dps}/s)</span>
-            </div>
-            <div style="width: 100%; height: 5px; background: rgba(255,255,255,0.2); margin-top: 2px;">
-              <div style="width: ${percent}%; height: 100%; background: ${barColor}; box-shadow: 0 0 5px ${barColor};"></div>
-            </div>
-          </div>
-        `;
-      }
-    }
-    weaponsContainer.innerHTML = weaponsHtml;
   }
 }
 
@@ -977,24 +1045,31 @@ export function showBossRewardMenu(bossName) {
 
 export function updateActiveSkillHUD() {
   if (!state.player) return;
-  const activeSkillHud = document.getElementById("activeSkillHud");
-  const keyLabel = document.getElementById("hudActiveSkillKey");
-  if (state.player.activeSkill && state.player.activeSkill.id) {
-    activeSkillHud.style.display = "flex";
-    document.getElementById("hudActiveSkillEmoji").innerText = state.player.activeSkill.emoji;
-    const cdElement = document.getElementById("hudActiveSkillCooldown");
-    if (state.player.activeSkill.timer > 0) {
-      const pct = (state.player.activeSkill.timer / state.player.activeSkill.cooldown) * 100;
-      cdElement.style.height = `${pct}%`;
-    } else {
-      cdElement.style.height = `0%`;
-    }
+  const d = getDom();
+  const skill = state.player.activeSkill;
+  const isVisible = !!(skill && skill.id);
 
-    if (keyLabel) {
-      const isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
-      keyLabel.style.display = isTouch ? 'none' : 'block';
-    }
-  } else {
-    activeSkillHud.style.display = "none";
+  if (_uiCache.activeSkillVisible !== isVisible) {
+    _uiCache.activeSkillVisible = isVisible;
+    if (d.activeSkillHud) d.activeSkillHud.style.display = isVisible ? "flex" : "none";
+  }
+
+  if (!isVisible) return;
+
+  if (_uiCache.activeSkillEmoji !== skill.emoji) {
+    _uiCache.activeSkillEmoji = skill.emoji;
+    if (d.hudActiveSkillEmoji) d.hudActiveSkillEmoji.textContent = skill.emoji;
+  }
+
+  const pct = skill.timer > 0 ? Math.min(100, Math.round((skill.timer / skill.cooldown) * 100)) : 0;
+  if (_uiCache.activeSkillCooldownPct !== pct) {
+    _uiCache.activeSkillCooldownPct = pct;
+    if (d.hudActiveSkillCooldown) d.hudActiveSkillCooldown.style.height = `${pct}%`;
+  }
+
+  if (d.hudActiveSkillKey && _uiCache.activeSkillKeyVisible === undefined) {
+    const isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+    d.hudActiveSkillKey.style.display = isTouch ? 'none' : 'block';
+    _uiCache.activeSkillKeyVisible = !isTouch;
   }
 }

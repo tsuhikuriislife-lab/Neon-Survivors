@@ -404,6 +404,27 @@ class PooledFloatingText {
   }
 }
 
+const fontCacheBold = {};
+const fontCache900 = {};
+
+function getFontBold(size) {
+  let font = fontCacheBold[size];
+  if (!font) {
+    font = `bold ${size}px 'Segoe UI', sans-serif`;
+    fontCacheBold[size] = font;
+  }
+  return font;
+}
+
+function getFont900(size) {
+  let font = fontCache900[size];
+  if (!font) {
+    font = `900 ${size}px 'Segoe UI', sans-serif`;
+    fontCache900[size] = font;
+  }
+  return font;
+}
+
 export class FloatingTextPool {
   constructor(size = 300) {
     this.pool = new Array(size);
