@@ -1,45 +1,35 @@
+import { bitmapFont } from "../../engine/BitmapFont.js";
+
 export class FloatingText {
-  constructor(x, y, text, color = "#fff", size = 14, isCrit = false) {
+  constructor(text, x, y, size = 20, color = "#ff0000", isCrit = false) {
+    this.text = text;
     this.x = x;
     this.y = y;
-    this.text = text;
-    this.color = color;
     this.size = size;
+    this.color = color;
+    this.alpha = 1.0;
+    this.life = 60;
+    this.maxLife = 60;
+    this.vy = -1;
     this.isCrit = isCrit;
-    this.rotation = isCrit ? (Math.random() - 0.5) * 0.35 : 0;
-    this.alpha = 1;
-    this.vy = isCrit ? -1.6 : -1.2;
+    if (this.isCrit) {
+      this.vy = -2;
+      this.maxLife = 80;
+      this.life = 80;
+    }
   }
   update() {
     this.y += this.vy;
-    this.alpha -= this.isCrit ? 0.015 : 0.02;
+    this.life--;
+    if (this.life < 20) {
+      this.alpha = this.life / 20;
+    }
   }
   draw(ctx) {
-    ctx.save();
-    ctx.globalAlpha = Math.max(0, this.alpha);
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-
     if (this.isCrit) {
-      ctx.translate(this.x, this.y);
-      if (this.rotation !== 0) ctx.rotate(this.rotation);
-      ctx.font = `900 ${this.size}px 'Segoe UI', sans-serif`;
-      ctx.shadowColor = this.color;
-      ctx.shadowBlur = 12;
-      ctx.fillStyle = this.color;
-      ctx.fillText(this.text, 0, 0);
-
-      ctx.shadowBlur = 0;
-      ctx.fillStyle = "#ffffff";
-      ctx.globalAlpha = Math.max(0, this.alpha * 0.7);
-      ctx.font = `bold ${Math.max(10, this.size - 4)}px 'Segoe UI', sans-serif`;
-      ctx.fillText(this.text, 0, 0);
+      bitmapFont.drawCachedText(ctx, this.text, this.x, this.y, this.size, this.color, true, "center", "middle", this.alpha);
     } else {
-      ctx.shadowBlur = 0;
-      ctx.fillStyle = this.color;
-      ctx.font = `bold ${this.size}px 'Segoe UI', sans-serif`;
-      ctx.fillText(this.text, this.x, this.y);
+      bitmapFont.drawCachedText(ctx, this.text, this.x, this.y, this.size, this.color, true, "center", "middle", this.alpha);
     }
-    ctx.restore();
   }
 }

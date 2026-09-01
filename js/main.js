@@ -1,3 +1,4 @@
+import { bitmapFont } from "./engine/BitmapFont.js";
 import { state } from './engine/gameState.js';
 import { initInput } from './engine/Input.js';
 import { initUIListeners } from './ui/UIManager.js';
@@ -115,7 +116,10 @@ document.addEventListener("visibilitychange", () => {
 // Initial resize pass
 resize();
 
-initTextureCache();
+
+
+bitmapFont.load().then(() => {
+  initTextureCache();
 audioManager.init();
 
 const startAudio = () => {
@@ -137,3 +141,4 @@ initInput();
 initUIListeners();
 
 requestAnimationFrame((ts) => loop(ts, ctx));
+});

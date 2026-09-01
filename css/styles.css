@@ -1,3 +1,8 @@
+@font-face {
+  font-family: "Eight-Bit Exposition";
+  src: url("../assets/fonts/Eight-Bit Exposition.otf") format("opentype");
+}
+
     * {
       box-sizing: border-box;
       margin: 0;
@@ -9,7 +14,7 @@
     body {
       background-color: #000000;
       color: #fff;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      font-family: 'Eight-Bit Exposition', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       overflow: hidden;
       display: flex;
       justify-content: center;

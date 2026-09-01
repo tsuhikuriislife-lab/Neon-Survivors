@@ -26,37 +26,37 @@ export class DevourerOfTaxBoss extends Boss {
     this.vx = 0;
     this.vy = 2;
 
-    // Precalcular colores RGB estáticos para cada segmento (Zero GC en render)
+    // Precalcular colores RGB estaticos para cada segmento (Zero GC en render)
     this.segmentRgb = new Array(this.segmentCount);
     for (let i = 0; i < this.segmentCount; i++) {
       const hue = Math.floor((i / this.segmentCount) * 12) * 30;
       this.segmentRgb[i] = hslToRgb(hue / 360, 1.0, 0.55);
     }
 
-    // Físicas y Mecánicas Estilo Eater of Worlds
-    this.outsideSpeed = 14.0;       // Velocidad máxima incrementada para embestidas
-    this.minSpeed = 3.6;            // Velocidad mínima de inercia dentro de la arena
-    this.friction = 0.045;          // Tasa de desaceleración por frame dentro del mapa
-    this.outsideAccel = 0.22;       // Aceleración rápida fuera del mapa hacia outsideSpeed
-    this.speed = this.outsideSpeed; // Inicia a máxima velocidad
+    // Fisicas y Mecanicas Estilo Eater of Worlds
+    this.outsideSpeed = 14.0;       // Velocidad maxima incrementada para embestidas
+    this.minSpeed = 3.6;            // Velocidad minima de inercia dentro de la arena
+    this.friction = 0.045;          // Tasa de desaceleracion por frame dentro del mapa
+    this.outsideAccel = 0.22;       // Aceleracion rapida fuera del mapa hacia outsideSpeed
+    this.speed = this.outsideSpeed; // Inicia a maxima velocidad
     this.aiState = 'ATTACK';        // Estados: 'ATTACK', 'SEEK_EXIT', 'OUTSIDE_ACCEL', 'OUTSIDE_REENTRY'
     
-    // Relación de Giro
-    this.outsideTurnRate = 0.075;   // Giro ágil fuera del mapa para reingreso veloz
-    this.minTurnRate = 0.009;       // Velocidad angular mínima a alta velocidad dentro del mapa (arco amplio)
-    this.maxTurnRate = 0.045;       // Velocidad angular máxima a baja velocidad dentro del mapa (giro cerrado)
+    // Relacion de Giro
+    this.outsideTurnRate = 0.075;   // Giro agil fuera del mapa para reingreso veloz
+    this.minTurnRate = 0.009;       // Velocidad angular minima a alta velocidad dentro del mapa (arco amplio)
+    this.maxTurnRate = 0.045;       // Velocidad angular maxima a baja velocidad dentro del mapa (giro cerrado)
     this.turnRateFactor = 0.11;     // Factor de escala turnRate = turnRateFactor / speed dentro del mapa
 
-    // Balance de Colisiones y Daño
-    this.headDamage = 28;           // Daño directo de impacto de la cabeza
-    this.bodyDamage = 12;           // Daño reducido del cuerpo
+    // Balance de Colisiones y Dano
+    this.headDamage = 28;           // Dano directo de impacto de la cabeza
+    this.bodyDamage = 12;           // Dano reducido del cuerpo
     this.bodyHitRadius = this.radius * 0.7; // Radio permisivo de los segmentos del cuerpo
-    this.bodyHitCooldown = 0;       // Temporizador de cooldown de daño del cuerpo
+    this.bodyHitCooldown = 0;       // Temporizador de cooldown de dano del cuerpo
     this.bodyHitCooldownMax = 30;   // Cooldown en frames (0.5s) entre impactos del cuerpo
 
-    // Visibilidad Dinámica
+    // Visibilidad Dinamica
     this.proximityFadeRadius = 140; // Radio de desvanecimiento cerca del jugador
-    this.minAlphaOnPlayer = 0.22;   // Transparencia mínima cuando se superpone al jugador
+    this.minAlphaOnPlayer = 0.22;   // Transparencia minima cuando se superpone al jugador
 
     this.segments = [];
     for (let i = 0; i < this.segmentCount; i++) {
@@ -169,7 +169,7 @@ export class DevourerOfTaxBoss extends Boss {
     for (const other of otherSnakes) {
       if (!other || other.dead || other === this) continue;
 
-      // 1. Repulsión Cabeza contra Cabeza
+      // 1. Repulsion Cabeza contra Cabeza
       const dHead = dist(this.x, this.y, other.x, other.y);
       if (dHead < separationDist && dHead > 0.1) {
         const force = (1 - dHead / separationDist) * 4.0;
@@ -179,7 +179,7 @@ export class DevourerOfTaxBoss extends Boss {
         repelY += ny * force;
       }
 
-      // 2. Repulsión Cabeza contra Segmentos de la otra serpiente
+      // 2. Repulsion Cabeza contra Segmentos de la otra serpiente
       if (other.segments) {
         const checkCount = Math.min(8, other.segments.length);
         for (let i = 1; i < checkCount; i++) {
@@ -210,7 +210,7 @@ export class DevourerOfTaxBoss extends Boss {
 
     if (this.dead) return;
 
-    // Aplicar repulsión entre serpientes para evitar superposición
+    // Aplicar repulsion entre serpientes para evitar superposicion
     const { repelX, repelY } = this.applySnakeRepulsion(activeSnakes);
 
     const isOutside = (this.x < 0 || this.x > state.width || this.y < 0 || this.y > state.height);
@@ -218,16 +218,16 @@ export class DevourerOfTaxBoss extends Boss {
     let targetAngle = curAngle;
     let turnSpeed = this.minTurnRate;
 
-    // 1. Control de Estado y Navegación por Zonas
+    // 1. Control de Estado y Navegacion por Zonas
     if (isOutside) {
       if (this.speed < this.outsideSpeed - 0.3) {
-        // Fuera del mapa acelerando: sigue hacia afuera hasta alcanzar velocidad máxima
+        // Fuera del mapa acelerando: sigue hacia afuera hasta alcanzar velocidad maxima
         this.speed = Math.min(this.outsideSpeed, this.speed + this.outsideAccel);
         this.aiState = 'OUTSIDE_ACCEL';
         targetAngle = curAngle;
         turnSpeed = 0.01;
       } else {
-        // Ya alcanzó su velocidad máxima: activa el reingreso hacia el jugador
+        // Ya alcanzo su velocidad maxima: activa el reingreso hacia el jugador
         this.speed = this.outsideSpeed;
         this.aiState = 'OUTSIDE_REENTRY';
         targetAngle = Math.atan2(player.y - this.y, player.x - this.x);
@@ -249,12 +249,12 @@ export class DevourerOfTaxBoss extends Boss {
       }
 
       if (this.aiState === 'ATTACK') {
-        // Desaceleración progresiva (fricción) hasta minSpeed
+        // Desaceleracion progresiva (friccion) hasta minSpeed
         if (this.speed > this.minSpeed) {
           this.speed = Math.max(this.minSpeed, this.speed - this.friction);
         }
 
-        // Si ya perdió toda su inercia y llegó a baja velocidad -> cambiar objetivo a buscar la salida del mapa
+        // Si ya perdio toda su inercia y llego a baja velocidad -> cambiar objetivo a buscar la salida del mapa
         if (this.speed <= this.minSpeed + 0.3 && !this.isDashing) {
           this.aiState = 'SEEK_EXIT';
         }
@@ -267,7 +267,7 @@ export class DevourerOfTaxBoss extends Boss {
           turnSpeed = this.minTurnRate * 0.4;
         }
 
-        // Temporizador de embestida periódica
+        // Temporizador de embestida periodica
         this.dashTimer++;
         if (this.dashTimer >= 360) {
           this.isDashing = true;
@@ -277,10 +277,10 @@ export class DevourerOfTaxBoss extends Boss {
           audioManager.playSound('enemy_dash', { volume: 0.8 });
         }
       } else if (this.aiState === 'SEEK_EXIT') {
-        // Aceleración ligera hacia la salida
+        // Aceleracion ligera hacia la salida
         this.speed = Math.min(5.5, this.speed + 0.04);
 
-        // Apuntar a la salida de perímetro más cercana
+        // Apuntar a la salida de perimetro mas cercana
         let exitX = this.x;
         let exitY = this.y;
         const distLeft = this.x;
@@ -309,7 +309,7 @@ export class DevourerOfTaxBoss extends Boss {
       }
     }
 
-    // Desviar targetAngle suavemente por fuerza de repulsión
+    // Desviar targetAngle suavemente por fuerza de repulsion
     if (Math.hypot(repelX, repelY) > 0.1) {
       const repelAngle = Math.atan2(repelY, repelX);
       let diffRepel = repelAngle - targetAngle;
@@ -318,7 +318,7 @@ export class DevourerOfTaxBoss extends Boss {
       targetAngle += diffRepel * 0.4;
     }
 
-    // 2. Navegación limitada estrictamente por turnSpeed por frame
+    // 2. Navegacion limitada estrictamente por turnSpeed por frame
     let diff = targetAngle - curAngle;
     while (diff < -Math.PI) diff += Math.PI * 2;
     while (diff > Math.PI) diff -= Math.PI * 2;
@@ -330,7 +330,7 @@ export class DevourerOfTaxBoss extends Boss {
     this.x += this.vx;
     this.y += this.vy;
 
-    // 4. Actualización cinemática de segmentos
+    // 4. Actualizacion cinematica de segmentos
     this.segments[0].x = this.x;
     this.segments[0].y = this.y;
     this.segments[0].angle = newAngle;
@@ -351,7 +351,7 @@ export class DevourerOfTaxBoss extends Boss {
       state.hazardAreas.push(new HazardArea(this.x, this.y, 65, 400, "rgb(57, 255, 20)", 0.2, true));
     }
 
-    // 6. Balance de colisiones y cooldown de daño corporal
+    // 6. Balance de colisiones y cooldown de dano corporal
     if (this.bodyHitCooldown > 0) this.bodyHitCooldown--;
 
     // Impacto directo de la cabeza
@@ -360,7 +360,7 @@ export class DevourerOfTaxBoss extends Boss {
       player.takeDamage(this.headDamage, "#39ff14");
     }
 
-    // Colisión de los segmentos del cuerpo con radio permisivo y cooldown
+    // Colision de los segmentos del cuerpo con radio permisivo y cooldown
     if (this.bodyHitCooldown <= 0) {
       for (let i = 1; i < this.segmentCount; i++) {
         const seg = this.segments[i];
@@ -385,7 +385,7 @@ export class DevourerOfTaxBoss extends Boss {
       const seg = this.segments[i];
       const rgb = this.segmentRgb[i] || { r: 57, g: 255, b: 20 };
 
-      // Transparencia dinámica en segmentos del cuerpo que se superpongan con el jugador
+      // Transparencia dinamica en segmentos del cuerpo que se superpongan con el jugador
       let alpha = 1.0;
       if (player && i > 0) {
         const d = dist(seg.x, seg.y, player.x, player.y);
@@ -394,7 +394,7 @@ export class DevourerOfTaxBoss extends Boss {
         }
       }
 
-      // La cabeza (i=0) tiene radio ligeramente mayor o forma de rombo/triángulo
+      // La cabeza (i=0) tiene radio ligeramente mayor o forma de rombo/triangulo
       const sides = i === 0 ? 4 : 3;
       const radius = i === 0 ? this.radius * 1.15 : this.radius;
 

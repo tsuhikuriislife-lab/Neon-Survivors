@@ -49,7 +49,7 @@
         </div>
         <div id="hudShieldContainer" style="display: none; align-items: center; justify-content: space-between; margin-top: 4px;">
           <div style="font-size: 11px; font-weight: bold; color: #00aaff; display: flex; align-items: center; gap: 6px;">
-            <span>🛡️ ESCUDO</span>
+            <span>🛡️ SHIELD</span>
             <div id="hudShieldPips" style="display: flex; gap: 4px;"></div>
           </div>
           <span id="hudShieldText" style="font-size: 11px; color: #cbd5e0; font-family: monospace;">1 / 1</span>
@@ -70,13 +70,13 @@
 
       <!-- Testing Panel (DPS & Damage Breakdown) -->
       <div id="testing-panel" style="display: none;">
-        <div class="testing-panel-header">📊 TEST DPS & DAÑO</div>
+        <div class="testing-panel-header">📊 TEST DPS TEST DPS & DAÑO DAMAGE</div>
         <div class="testing-panel-row">
-          <span>Daño Total:</span>
+          <span>Total Damage:</span>
           <span id="testTotalDamage" style="color: #ffff00; font-weight: bold;">0</span>
         </div>
         <div class="testing-panel-row">
-          <span>DPS Global:</span>
+          <span>Global DPS:</span>
           <span id="testTotalDPS" style="color: #00ffcc; font-weight: bold;">0.0</span>
         </div>
         <div id="testWeaponStats" style="margin-top: 6px;"></div>
@@ -88,15 +88,15 @@
       </button>
 
       <!-- Quick Test Button -->
-      <div id="quick-test-btn">🚀 TESTEO RÁPIDO</div>
+      <div id="quick-test-btn">🚀 QUICK TEST</div>
     </div>
 
     <!-- Start Screen Overlay -->
     <div id="start-screen-overlay" class="start-screen-overlay">
       <div class="start-screen-content">
-        <div class="start-tagline">SOBREVIVE AL ENJAMBRE VECTORIAL</div>
+        <div class="start-tagline">SURVIVE THE VECTOR SWARM</div>
         <button id="btnStartGame" class="btn-start-game">
-          <span class="btn-start-text">⚡ INICIAR PARTIDA ⚡</span>
+          <span class="btn-start-text">⚡ START GAME ⚡</span>
         </button>
       </div>
     </div>
@@ -112,79 +112,79 @@
     <!-- Boss Reward Modal -->
     <div class="modal-overlay" id="bossRewardModal" style="display: none; flex-direction: column;">
       <div id="particlesContainer"></div>
-      <div class="modal-title" style="color: #ffaa00; text-shadow: 0 0 20px #ffaa00; font-size: 32px; z-index: 2;">RECOMPENSA DE JEFE</div>
+      <div class="modal-title" style="color: #ffaa00; text-shadow: 0 0 20px #ffaa00; font-size: 32px; z-index: 2;">BOSS REWARD</div>
       <div class="cards-container" id="bossRewardCards" style="flex-wrap: wrap; max-width: 1200px; z-index: 2;"></div>
-      <div id="bossRewardInstruction" style="margin-top: 30px; font-size: 20px; font-weight: bold; color: #fff; text-shadow: 0 0 10px #fff; z-index: 2;">Elige una carta</div>
+      <div id="bossRewardInstruction" style="margin-top: 30px; font-size: 20px; font-weight: bold; color: #fff; text-shadow: 0 0 10px #fff; z-index: 2;">Choose a card</div>
     </div>
 
     <!-- Game Over Modal -->
     <div class="modal-overlay" id="gameOverModal">
       <div class="gameover-box">
-        <h1 style="color: #ff2255; font-size: 30px; font-weight: 900; text-shadow: 0 0 20px #ff2255; margin-bottom: 15px;">SISTEMA COMPROMETIDO</h1>
-        <p style="color: #cbd5e0; margin-bottom: 8px;">Tiempo de supervivencia: <span id="finalTime" style="color: #00ffff; font-weight: 700;">00:00</span></p>
-        <p style="color: #cbd5e0; margin-bottom: 20px;">Enemigos eliminados: <span id="finalKills" style="color: #ff00ff; font-weight: 700;">0</span></p>
-        <button class="btn-revive" id="btnRevive">❤️ REVIVIR (1 POR PARTIDA)</button>
-        <button class="btn-restart" id="btnRestart">REINICIAR PARTIDA</button>
-        <button class="btn-menu" id="btnGameOverMenu">MENÚ PRINCIPAL</button>
+        <h1 style="color: #ff2255; font-size: 30px; font-weight: 900; text-shadow: 0 0 20px #ff2255; margin-bottom: 15px;">SYSTEM COMPROMISED</h1>
+        <p style="color: #cbd5e0; margin-bottom: 8px;">Survival time: <span id="finalTime" style="color: #00ffff; font-weight: 700;">00:00</span></p>
+        <p style="color: #cbd5e0; margin-bottom: 20px;">Enemies eliminated: <span id="finalKills" style="color: #ff00ff; font-weight: 700;">0</span></p>
+        <button class="btn-revive" id="btnRevive">❤️ REVIVE (1 PER GAME)</button>
+        <button class="btn-restart" id="btnRestart">RESTART GAME</button>
+        <button class="btn-menu" id="btnGameOverMenu">MAIN MENU</button>
       </div>
     </div>
 
     <!-- Options / Pause Modal -->
     <div class="modal-overlay" id="optionsModal">
       <div class="admin-box">
-        <h2>⏸️ PAUSA</h2>
+        <h2>⏸️ PAUSE</h2>
         <div class="admin-section">
-          <h3>Sonido</h3>
+          <h3>Sound</h3>
           <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px;">
-            <label><input type="checkbox" id="optionsBgmMute"> Silenciar BGM</label>
+            <label><input type="checkbox" id="optionsBgmMute"> Mute BGM</label>
             <input type="range" id="optionsBgmVolume" min="0" max="1" step="0.05" value="0.5" style="width: 60%;">
           </div>
           <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px;">
-            <label><input type="checkbox" id="optionsSfxMute"> Silenciar SFX</label>
+            <label><input type="checkbox" id="optionsSfxMute"> Mute SFX</label>
             <input type="range" id="optionsSfxVolume" min="0" max="1" step="0.05" value="0.5" style="width: 60%;">
           </div>
         </div>
         <div class="admin-section">
-          <h3>Cámara</h3>
+          <h3>Camera</h3>
           <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 5px;">
             <label>Zoom: <span id="optionsZoomValue" style="color: #00ffff; font-weight: bold;">1.0x</span></label>
             <input type="range" id="optionsCameraZoom" min="0.6" max="2.0" step="0.05" value="1.0" style="width: 60%;">
           </div>
         </div>
         <div class="admin-section">
-          <h3>Herramientas</h3>
-          <button id="optionsBtnDev" class="admin-action-btn" style="border-color: #00ffff; color: #00ffff; background: rgba(0, 255, 255, 0.15);">🛠️ PANEL DE ADMIN / DEV</button>
+          <h3>Tools</h3>
+          <button id="optionsBtnDev" class="admin-action-btn" style="border-color: #00ffff; color: #00ffff; background: rgba(0, 255, 255, 0.15);">🛠️ ADMIN / DEV PANEL</button>
         </div>
-        <button id="optionsBtnClose" class="admin-action-btn close-btn">CERRAR</button>
+        <button id="optionsBtnClose" class="admin-action-btn close-btn">CLOSE</button>
       </div>
     </div>
 
     <!-- Admin Modal -->
     <div class="modal-overlay" id="adminModal">
       <div class="admin-box">
-        <h2>🛠️ PANEL DE ADMIN</h2>
+        <h2>🛠️ ADMIN PANEL</h2>
         <div class="admin-section">
           <h3>Switches</h3>
-          <label><input type="checkbox" id="adminGodMode"> God Mode (Sin Daño)</label><br>
-          <label><input type="checkbox" id="adminDisableSpawns"> Desactivar Spawns Enemigos</label><br>
-          <label><input type="checkbox" id="adminDisableBossSpawns"> Desactivar Spawn Bosses</label><br>
-          <label><input type="checkbox" id="adminDisableEnemyCollisions"> Desactivar Colisiones Enemigos</label><br>
-          <label><input type="checkbox" id="adminToggleTestingPanel"> Panel de DPS / Daño en Pantalla</label>
+          <label><input type="checkbox" id="adminGodMode"> God Mode (No Damage)</label><br>
+          <label><input type="checkbox" id="adminDisableSpawns"> Disable Enemy Spawns</label><br>
+          <label><input type="checkbox" id="adminDisableBossSpawns"> Disable Boss Spawns</label><br>
+          <label><input type="checkbox" id="adminDisableEnemyCollisions"> Disable Enemy Collisions</label><br>
+          <label><input type="checkbox" id="adminToggleTestingPanel"> DPS / Damage Panel on Screen</label>
         </div>
         <div class="admin-section">
-          <h3>Botones Rápidos</h3>
-          <button id="adminQuickTest" class="admin-action-btn" style="border-color: #ff00ff; color: #ff00ff; background: rgba(255, 0, 255, 0.15);">🚀 Activar Testeo Rápido (Max Stats)</button>
-          <button id="adminSpawnDummy" class="admin-action-btn">🎯 Spawnear Dummy Target</button>
-          <button id="adminTriggerWave" class="admin-action-btn">🌊 Forzar Oleada (20s)</button>
-          <button id="adminKillAll" class="admin-action-btn">💀 Eliminar Todos los Enemigos</button>
+          <h3>Quick Buttons</h3>
+          <button id="adminQuickTest" class="admin-action-btn" style="border-color: #ff00ff; color: #ff00ff; background: rgba(255, 0, 255, 0.15);">🚀 Activate Quick Test (Max Stats)</button>
+          <button id="adminSpawnDummy" class="admin-action-btn">🎯 Spawn Dummy Target</button>
+          <button id="adminTriggerWave" class="admin-action-btn">🌊 Force Wave (20s)</button>
+          <button id="adminKillAll" class="admin-action-btn">💀 Kill All Enemies</button>
         </div>
         <div class="admin-section">
-          <h3>Menús de Spawn</h3>
-          <button id="adminBtnSpawnBoss" class="admin-action-btn">Spawnear Boss</button>
-          <button id="adminBtnSpawnEnemy" class="admin-action-btn">Spawnear Enemigo</button>
-          <button id="adminBtnUpgrades" class="admin-action-btn">Recibir Mejora</button>
+          <h3>Spawn Menus</h3>
+          <button id="adminBtnSpawnBoss" class="admin-action-btn">Spawn Boss</button>
+          <button id="adminBtnSpawnEnemy" class="admin-action-btn">Spawn Enemy</button>
+          <button id="adminBtnUpgrades" class="admin-action-btn">Receive Upgrade</button>
         </div>
-        <button id="adminBtnClose" class="admin-action-btn close-btn">CERRAR</button>
+        <button id="adminBtnClose" class="admin-action-btn close-btn">CLOSE</button>
       </div>
     </div>
 
@@ -193,15 +193,15 @@
       <div class="admin-box">
         <h2 id="adminSubModalTitle">...</h2>
         <div id="adminSubModalContent" class="admin-sub-content"></div>
-        <button id="adminSubBtnClose" class="admin-action-btn close-btn" style="margin-top: 15px;">VOLVER</button>
+        <button id="adminSubBtnClose" class="admin-action-btn close-btn" style="margin-top: 15px;">BACK</button>
       </div>
     </div>
 
     <!-- Mobile Orientation Lock Overlay -->
     <div id="rotate-device-overlay" class="rotate-device-overlay" style="display: none;">
       <div class="rotate-phone-icon">📱</div>
-      <h2 style="color: #00ffff; font-size: 22px; font-weight: 800; letter-spacing: 2px; text-shadow: 0 0 15px #00ffff; margin-bottom: 12px;">GIRA TU DISPOSITIVO</h2>
-      <p style="color: #cbd5e0; font-size: 15px; max-width: 320px; line-height: 1.5; text-shadow: 0 0 8px rgba(255,255,255,0.3);">Este juego está optimizado exclusivamente para modo horizontal (Landscape).</p>
+      <h2 style="color: #00ffff; font-size: 22px; font-weight: 800; letter-spacing: 2px; text-shadow: 0 0 15px #00ffff; margin-bottom: 12px;">ROTATE YOUR DEVICE</h2>
+      <p style="color: #cbd5e0; font-size: 15px; max-width: 320px; line-height: 1.5; text-shadow: 0 0 8px rgba(255,255,255,0.3);">This game is optimized exclusively for landscape mode.</p>
     </div>
 
   </div>

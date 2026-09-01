@@ -4,9 +4,9 @@
 // ============================================================================
 
 /**
- * 1. BANCO DE GEOMETRÍA ESTÁTICA (Mallas unitarias precalculadas con radio = 1.0)
- * Precalcula y congela las coordenadas locales de los vértices al inicio del motor
- * para eliminar por completo cálculos trigonométricos (Math.cos/sin) repetitivos.
+ * 1. BANCO DE GEOMETRIA ESTATICA (Mallas unitarias precalculadas con radio = 1.0)
+ * Precalcula y congela las coordenadas locales de los vertices al inicio del motor
+ * para eliminar por completo calculos trigonometricos (Math.cos/sin) repetitivos.
  */
 export const GeometryBank = {
   TRIANGLE: generateUnitPolygon(3, 0),
@@ -30,7 +30,7 @@ function generateUnitPolygon(sides, rotationOffset = 0) {
 }
 
 /**
- * Utilidad estática para parsear colores HEX o HSL a RGB [0-255] una sola vez al instanciar entidades.
+ * Utilidad estatica para parsear colores HEX o HSL a RGB [0-255] una sola vez al instanciar entidades.
  */
 export function parseColorToRgb(colorStr) {
   if (!colorStr) return { r: 255, g: 255, b: 255 };
@@ -88,11 +88,11 @@ export function hslToRgb(h, s, l) {
 }
 
 /**
- * 2. GESTOR DE RENDERIZADO POR LOTES DINÁMICO (PROCEDURAL BATCH RENDERER)
+ * 2. GESTOR DE RENDERIZADO POR LOTES DINAMICO (PROCEDURAL BATCH RENDERER)
  */
 export class ProceduralBatchRenderer {
   /**
-   * @param {number} maxInstances Capacidad máxima de instancias simultáneas
+   * @param {number} maxInstances Capacidad maxima de instancias simultaneas
    */
   constructor(maxInstances = 5000) {
     this.maxInstances = maxInstances;
@@ -103,7 +103,7 @@ export class ProceduralBatchRenderer {
     this.instanceData = new Float32Array(this.maxInstances * this.INSTANCE_STRIDE);
     this.instanceCount = 0;
 
-    // Cubos de índices preasignados agrupados por cantidad de lados (Zero GC)
+    // Cubos de indices preasignados agrupados por cantidad de lados (Zero GC)
     this.supportedSides = [3, 4, 5, 6, 8, 12];
     this.buckets = new Map();
     for (const sides of this.supportedSides) {
@@ -113,13 +113,13 @@ export class ProceduralBatchRenderer {
       });
     }
 
-    // Límites de Frustum en espacio mundial
+    // Limites de Frustum en espacio mundial
     this.cullMinX = 0;
     this.cullMinY = 0;
     this.cullMaxX = 0;
     this.cullMaxY = 0;
 
-    // Métricas de diagnóstico
+    // Metricas de diagnostico
     this.stats = {
       submitted: 0,
       culled: 0,
@@ -130,7 +130,7 @@ export class ProceduralBatchRenderer {
 
   /**
    * Prepara el pipeline al inicio de cada frame y actualiza el Frustum Culling AABB.
-   * @param {Object} camera Controlador de cámara del juego
+   * @param {Object} camera Controlador de camara del juego
    */
   beginFrame(camera) {
     this.instanceCount = 0;
@@ -145,7 +145,7 @@ export class ProceduralBatchRenderer {
     this.stats.rendered = 0;
     this.stats.drawCalls = 0;
 
-    // Calcular límites mundiales visibles desde la cámara con margen de tolerancia
+    // Calcular limites mundiales visibles desde la camara con margen de tolerancia
     const zoom = (camera && camera.zoom) ? camera.zoom : 1.0;
     const camX = (camera && camera.x !== undefined) ? camera.x : 960;
     const camY = (camera && camera.y !== undefined) ? camera.y : 960;
@@ -163,13 +163,13 @@ export class ProceduralBatchRenderer {
   }
 
   /**
-   * Envía un polígono al pipeline.
+   * Envia un poligono al pipeline.
    * Ejecuta Frustum Culling en CPU y empaqueta la instancia en el buffer lineal.
    */
   submit(sides, x, y, radius, angle, r, g, b, alpha = 1.0) {
     this.stats.submitted++;
 
-    // 1. CPU Frustum Culling (AABB circular de 4 comparaciones escalares rápidas)
+    // 1. CPU Frustum Culling (AABB circular de 4 comparaciones escalares rapidas)
     if (
       x + radius < this.cullMinX ||
       x - radius > this.cullMaxX ||
@@ -197,7 +197,7 @@ export class ProceduralBatchRenderer {
     this.instanceData[off + 8] = alpha;
     this.instanceData[off + 9] = sides;
 
-    // 3. Registrar índice en el bucket correspondiente
+    // 3. Registrar indice en el bucket correspondiente
     const targetSides = this.buckets.has(sides) ? sides : 12;
     const bucket = this.buckets.get(targetSides);
     bucket.indices[bucket.count++] = this.instanceCount;
@@ -207,16 +207,16 @@ export class ProceduralBatchRenderer {
   }
 
   /**
-   * Despacha y dibuja todos los lotes de geometría agrupados.
+   * Despacha y dibuja todos los lotes de geometria agrupados.
    * @param {CanvasRenderingContext2D} ctx Contexto Canvas 2D
    */
   flush(ctx) {
     if (this.instanceCount === 0) return;
 
     ctx.save();
-    ctx.shadowBlur = 0; // Desactivar sombras de canvas durante el batching masivo para máximo framerate
+    ctx.shadowBlur = 0; // Desactivar sombras de canvas durante el batching masivo para maximo framerate
 
-    // Renderizar agrupado por tipo de polígono (Mesh Batching)
+    // Renderizar agrupado por tipo de poligono (Mesh Batching)
     for (const [sides, bucket] of this.buckets.entries()) {
       if (bucket.count === 0) continue;
 
@@ -248,7 +248,7 @@ export class ProceduralBatchRenderer {
           const ux = unitVerts[v * 2] * rad;
           const uy = unitVerts[v * 2 + 1] * rad;
 
-          // Transformación afín local -> mundial inline
+          // Transformacion afin local -> mundial inline
           const wx = posX + (ux * cosA - uy * sinA);
           const wy = posY + (ux * sinA + uy * cosA);
 

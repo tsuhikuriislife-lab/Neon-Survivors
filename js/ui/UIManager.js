@@ -9,33 +9,33 @@ import { triggerBossSpawnSequence, startWave } from '../systems/WaveManager.js';
 import { getAllBosses } from '../data/bossRegistry.js';
 import { getAllEnemies } from '../data/enemyRegistry.js';
 import { spawnExplosion } from '../entities/effects/spawnExplosion.js';
+import { TestingBoss } from "../entities/bosses/TestingBoss.js";
 
 
-let dom = null;
-function getDom() {
-  if (!dom) {
-    dom = {
-      hudLevel: document.getElementById("hudLevel"),
-      hudXpBar: document.getElementById("hudXpBar"),
-      hudHpBar: document.getElementById("hudHpBar"),
-      hudHpText: document.getElementById("hudHpText"),
-      hudTime: document.getElementById("hudTime"),
-      hudKills: document.getElementById("hudKills"),
-      hudShieldContainer: document.getElementById("hudShieldContainer"),
-      hudShieldPips: document.getElementById("hudShieldPips"),
-      hudShieldText: document.getElementById("hudShieldText"),
-      bossContainer: document.getElementById("boss-hud-container"),
-      activeSkillHud: document.getElementById("activeSkillHud"),
-      hudActiveSkillEmoji: document.getElementById("hudActiveSkillEmoji"),
-      hudActiveSkillCooldown: document.getElementById("hudActiveSkillCooldown"),
-      hudActiveSkillKey: document.getElementById("hudActiveSkillKey"),
-      testDamageElem: document.getElementById("testTotalDamage"),
-      testDpsElem: document.getElementById("testTotalDPS"),
-      weaponsContainer: document.getElementById("testWeaponStats"),
-      testingPanel: document.getElementById("testing-panel")
-    };
-  }
-  return dom;
+let DOM = null;
+
+export function initDOM() {
+  if (DOM) return;
+  DOM = {
+    hudLevel: document.getElementById("hudLevel"),
+    hudXpBar: document.getElementById("hudXpBar"),
+    hudHpBar: document.getElementById("hudHpBar"),
+    hudHpText: document.getElementById("hudHpText"),
+    hudTime: document.getElementById("hudTime"),
+    hudKills: document.getElementById("hudKills"),
+    hudShieldContainer: document.getElementById("hudShieldContainer"),
+    hudShieldPips: document.getElementById("hudShieldPips"),
+    hudShieldText: document.getElementById("hudShieldText"),
+    bossContainer: document.getElementById("boss-hud-container"),
+    activeSkillHud: document.getElementById("activeSkillHud"),
+    hudActiveSkillEmoji: document.getElementById("hudActiveSkillEmoji"),
+    hudActiveSkillCooldown: document.getElementById("hudActiveSkillCooldown"),
+    hudActiveSkillKey: document.getElementById("hudActiveSkillKey"),
+    testDamageElem: document.getElementById("testTotalDamage"),
+    testDpsElem: document.getElementById("testTotalDPS"),
+    weaponsContainer: document.getElementById("testWeaponStats"),
+    testingPanel: document.getElementById("testing-panel")
+  };
 }
 
 const _uiCache = {
@@ -58,7 +58,7 @@ const _uiCache = {
 };
 
 export function renderBossBars() {
-  const d = getDom();
+  const d = DOM;
   const container = d.bossContainer;
   if (!container) return;
 
@@ -86,7 +86,7 @@ export function renderBossBars() {
 
   activeBosses.sort((a, b) => b.hp - a.hp);
 
-  // Firma ligera para dirty-checking instantáneo sin mutaciones DOM innecesarias
+  // Firma ligera para dirty-checking instantaneo sin mutaciones DOM innecesarias
   let signature = "";
   for (let i = 0; i < activeBosses.length; i++) {
     const boss = activeBosses[i];
@@ -127,7 +127,7 @@ export function showUpgradeMenu() {
   const btnReroll = document.getElementById("btnReroll");
 
   btnReroll.disabled = state.hasRerolledCurrentLevel;
-  btnReroll.innerText = state.hasRerolledCurrentLevel ? "🎲 REROLL AGOTADO" : "🎲 REROLL DISPONIBLE (1)";
+  btnReroll.innerText = state.hasRerolledCurrentLevel ? "🎲 REROLL EXHAUSTED" : "🎲 REROLL AVAILABLE (1)";
 
   container.innerHTML = "";
 
@@ -648,7 +648,7 @@ export function initUIListeners() {
     resetCard.innerHTML = `
       <div class="card-icon">❌</div>
       <div class="card-name">RESTABLECER MEJORAS</div>
-      <div class="card-desc">Elimina todas las armas y restablece estadísticas base.</div>
+      <div class="card-desc">Elimina todas las armas y restablece estadisticas base.</div>
     `;
     resetCard.onclick = () => {
       state.player.resetUpgrades();
@@ -691,7 +691,7 @@ export function triggerGameOver() {
   const btnRevive = document.getElementById("btnRevive");
   if (btnRevive) {
     btnRevive.disabled = false;
-    btnRevive.innerText = "❤️ REVIVIR (1 POR PARTIDA)";
+    btnRevive.innerText = "❤ REVIVIR (1 POR PARTIDA)";
     if (state.player && !state.player.hasRevivedOnce) {
       btnRevive.style.display = "block";
     } else {
@@ -706,10 +706,10 @@ export function triggerGameOver() {
 export function revivePlayer() {
   if (!state.player) return;
 
-  // 1. Marcar resurrección única por partida
+  // 1. Marcar resurreccion unica por partida
   state.player.hasRevivedOnce = true;
 
-  // 2. Restaurar 50% de la salud máxima
+  // 2. Restoresr 50% de la salud maxima
   state.player.hp = state.player.maxHp * 0.5;
 
   // 3. Otorgar 3.0s de inmunidad total con parpadeo
@@ -749,7 +749,7 @@ export function revivePlayer() {
 }
 
 function updateTestingPanelHUD() {
-  const d = getDom();
+  const d = DOM;
   if (!d.testDamageElem || !d.testDpsElem || !d.weaponsContainer) return;
 
   let totalDamage = 0;
@@ -803,9 +803,43 @@ function updateTestingPanelHUD() {
   d.weaponsContainer.innerHTML = weaponsHtml;
 }
 
-export function updateHUD() {
+let uiInterval = null;
+
+export function startUILoop() {
+  if (uiInterval) clearInterval(uiInterval);
+  initDOM();
+  // 15 Hz decoupled loop (approx 66ms)
+  uiInterval = setInterval(() => {
+    if (!state.player || state.isPaused || state.isGameOver || state.isInMenu) return;
+    
+    // 1. Time (Continuous)
+    const m = Math.floor(state.gameTime / 60);
+    const s = Math.floor(state.gameTime % 60);
+    const timeText = (m < 10 ? "0" + m : m) + ":" + (s < 10 ? "0" + s : s);
+    if (_uiCache.timeText !== timeText) {
+      _uiCache.timeText = timeText;
+      if (DOM.hudTime) DOM.hudTime.textContent = timeText;
+    }
+    
+    // 2. Boss Bars
+    renderBossBars();
+    
+    // 3. Active Skill Cooldown
+    updateActiveSkillHUD();
+    
+    // 4. Testing Panel
+    if (state.showTestingPanel) {
+      updateTestingPanelHUD();
+    }
+
+    // 5. General HUD (HP, XP, Level, Kills, Shield) - Handled gracefully via dirty checking
+    triggerHUDUpdate();
+  }, 66);
+}
+
+export function triggerHUDUpdate() {
   if (!state.player) return;
-  const d = getDom();
+  const d = DOM;
   const player = state.player;
 
   // 1. Level (Dirty checked)
@@ -824,83 +858,58 @@ export function updateHUD() {
   // 3. HP Bar & Text (Dirty checked)
   const hpCeil = Math.ceil(player.hp);
   const hpPct = Math.max(0, (player.hp / player.maxHp) * 100).toFixed(1);
-  if (_uiCache.hpPct !== hpPct) {
+  if (_uiCache.hpPct !== hpPct || _uiCache.hpText !== hpCeil) {
     _uiCache.hpPct = hpPct;
+    _uiCache.hpText = hpCeil;
     if (d.hudHpBar) d.hudHpBar.style.width = `${hpPct}%`;
+    if (d.hudHpText) d.hudHpText.textContent = `${hpCeil} / ${player.maxHp}`;
   }
 
-  const hpText = `${hpCeil} / ${player.maxHp}`;
-  if (_uiCache.hpText !== hpText) {
-    _uiCache.hpText = hpText;
-    if (d.hudHpText) d.hudHpText.textContent = hpText;
-  }
-
-  // 4. Time (Dirty checked - updates at most once per second)
-  const timeText = formatTime(state.gameTime);
-  if (_uiCache.timeText !== timeText) {
-    _uiCache.timeText = timeText;
-    if (d.hudTime) d.hudTime.textContent = timeText;
-  }
-
-  // 5. Kills (Dirty checked)
+  // 4. Kills (Dirty checked)
   if (_uiCache.kills !== state.killCount) {
     _uiCache.kills = state.killCount;
-    if (d.hudKills) d.hudKills.textContent = state.killCount;
+    if (d.hudKills) d.hudKills.textContent = `💀 ${state.killCount}`;
   }
 
-  // 6. Boss Bars (Smart diff / keyed signature)
-  renderBossBars();
-
-  // 7. Shield HUD (Dirty checked)
-  const isShieldUnlocked = !!(player.shield && player.shield.unlocked);
-  if (_uiCache.shieldVisible !== isShieldUnlocked) {
-    _uiCache.shieldVisible = isShieldUnlocked;
+  // 5. Shield (Dirty checked)
+  const charges = player.shieldCharges || 0;
+  const isShieldVisible = charges > 0;
+  if (_uiCache.shieldVisible !== isShieldVisible) {
+    _uiCache.shieldVisible = isShieldVisible;
     if (d.hudShieldContainer) {
-      d.hudShieldContainer.style.display = isShieldUnlocked ? "flex" : "none";
+      d.hudShieldContainer.style.display = isShieldVisible ? "flex" : "none";
     }
   }
 
-  if (isShieldUnlocked) {
-    const charges = player.shield.charges;
-    const maxCharges = player.shield.maxCharges;
-    const chargeColor = player.getShieldColor(charges);
-    const shieldText = `${charges} / ${maxCharges}`;
+  if (isShieldVisible) {
+    let color = "#00aaff";
+    if (charges === 2) color = "#70d6ff";
+    if (charges >= 3) color = "#ffffff";
 
-    if (_uiCache.shieldText !== shieldText || _uiCache.shieldColor !== chargeColor) {
-      _uiCache.shieldText = shieldText;
-      _uiCache.shieldColor = chargeColor;
-      if (d.hudShieldText) {
-        d.hudShieldText.textContent = shieldText;
-        d.hudShieldText.style.color = charges > 0 ? chargeColor : "#718096";
-      }
+    if (_uiCache.shieldColor !== color) {
+      _uiCache.shieldColor = color;
+      if (d.hudShieldText) d.hudShieldText.style.color = color;
     }
 
-    const pipsKey = `${charges}_${maxCharges}_${chargeColor}`;
-    if (_uiCache.shieldPipsHtml !== pipsKey) {
-      _uiCache.shieldPipsHtml = pipsKey;
-      if (d.hudShieldPips) {
-        let pipsHtml = "";
-        for (let i = 0; i < maxCharges; i++) {
-          const isFilled = i < charges;
-          const pipColor = isFilled ? chargeColor : "rgba(255, 255, 255, 0.15)";
-          const shadow = isFilled ? `box-shadow: 0 0 6px ${chargeColor};` : "";
-          pipsHtml += `<div style="width: 8px; height: 8px; border-radius: 50%; background: ${pipColor}; ${shadow}"></div>`;
-        }
-        d.hudShieldPips.innerHTML = pipsHtml;
+    if (_uiCache.shieldText !== charges) {
+      _uiCache.shieldText = charges;
+      if (d.hudShieldText) d.hudShieldText.textContent = `SHIELD [${charges}]`;
+      
+      let pipsHtml = "";
+      for (let i = 0; i < charges; i++) {
+        pipsHtml += `<div class="shield-pip" style="background: ${color}; box-shadow: 0 0 8px ${color};"></div>`;
       }
-    }
-  }
-
-  // 8. Testing Panel (Throttled to 10 FPS with dirty checking)
-  if (d.testingPanel && d.testingPanel.style.display !== 'none') {
-    const now = performance.now();
-    if (now - _uiCache.testLastUpdateTime > 100) {
-      _uiCache.testLastUpdateTime = now;
-      updateTestingPanelHUD();
+      if (_uiCache.shieldPipsHtml !== pipsHtml) {
+        _uiCache.shieldPipsHtml = pipsHtml;
+        if (d.hudShieldPips) d.hudShieldPips.innerHTML = pipsHtml;
+      }
     }
   }
 }
 
+export function updateHUD() {
+  triggerHUDUpdate();
+}
 
 export function showBossRewardMenu(bossName) {
   state.isPaused = true;
@@ -1019,9 +1028,9 @@ export function showBossRewardMenu(bossName) {
       audioManager.playSound('level_up', { volume: 0.8, throttleMs: 50 });
 
       if (picksLeft <= 0) {
-        instruction.innerText = "Mejoras obtenidas. Clickea en el fondo para salir.";
+        instruction.innerText = "Upgrades obtained. Click on the background to exit.";
       } else {
-        instruction.innerText = `¡Suerte! Puedes elegir ${picksLeft} carta(s) más.`;
+        instruction.innerText = `¡Suerte! Puedes elegir ${picksLeft} carta(s) mas.`;
       }
     };
     
@@ -1045,7 +1054,7 @@ export function showBossRewardMenu(bossName) {
 
 export function updateActiveSkillHUD() {
   if (!state.player) return;
-  const d = getDom();
+  const d = DOM;
   const skill = state.player.activeSkill;
   const isVisible = !!(skill && skill.id);
 

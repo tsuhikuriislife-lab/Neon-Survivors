@@ -1,7 +1,8 @@
 import { state } from './gameState.js';
 import { resetInputState } from './Input.js';
 import { Player } from '../entities/player/Player.js';
-import { updateHUD, updateActiveSkillHUD, showBossRewardMenu } from '../ui/UIManager.js';
+import { startUILoop, triggerHUDUpdate, showBossRewardMenu } from '../ui/UIManager.js';
+import { bitmapFont } from "./BitmapFont.js";
 import { handleSpawning, spawnRandomBoss, updatePendingBossSpawn, updateWave } from '../systems/WaveManager.js';
 import { dist } from './Utils.js';
 import { spawnExplosion } from '../entities/effects/spawnExplosion.js';
@@ -12,7 +13,30 @@ import { proceduralBatch } from './ProceduralBatchRenderer.js';
 export const menuShowcase = new MenuBackgroundShowcase();
 export const vectorTitle = new VectorTitleRenderer("NEON SURVIVORS");
 
+export let animationFrameId = null;
+let gameCtx = null;
+
+export function stopGameLoop() {
+  if (animationFrameId) {
+    cancelAnimationFrame(animationFrameId);
+    animationFrameId = null;
+  }
+}
+
+export function startGameLoop(ctx = null) {
+  if (ctx) gameCtx = ctx;
+  if (!gameCtx) {
+    const canvas = document.getElementById("gameCanvas");
+    if (canvas) gameCtx = canvas.getContext("2d");
+  }
+  stopGameLoop();
+  if (gameCtx) {
+    animationFrameId = requestAnimationFrame((ts) => loop(ts, gameCtx));
+  }
+}
+
 export function initGame() {
+  stopGameLoop();
   state.isInMenu = false;
   state.reset();
   resetInputState();
@@ -24,10 +48,22 @@ export function initGame() {
     state.camera.targetX = state.player.x;
     state.camera.targetY = state.player.y;
   }
-  updateHUD();
+  startUILoop();
+  triggerHUDUpdate();
+  startGameLoop();
 }
 
 let gridOffset = 0;
+const tileCanvas = typeof document !== 'undefined' ? document.createElement('canvas') : null;
+let tileCtx = null;
+if (tileCanvas) {
+  tileCanvas.width = 40;
+  tileCanvas.height = 40;
+  tileCtx = tileCanvas.getContext('2d', { alpha: true });
+}
+let cachedLinesProps = null;
+let gridPattern = null;
+
 export function drawBackground(ctx) {
   gridOffset = (gridOffset + 0.5) % 40;
 
@@ -38,26 +74,39 @@ export function drawBackground(ctx) {
   ctx.fillStyle = bgProps.color || "#04030a";
   ctx.fillRect(0, 0, state.width, state.height);
 
-  // Dynamic grid lines
-  ctx.strokeStyle = linesProps.color || "rgba(0, 255, 255, 0.04)";
-  ctx.lineWidth = Math.max(1, (linesProps.computedBrightness || 1.0));
+  const linesColor = linesProps.color || "rgba(0, 255, 255, 0.04)";
+  const linesWidth = Math.max(1, (linesProps.computedBrightness || 1.0));
+  const linesKey = linesColor + '_' + linesWidth.toFixed(2);
 
-  for (let x = 0; x <= state.width; x += 40) {
-    ctx.beginPath();
-    ctx.moveTo(x, 0);
-    ctx.lineTo(x, state.height);
-    ctx.stroke();
+  if (tileCanvas && cachedLinesProps !== linesKey) {
+    tileCtx.clearRect(0, 0, 40, 40);
+    tileCtx.strokeStyle = linesColor;
+    tileCtx.lineWidth = linesWidth;
+    tileCtx.beginPath();
+    // Centered lines to avoid clipping on canvas edges
+    tileCtx.moveTo(20, 0);
+    tileCtx.lineTo(20, 40);
+    tileCtx.moveTo(0, 20);
+    tileCtx.lineTo(40, 20);
+    tileCtx.stroke();
+    cachedLinesProps = linesKey;
+    gridPattern = ctx.createPattern(tileCanvas, 'repeat');
   }
-  for (let y = gridOffset; y <= state.height; y += 40) {
-    ctx.beginPath();
-    ctx.moveTo(0, y);
-    ctx.lineTo(state.width, y);
-    ctx.stroke();
+
+  if (gridPattern) {
+    ctx.save();
+    // Translate the grid downwards
+    ctx.translate(0, gridOffset);
+    ctx.fillStyle = gridPattern;
+    // Fill slightly outside the screen to cover the translated offset
+    ctx.fillRect(0, -40, state.width, state.height + 40);
+    ctx.restore();
   }
 
   drawFloorControls(ctx);
 }
 
+let floorControlsCanvas = null;
 export function drawFloorControls(ctx) {
   if (state.isInMenu || state.gameTime >= 60) return;
 
@@ -68,166 +117,146 @@ export function drawFloorControls(ctx) {
     alphaFactor = Math.max(0, (fadeEnd - state.gameTime) / (fadeEnd - fadeStart));
   }
 
+  if (alphaFactor <= 0) return;
+
   const isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
-  const cx = state.width / 2;
-  const cy = state.height / 2;
 
-  ctx.save();
+  if (!floorControlsCanvas) {
+    floorControlsCanvas = document.createElement('canvas');
+    floorControlsCanvas.width = state.width;
+    floorControlsCanvas.height = state.height;
+    const offCtx = floorControlsCanvas.getContext('2d');
+    
+    const cx = state.width / 2;
+    const cy = state.height / 2;
+    
+    if (!isTouch) {
+      const mx = cx - 360;
+      const my = cy + 120;
+      const rx = cx + 360;
+      const ry = cy + 120;
 
-  if (!isTouch) {
-    // DESKTOP FLOOR CONTROLS
-    const mx = cx - 360;
-    const my = cy + 120;
+      // --- BATCH 1: Shapes ---
+      offCtx.lineWidth = 2;
+      
+      offCtx.strokeStyle = `rgba(0, 255, 255, 0.22)`;
+      offCtx.fillStyle = `rgba(0, 255, 255, 0.04)`;
+      offCtx.beginPath();
+      offCtx.roundRect(mx - 22, my - 55 - 22, 44, 44, 6);
+      offCtx.roundRect(mx - 55 - 22, my - 22, 44, 44, 6);
+      offCtx.roundRect(mx - 22, my - 22, 44, 44, 6);
+      offCtx.roundRect(mx + 55 - 22, my - 22, 44, 44, 6);
+      offCtx.fill();
+      offCtx.stroke();
 
-    const drawKey = (kx, ky, label, arrow) => {
-      ctx.strokeStyle = `rgba(0, 255, 255, ${0.22 * alphaFactor})`;
-      ctx.fillStyle = `rgba(0, 255, 255, ${0.04 * alphaFactor})`;
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.roundRect(kx - 22, ky - 22, 44, 44, 6);
-      ctx.fill();
-      ctx.stroke();
+      offCtx.beginPath();
+      offCtx.roundRect(rx - 25, ry - 55, 50, 80, 25);
+      offCtx.fill();
+      offCtx.stroke();
 
-      ctx.fillStyle = `rgba(0, 255, 255, ${0.65 * alphaFactor})`;
-      ctx.font = "bold 16px monospace";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillText(label, kx, ky - 4);
+      offCtx.fillStyle = `rgba(0, 255, 136, 0.25)`;
+      offCtx.strokeStyle = `rgba(0, 255, 136, 0.6)`;
+      offCtx.beginPath();
+      offCtx.roundRect(rx - 23, ry - 53, 22, 35, [22, 0, 0, 0]);
+      offCtx.fill();
+      offCtx.stroke();
 
-      ctx.fillStyle = `rgba(255, 255, 255, ${0.35 * alphaFactor})`;
-      ctx.font = "11px monospace";
-      ctx.fillText(arrow, kx, ky + 11);
-    };
+      offCtx.strokeStyle = `rgba(0, 255, 255, 0.25)`;
+      offCtx.beginPath();
+      offCtx.moveTo(rx, ry - 55);
+      offCtx.lineTo(rx, ry - 18);
+      offCtx.stroke();
 
-    drawKey(mx, my - 55, "W", "▲");
-    drawKey(mx - 55, my, "A", "◀");
-    drawKey(mx, my, "S", "▼");
-    drawKey(mx + 55, my, "D", "▶");
+      // --- BATCH 2: Texts via BitmapFont ---
+      // 16px key labels
+      bitmapFont.drawCachedText(offCtx, "W", mx, my - 55 - 4, 16, "#00ffff", true, "center", "middle", 0.65);
+      bitmapFont.drawCachedText(offCtx, "A", mx - 55, my - 4, 16, "#00ffff", true, "center", "middle", 0.65);
+      bitmapFont.drawCachedText(offCtx, "S", mx, my - 4, 16, "#00ffff", true, "center", "middle", 0.65);
+      bitmapFont.drawCachedText(offCtx, "D", mx + 55, my - 4, 16, "#00ffff", true, "center", "middle", 0.65);
 
-    ctx.textAlign = "center";
-    ctx.textBaseline = "alphabetic";
-    ctx.fillStyle = `rgba(0, 255, 255, ${0.75 * alphaFactor})`;
-    ctx.font = "bold 15px monospace";
-    ctx.fillText("MOVIMIENTO", mx, my + 55);
+      // 11px key arrows
+      bitmapFont.drawCachedText(offCtx, "▲", mx, my - 55 + 11, 11, "#ffffff", false, "center", "middle", 0.35);
+      bitmapFont.drawCachedText(offCtx, "◀", mx - 55, my + 11, 11, "#ffffff", false, "center", "middle", 0.35);
+      bitmapFont.drawCachedText(offCtx, "▼", mx, my + 11, 11, "#ffffff", false, "center", "middle", 0.35);
+      bitmapFont.drawCachedText(offCtx, "▶", mx + 55, my + 11, 11, "#ffffff", false, "center", "middle", 0.35);
 
-    ctx.fillStyle = `rgba(160, 174, 192, ${0.5 * alphaFactor})`;
-    ctx.font = "12px monospace";
-    ctx.fillText("WASD / TECLAS DE DIRECCIÓN", mx, my + 75);
+      // 15px titles
+      bitmapFont.drawCachedText(offCtx, "MOVEMENT", mx, my + 55, 15, "#00ffff", true, "center", "alphabetic", 0.75);
+      bitmapFont.drawCachedText(offCtx, "LASER CANNON", rx, ry + 55, 15, "#00ff88", true, "center", "alphabetic", 0.75);
 
-    // Right Side: Mouse Aim & Laser Cannon
-    const rx = cx + 360;
-    const ry = cy + 120;
+      // 12px descriptions
+      bitmapFont.drawCachedText(offCtx, "WASD / ARROW KEYS", mx, my + 75, 12, "#a0aec0", false, "center", "alphabetic", 0.5);
+      bitmapFont.drawCachedText(offCtx, "HOLD CLICK: AIM", rx, ry + 75, 12, "#a0aec0", false, "center", "alphabetic", 0.5);
+      bitmapFont.drawCachedText(offCtx, "RELEASE: FIRE", rx, ry + 93, 12, "#a0aec0", false, "center", "alphabetic", 0.5);
 
-    ctx.strokeStyle = `rgba(0, 255, 255, ${0.22 * alphaFactor})`;
-    ctx.fillStyle = `rgba(0, 255, 255, ${0.04 * alphaFactor})`;
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.roundRect(rx - 25, ry - 55, 50, 80, 25);
-    ctx.fill();
-    ctx.stroke();
+    } else {
+      // MOBILE / TOUCH FLOOR CONTROLS
+      const mx = cx - 360;
+      const my = cy + 120;
+      const rx = cx + 360;
+      const ry = cy + 120;
 
-    ctx.fillStyle = `rgba(0, 255, 136, ${0.25 * alphaFactor})`;
-    ctx.strokeStyle = `rgba(0, 255, 136, ${0.6 * alphaFactor})`;
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.roundRect(rx - 23, ry - 53, 22, 35, [22, 0, 0, 0]);
-    ctx.fill();
-    ctx.stroke();
+      // --- BATCH 1: Shapes ---
+      offCtx.lineWidth = 2;
+      
+      offCtx.strokeStyle = `rgba(0, 255, 255, 0.22)`;
+      offCtx.fillStyle = `rgba(0, 255, 255, 0.04)`;
+      offCtx.beginPath();
+      offCtx.arc(mx, my - 20, 50, 0, Math.PI * 2);
+      offCtx.fill();
+      offCtx.stroke();
 
-    ctx.strokeStyle = `rgba(0, 255, 255, ${0.25 * alphaFactor})`;
-    ctx.beginPath();
-    ctx.moveTo(rx, ry - 55);
-    ctx.lineTo(rx, ry - 18);
-    ctx.stroke();
+      offCtx.fillStyle = `rgba(0, 255, 255, 0.2)`;
+      offCtx.strokeStyle = `rgba(0, 255, 255, 0.6)`;
+      offCtx.beginPath();
+      offCtx.arc(mx, my - 20, 22, 0, Math.PI * 2);
+      offCtx.fill();
+      offCtx.stroke();
 
-    ctx.textAlign = "center";
-    ctx.textBaseline = "alphabetic";
-    ctx.fillStyle = `rgba(0, 255, 136, ${0.75 * alphaFactor})`;
-    ctx.font = "bold 15px monospace";
-    ctx.fillText("LÁSER CANNON", rx, ry + 55);
+      const drawChevron = (x, y, angle) => {
+        offCtx.save();
+        offCtx.translate(x, y);
+        offCtx.rotate(angle);
+        offCtx.strokeStyle = `rgba(0, 255, 255, 0.4)`;
+        offCtx.lineWidth = 2;
+        offCtx.beginPath();
+        offCtx.moveTo(-6, -4); offCtx.lineTo(0, 3); offCtx.lineTo(6, -4);
+        offCtx.stroke();
+        offCtx.restore();
+      };
+      drawChevron(mx, my - 20 - 36, Math.PI);
+      drawChevron(mx, my - 20 + 36, 0);
+      drawChevron(mx - 36, my - 20, Math.PI / 2);
+      drawChevron(mx + 36, my - 20, -Math.PI / 2);
 
-    ctx.fillStyle = `rgba(160, 174, 192, ${0.5 * alphaFactor})`;
-    ctx.font = "12px monospace";
-    ctx.fillText("MANTENER CLICK: APUNTAR", rx, ry + 75);
-    ctx.fillText("SOLTAR: DISPARAR", rx, ry + 93);
+      offCtx.strokeStyle = `rgba(0, 255, 136, 0.22)`;
+      offCtx.fillStyle = `rgba(0, 255, 136, 0.04)`;
+      offCtx.lineWidth = 2;
+      offCtx.beginPath();
+      offCtx.arc(rx, ry - 20, 50, 0, Math.PI * 2);
+      offCtx.fill();
+      offCtx.stroke();
 
-  } else {
-    // MOBILE / TOUCH FLOOR CONTROLS
-    const mx = cx - 360;
-    const my = cy + 120;
+      offCtx.strokeStyle = `rgba(0, 255, 136, 0.6)`;
+      offCtx.lineWidth = 1.5;
+      offCtx.beginPath();
+      offCtx.moveTo(rx - 25, ry - 20); offCtx.lineTo(rx + 25, ry - 20);
+      offCtx.moveTo(rx, ry - 20 - 25); offCtx.lineTo(rx, ry - 20 + 25);
+      offCtx.stroke();
 
-    ctx.strokeStyle = `rgba(0, 255, 255, ${0.22 * alphaFactor})`;
-    ctx.fillStyle = `rgba(0, 255, 255, ${0.04 * alphaFactor})`;
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.arc(mx, my - 20, 50, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
+      // --- BATCH 2: Texts via BitmapFont ---
+      bitmapFont.drawCachedText(offCtx, "LEFT ZONE", mx, my + 55, 15, "#00ffff", true, "center", "alphabetic", 0.75);
+      bitmapFont.drawCachedText(offCtx, "RIGHT ZONE", rx, ry + 55, 15, "#00ff88", true, "center", "alphabetic", 0.75);
 
-    ctx.fillStyle = `rgba(0, 255, 255, ${0.2 * alphaFactor})`;
-    ctx.strokeStyle = `rgba(0, 255, 255, ${0.6 * alphaFactor})`;
-    ctx.beginPath();
-    ctx.arc(mx, my - 20, 22, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-
-    const drawChevron = (x, y, angle) => {
-      ctx.save();
-      ctx.translate(x, y);
-      ctx.rotate(angle);
-      ctx.strokeStyle = `rgba(0, 255, 255, ${0.4 * alphaFactor})`;
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(-6, -4); ctx.lineTo(0, 3); ctx.lineTo(6, -4);
-      ctx.stroke();
-      ctx.restore();
-    };
-    drawChevron(mx, my - 20 - 36, Math.PI);
-    drawChevron(mx, my - 20 + 36, 0);
-    drawChevron(mx - 36, my - 20, Math.PI / 2);
-    drawChevron(mx + 36, my - 20, -Math.PI / 2);
-
-    ctx.textAlign = "center";
-    ctx.textBaseline = "alphabetic";
-    ctx.fillStyle = `rgba(0, 255, 255, ${0.75 * alphaFactor})`;
-    ctx.font = "bold 15px monospace";
-    ctx.fillText("ZONA IZQUIERDA", mx, my + 55);
-
-    ctx.fillStyle = `rgba(160, 174, 192, ${0.5 * alphaFactor})`;
-    ctx.font = "12px monospace";
-    ctx.fillText("JOYSTICK: MOVERSE", mx, my + 75);
-
-    // Right Zone: Aim & Fire Laser Joystick
-    const rx = cx + 360;
-    const ry = cy + 120;
-
-    ctx.strokeStyle = `rgba(0, 255, 136, ${0.22 * alphaFactor})`;
-    ctx.fillStyle = `rgba(0, 255, 136, ${0.04 * alphaFactor})`;
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.arc(rx, ry - 20, 50, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-
-    ctx.strokeStyle = `rgba(0, 255, 136, ${0.6 * alphaFactor})`;
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.moveTo(rx - 25, ry - 20); ctx.lineTo(rx + 25, ry - 20);
-    ctx.moveTo(rx, ry - 20 - 25); ctx.lineTo(rx, ry - 20 + 25);
-    ctx.stroke();
-
-    ctx.textAlign = "center";
-    ctx.textBaseline = "alphabetic";
-    ctx.fillStyle = `rgba(0, 255, 136, ${0.75 * alphaFactor})`;
-    ctx.font = "bold 15px monospace";
-    ctx.fillText("ZONA DERECHA", rx, ry + 55);
-
-    ctx.fillStyle = `rgba(160, 174, 192, ${0.5 * alphaFactor})`;
-    ctx.font = "12px monospace";
-    ctx.fillText("DESLIZAR: APUNTAR LÁSER", rx, ry + 75);
-    ctx.fillText("SOLTAR: DISPARAR", rx, ry + 93);
+      bitmapFont.drawCachedText(offCtx, "JOYSTICK: MOVE", mx, my + 75, 12, "#a0aec0", false, "center", "alphabetic", 0.5);
+      bitmapFont.drawCachedText(offCtx, "DRAG: AIM LASER", rx, ry + 75, 12, "#a0aec0", false, "center", "alphabetic", 0.5);
+      bitmapFont.drawCachedText(offCtx, "RELEASE: FIRE", rx, ry + 93, 12, "#a0aec0", false, "center", "alphabetic", 0.5);
+    }
   }
 
+  ctx.save();
+  ctx.globalAlpha = alphaFactor;
+  ctx.drawImage(floorControlsCanvas, 0, 0);
   ctx.restore();
 }
 
@@ -341,7 +370,7 @@ export function loop(timestamp, ctx) {
   // releasing 100% of CPU and GPU resources to the video ad player
   if (state.isAdPlaying) {
     state.lastFrameTime = timestamp;
-    requestAnimationFrame((ts) => loop(ts, ctx));
+    animationFrameId = requestAnimationFrame((ts) => loop(ts, ctx));
     return;
   }
 
@@ -387,7 +416,7 @@ export function loop(timestamp, ctx) {
     vectorTitle.draw(ctx, screenW, screenH);
     ctx.restore();
 
-    requestAnimationFrame((ts) => loop(ts, ctx));
+    animationFrameId = requestAnimationFrame((ts) => loop(ts, ctx));
     return;
   }
 
@@ -719,7 +748,7 @@ export function loop(timestamp, ctx) {
       }
     }
     
-    updateActiveSkillHUD();
+    
 
     let desiredMusic = 'music_main';
     if (state.bosses.length > 0) {
@@ -730,7 +759,7 @@ export function loop(timestamp, ctx) {
     }
     audioManager.playMusic(desiredMusic);
 
-    updateHUD();
+    
   }
 
   // =========================================================================
@@ -822,5 +851,5 @@ export function loop(timestamp, ctx) {
 
   ctx.restore();
 
-  requestAnimationFrame((ts) => loop(ts, ctx));
+  animationFrameId = requestAnimationFrame((ts) => loop(ts, ctx));
 }

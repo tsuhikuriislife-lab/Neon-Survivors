@@ -1,3 +1,4 @@
+import { bitmapFont } from "./BitmapFont.js";
 // ============================================================================
 // Pool.js - Zero-Allocation Object Pools for High Performance 60FPS
 // ============================================================================
@@ -405,16 +406,6 @@ class PooledFloatingText {
 }
 
 const fontCacheBold = {};
-const fontCache900 = {};
-
-function getFontBold(size) {
-  let font = fontCacheBold[size];
-  if (!font) {
-    font = `bold ${size}px 'Segoe UI', sans-serif`;
-    fontCacheBold[size] = font;
-  }
-  return font;
-}
 
 function getFont900(size) {
   let font = fontCache900[size];
@@ -469,66 +460,25 @@ export class FloatingTextPool {
   }
 
   drawBatch(ctx) {
-    ctx.save();
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-
     const len = this.pool.length;
-    let lastFont = "";
-    let lastColor = "";
-    let lastAlpha = -1;
-
     for (let i = 0; i < len; i++) {
       const ft = this.pool[i];
       if (!ft.active) continue;
 
       const alpha = Math.max(0, ft.alpha);
-      if (lastAlpha !== alpha) {
-        ctx.globalAlpha = alpha;
-        lastAlpha = alpha;
-      }
 
       if (ft.isCrit) {
-        ctx.save();
-        ctx.translate(ft.x, ft.y);
-        if (ft.rotation !== 0) {
-          ctx.rotate(ft.rotation);
-        }
-        ctx.font = getFont900(ft.size);
-
         // Vibrant neon glow matching the weapon's color
-        ctx.shadowColor = ft.color;
-        ctx.shadowBlur = 12;
-        ctx.fillStyle = ft.color;
-        ctx.fillText(ft.text, 0, 0);
-
+        bitmapFont.queueText(ft.text, ft.x, ft.y, ft.size, ft.color, true, "center", "middle", alpha, 12, ft.color, ft.rotation);
+        
         // Bright white core highlight for punchy luminosity
-        ctx.shadowBlur = 0;
-        ctx.fillStyle = "#ffffff";
-        ctx.globalAlpha = Math.max(0, alpha * 0.7);
-        ctx.font = getFontBold(Math.max(10, ft.size - 4));
-        ctx.fillText(ft.text, 0, 0);
-
-        ctx.restore();
-        lastFont = "";
-        lastColor = "";
-        lastAlpha = -1;
+        bitmapFont.queueText(ft.text, ft.x, ft.y, Math.max(10, ft.size - 4), "#ffffff", true, "center", "middle", Math.max(0, alpha * 0.7), 0, "", ft.rotation);
       } else {
-        ctx.shadowBlur = 0;
-        if (lastColor !== ft.color) {
-          ctx.fillStyle = ft.color;
-          lastColor = ft.color;
-        }
-        const fontStr = getFontBold(ft.size);
-        if (lastFont !== fontStr) {
-          ctx.font = fontStr;
-          lastFont = fontStr;
-        }
-        ctx.fillText(ft.text, ft.x, ft.y);
+        // Standard damage numbers
+        bitmapFont.queueText(ft.text, ft.x, ft.y, ft.size, ft.color, true, "center", "middle", alpha);
       }
     }
-
-    ctx.restore();
+    bitmapFont.flushBatch(ctx);
   }
 }
 

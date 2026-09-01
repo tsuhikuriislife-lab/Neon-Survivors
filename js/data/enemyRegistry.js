@@ -25,33 +25,33 @@ export function getEnemyById(id) {
   return enemyRegistry.find(e => e.id === id);
 }
 
-// 1. Enemigo Estándar - Pequeño
+// 1. Enemigo Estandar - Pequeno
 registerEnemy({
   id: 'standard_small',
-  name: 'Pequeño',
-  category: 'Estándar',
+  name: 'Pequeno',
+  category: 'Estandar',
   instantiate: (x, y) => new StandardEnemy('small', x, y),
   drawPreview: (ctx) => {
     drawPolygon(ctx, 50, 50, 20, 3, 0, "#ff3366", 8, "rgba(255, 51, 102, 0.2)");
   }
 });
 
-// 2. Enemigo Estándar - Mediano
+// 2. Enemigo Estandar - Mediano
 registerEnemy({
   id: 'standard_medium',
   name: 'Mediano',
-  category: 'Estándar',
+  category: 'Estandar',
   instantiate: (x, y) => new StandardEnemy('medium', x, y),
   drawPreview: (ctx) => {
     drawPolygon(ctx, 50, 50, 24, 5, 0, "#ffbb00", 8, "rgba(255, 187, 0, 0.2)");
   }
 });
 
-// 3. Enemigo Estándar - Grande
+// 3. Enemigo Estandar - Grande
 registerEnemy({
   id: 'standard_large',
   name: 'Grande',
-  category: 'Estándar',
+  category: 'Estandar',
   instantiate: (x, y) => new StandardEnemy('large', x, y),
   drawPreview: (ctx) => {
     drawPolygon(ctx, 50, 50, 30, 6, 0, "#a855f7", 10, "rgba(168, 85, 247, 0.2)");
@@ -93,10 +93,10 @@ registerEnemy({
   }
 });
 
-// 7. Cría de Madre (Mother Child)
+// 7. Cria de Madre (Mother Child)
 registerEnemy({
   id: 'mother_child',
-  name: 'Cría de Madre',
+  name: 'Cria de Madre',
   category: 'Especial',
   instantiate: (x, y) => new MotherChildEnemy(x, y),
   drawPreview: (ctx) => {

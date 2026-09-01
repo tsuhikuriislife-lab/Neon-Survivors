@@ -2,7 +2,6 @@ import { AmalgamNode } from './AmalgamNode.js';
 import { state } from '../../engine/gameState.js';
 import { dist, drawPolygon } from '../../engine/Utils.js';
 import { spawnExplosion } from '../effects/spawnExplosion.js';
-import { FloatingText } from '../effects/FloatingText.js';
 import { HazardArea } from '../effects/HazardArea.js';
 import { Gem } from '../collectibles/Gem.js';
 import { Projectile } from '../projectiles/Projectile.js';

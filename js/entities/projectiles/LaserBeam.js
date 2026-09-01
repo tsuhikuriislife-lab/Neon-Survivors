@@ -74,7 +74,7 @@ export class LaserBeam {
         }
       }
 
-      // Ordenar objetivos por proximidad al origen del láser (el primero en el rayo se procesa primero)
+      // Ordenar objetivos por proximidad al origen del laser (el primero en el rayo se procesa primero)
       targetsToHit.sort((a, b) => a.distAlong - b.distAlong);
 
       targetsToHit.forEach((item, index) => {
@@ -82,7 +82,7 @@ export class LaserBeam {
         if (this.hitEnemies.has(t)) return;
         this.hitEnemies.add(t);
 
-        // Reducción de 5% de daño por cada enemigo atravesado (100%, 95%, 90%...)
+        // Reduccion de 5% de dano por cada enemigo atravesado (100%, 95%, 90%...)
         const falloffMult = Math.max(0.1, 1.0 - index * 0.05);
         const actualDamage = this.damage * falloffMult;
 

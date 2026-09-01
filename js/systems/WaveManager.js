@@ -216,7 +216,7 @@ export function handleSpawning() {
     // Fase media: de 26 frames a 16 frames (~0.26s)
     baseInterval = Math.max(16, 26 - Math.floor(((state.gameTime - 180) / 300) * 10));
   } else {
-    // Fase tardía: de 16 frames a 9 frames (~0.15s)
+    // Fase tardia: de 16 frames a 9 frames (~0.15s)
     baseInterval = Math.max(9, 16 - Math.floor(((state.gameTime - 480) / 300) * 7));
   }
 
@@ -253,7 +253,7 @@ export function handleSpawning() {
        return;
     }
 
-    // 2. Enemigos especiales por progresión
+    // 2. Enemigos especiales por progresion
     if (state.bossDefeatTimes.kyren && Math.random() < 0.22) {
        state.enemies.push(new RangerEnemy());
        return;
@@ -276,7 +276,7 @@ export function handleSpawning() {
       batchCount = Math.random() < 0.35 ? 3 : 2;
     }
 
-    // 4. Tipo de enemigo estándar
+    // 4. Tipo de enemigo estandar
     let enemyType;
     if (state.gameTime < 180) {
       enemyType = 'small';

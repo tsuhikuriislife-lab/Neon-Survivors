@@ -66,13 +66,13 @@ export class AmalgamNode extends Boss {
     ];
 
     const cornerAngles = corners.map(c => Math.atan2(c.y - y, c.x - x));
-    const cornerExclusion = Math.PI / 9; // 20° de margen de exclusión alrededor de cada esquina
+    const cornerExclusion = Math.PI / 9; // 20° de margen de exclusion alrededor de cada esquina
     const cardinalExclusion = Math.PI / 24; // 7.5° de margen para evitar trayectorias 1D estrictamente horizontales/verticales
 
     for (let attempt = 0; attempt < 200; attempt++) {
       const angle = (Math.random() * 2 - 1) * Math.PI;
 
-      // Descartar ángulos que apunten hacia alguna de las 4 esquinas del mapa
+      // Descartar angulos que apunten hacia alguna de las 4 esquinas del mapa
       let tooClose = false;
       for (const ca of cornerAngles) {
         let diff = Math.abs(angle - ca) % (Math.PI * 2);

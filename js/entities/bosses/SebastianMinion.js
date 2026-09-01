@@ -16,15 +16,15 @@ export class SebastianMinion extends Boss {
     this.smokeTimer = 0;
     this.rgb = { r: 255, g: 85, b: 0 };
 
-    // Físicas Estilo Eater of Worlds (Asemejadas al padre)
-    this.outsideSpeed = 13.2;       // Velocidad máxima incrementada para persecución y embestidas
-    this.minSpeed = 2.8;            // Velocidad mínima dentro del mapa
-    this.friction = 0.045;          // Tasa de desaceleración dentro del mapa
-    this.outsideAccel = 0.22;       // Aceleración rápida afuera
+    // Fisicas Estilo Eater of Worlds (Asemejadas al padre)
+    this.outsideSpeed = 13.2;       // Velocidad maxima incrementada para persecucion y embestidas
+    this.minSpeed = 2.8;            // Velocidad minima dentro del mapa
+    this.friction = 0.045;          // Tasa de desaceleracion dentro del mapa
+    this.outsideAccel = 0.22;       // Aceleracion rapida afuera
     this.speed = initialSpeed || this.outsideSpeed;
     this.aiState = 'ATTACK';        // Estados: 'ATTACK', 'SEEK_EXIT', 'OUTSIDE_ACCEL', 'OUTSIDE_REENTRY'
 
-    this.outsideTurnRate = 0.075;   // Giro ágil fuera del mapa
+    this.outsideTurnRate = 0.075;   // Giro agil fuera del mapa
     this.minTurnRate = 0.010;
     this.maxTurnRate = 0.048;
     this.turnRateFactor = 0.11;
@@ -116,7 +116,7 @@ export class SebastianMinion extends Boss {
     for (const other of otherSnakes) {
       if (!other || other.dead || other === this) continue;
 
-      // 1. Repulsión Cabeza contra Cabeza
+      // 1. Repulsion Cabeza contra Cabeza
       const dHead = dist(this.x, this.y, other.x, other.y);
       if (dHead < separationDist && dHead > 0.1) {
         const force = (1 - dHead / separationDist) * 4.0;
@@ -126,7 +126,7 @@ export class SebastianMinion extends Boss {
         repelY += ny * force;
       }
 
-      // 2. Repulsión Cabeza contra Segmentos de la otra serpiente
+      // 2. Repulsion Cabeza contra Segmentos de la otra serpiente
       if (other.segments) {
         const checkCount = Math.min(8, other.segments.length);
         for (let i = 1; i < checkCount; i++) {
@@ -152,7 +152,7 @@ export class SebastianMinion extends Boss {
   update(player, otherSnakes = null) {
     if (this.dead) return;
 
-    // Aplicar repulsión física y de trayectoria entre serpientes
+    // Aplicar repulsion fisica y de trayectoria entre serpientes
     const activeSnakes = this.getNearbySnakes(otherSnakes);
     const { repelX, repelY } = this.applySnakeRepulsion(activeSnakes);
 
@@ -161,23 +161,23 @@ export class SebastianMinion extends Boss {
     let targetAngle = curAngle;
     let turnSpeed = this.minTurnRate;
 
-    // Flanqueo de Sebastián (desplaza su punto de mira hacia el costado opuesto del jugador)
+    // Flanqueo de Sebastian (desplaza su punto de mira hacia el costado opuesto del jugador)
     const basePlayerAngle = Math.atan2(player.y - this.y, player.x - this.x);
     const flankOffsetAngle = basePlayerAngle - Math.PI * 0.4;
     const flankDist = 120;
     const targetX = player.x + Math.cos(flankOffsetAngle) * flankDist;
     const targetY = player.y + Math.sin(flankOffsetAngle) * flankDist;
 
-    // 1. Control de Estado y Navegación por Zonas
+    // 1. Control de Estado y Navegacion por Zonas
     if (isOutside) {
       if (this.speed < this.outsideSpeed - 0.3) {
-        // Fuera del mapa acelerando: sigue hacia afuera hasta alcanzar velocidad máxima
+        // Fuera del mapa acelerando: sigue hacia afuera hasta alcanzar velocidad maxima
         this.speed = Math.min(this.outsideSpeed, this.speed + this.outsideAccel);
         this.aiState = 'OUTSIDE_ACCEL';
         targetAngle = curAngle;
         turnSpeed = 0.01;
       } else {
-        // Ya alcanzó su velocidad máxima: activa el reingreso hacia el jugador flanqueando
+        // Ya alcanzo su velocidad maxima: activa el reingreso hacia el jugador flanqueando
         this.speed = this.outsideSpeed;
         this.aiState = 'OUTSIDE_REENTRY';
         targetAngle = Math.atan2(targetY - this.y, targetX - this.x);
@@ -199,12 +199,12 @@ export class SebastianMinion extends Boss {
       }
 
       if (this.aiState === 'ATTACK') {
-        // Desaceleración progresiva (fricción) hasta minSpeed
+        // Desaceleracion progresiva (friccion) hasta minSpeed
         if (this.speed > this.minSpeed) {
           this.speed = Math.max(this.minSpeed, this.speed - this.friction);
         }
 
-        // Si ya perdió toda su inercia y llegó a baja velocidad -> cambiar objetivo a buscar la salida del mapa
+        // Si ya perdio toda su inercia y llego a baja velocidad -> cambiar objetivo a buscar la salida del mapa
         if (this.speed <= this.minSpeed + 0.3) {
           this.aiState = 'SEEK_EXIT';
         }
@@ -213,10 +213,10 @@ export class SebastianMinion extends Boss {
         const rawTurnRate = this.turnRateFactor / Math.max(1.0, this.speed);
         turnSpeed = Math.min(this.maxTurnRate, Math.max(this.minTurnRate, rawTurnRate));
       } else if (this.aiState === 'SEEK_EXIT') {
-        // Aceleración ligera hacia la salida con offset diferenciado
+        // Aceleracion ligera hacia la salida con offset diferenciado
         this.speed = Math.min(5.5, this.speed + 0.04);
 
-        // Apuntar a la salida de perímetro más cercana (offset de Sebastián hacia -X / +Y)
+        // Apuntar a la salida de perimetro mas cercana (offset de Sebastian hacia -X / +Y)
         let exitX = this.x - 180;
         let exitY = this.y + 180;
         const distLeft = this.x;
@@ -235,7 +235,7 @@ export class SebastianMinion extends Boss {
       }
     }
 
-    // Desviar targetAngle suavemente por fuerza de repulsión
+    // Desviar targetAngle suavemente por fuerza de repulsion
     if (Math.hypot(repelX, repelY) > 0.1) {
       const repelAngle = Math.atan2(repelY, repelX);
       let diffRepel = repelAngle - targetAngle;
@@ -244,7 +244,7 @@ export class SebastianMinion extends Boss {
       targetAngle += diffRepel * 0.4;
     }
 
-    // 2. Navegación limitada estrictamente por turnSpeed por frame
+    // 2. Navegacion limitada estrictamente por turnSpeed por frame
     let diff = targetAngle - curAngle;
     while (diff < -Math.PI) diff += Math.PI * 2;
     while (diff > Math.PI) diff -= Math.PI * 2;
@@ -256,7 +256,7 @@ export class SebastianMinion extends Boss {
     this.x += this.vx;
     this.y += this.vy;
 
-    // 4. Cinemática de segmentos
+    // 4. Cinematica de segmentos
     this.segments[0].x = this.x;
     this.segments[0].y = this.y;
     this.segments[0].angle = newAngle;
@@ -280,7 +280,7 @@ export class SebastianMinion extends Boss {
       }
     }
 
-    // 6. Colisiones y balance de daño
+    // 6. Colisiones y balance de dano
     if (this.bodyHitCooldown > 0) this.bodyHitCooldown--;
 
     const headDistance = dist(this.x, this.y, player.x, player.y);
