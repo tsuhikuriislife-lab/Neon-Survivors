@@ -10,6 +10,16 @@ import { Boss } from './Boss.js';
 import { getOrCachePolygon, textures } from '../../engine/TextureCache.js';
 import { worldLayer } from '../../main.js';
 
+function hslToHex(h, s, l) {
+  l /= 100;
+  const a = s * Math.min(l, 1 - l) / 100;
+  const f = n => {
+    const k = (n + h / 30) % 12;
+    const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
+    return Math.round(255 * color).toString(16).padStart(2, '0');
+  };
+  return parseInt('0x' + f(0) + f(8) + f(4));
+}
 
 export class DevourerOfTaxBoss extends Boss {
   constructor(x, y, hp, maxHp) {
@@ -18,6 +28,11 @@ export class DevourerOfTaxBoss extends Boss {
     const finalMaxHp = maxHp !== undefined ? maxHp : defaultMaxHp;
     const finalHp = hp !== undefined ? hp : finalMaxHp;
     super(0, 0, "Devourer of Tax", finalMaxHp, 36, "#39ff14", finalHp);
+    if (this.sprite) {
+      if (this.sprite.parent) this.sprite.parent.removeChild(this.sprite);
+      this.sprite.destroy();
+      this.sprite = null;
+    }
     this.segmentCount = 90;
     this.segmentLength = 36;
     this.radius = 36;
@@ -60,11 +75,12 @@ export class DevourerOfTaxBoss extends Boss {
     for (let i = 0; i < this.segmentCount; i++) {
       this.segments.push({ x: this.x, y: this.y - i * this.segmentLength, angle: 0 });
     }
+    this.texture = textures['boss_devourer_seg'];
     this.segmentSprites = [];
     for (let i = 0; i < this.segmentCount; i++) {
       let spr = new PIXI.Sprite();
-      if (textures['boss_carlos_seg']) {
-          spr.texture = textures['boss_carlos_seg'];
+      if (textures['boss_devourer_seg']) {
+          spr.texture = textures['boss_devourer_seg'];
       }
       spr.anchor.set(0.5);
       worldLayer.addChild(spr);
@@ -150,6 +166,15 @@ export class DevourerOfTaxBoss extends Boss {
     const minionSegments = (this.carlos ? this.carlos.segmentCount : 0) + (this.sebastian ? this.sebastian.segmentCount : 0);
     this.segmentCount = Math.max(1, this.segmentCount - minionSegments);
     this.segments = this.segments.slice(0, this.segmentCount);
+
+    if (this.segmentSprites) {
+      const orphanedSprites = this.segmentSprites.slice(this.segmentCount);
+      orphanedSprites.forEach(spr => {
+        if (spr.parent) spr.parent.removeChild(spr);
+        spr.destroy();
+      });
+      this.segmentSprites = this.segmentSprites.slice(0, this.segmentCount);
+    }
 
     spawnExplosion(this.x, this.y, "#39ff14", 30, 4);
   }
@@ -381,6 +406,7 @@ export class DevourerOfTaxBoss extends Boss {
       }
     }
 
+    const time = performance.now() * 0.15;
     if (this.segmentSprites && this.segments) {
       for (let i = 0; i < this.segments.length; i++) {
         if (this.segmentSprites[i]) {
@@ -388,19 +414,29 @@ export class DevourerOfTaxBoss extends Boss {
           this.segmentSprites[i].y = this.segments[i].y;
           this.segmentSprites[i].rotation = this.segments[i].angle || 0;
           if (this.alpha !== undefined) this.segmentSprites[i].alpha = this.alpha;
+          
+          const hue = (time + i * 8) % 360;
+          this.segmentSprites[i].tint = hslToHex(hue, 100, 50);
         }
       }
+    }
+    
+    if (this.sprite) {
+      this.sprite.tint = hslToHex(time % 360, 100, 50);
     }
 
   }
 
   die() {
+    super.die();
     if (this.segmentSprites) {
       this.segmentSprites.forEach(spr => {
-        worldLayer.removeChild(spr);
+        if (spr.parent) spr.parent.removeChild(spr);
         spr.destroy();
       });
       this.segmentSprites = [];
     }
+    if (this.carlos) this.carlos.die();
+    if (this.sebastian) this.sebastian.die();
   }
 }

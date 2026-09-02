@@ -31,7 +31,7 @@ export class FallingProjectile extends Projectile {
       this.sprite = new PIXI.Graphics();
       let hexColor = 0x00ffff;
       if (typeof this.color === 'string' && this.color.startsWith('#')) {
-        hexColor = parseInt(this.color.replace('#', ''), 16);
+        const parsed = parseInt(this.color.replace('#', ''), 16); if (!isNaN(parsed)) hexColor = parsed;
       }
       this.sprite.beginFill(hexColor);
       this.sprite.drawCircle(0, 0, this.radius);
@@ -61,7 +61,7 @@ export class FallingProjectile extends Projectile {
       this.trailGraphics.clear();
       let hexColor = 0x00ffff;
       if (typeof this.color === 'string' && this.color.startsWith('#')) {
-        hexColor = parseInt(this.color.replace('#', ''), 16);
+        const parsed = parseInt(this.color.replace('#', ''), 16); if (!isNaN(parsed)) hexColor = parsed;
       }
       this.trailGraphics.lineStyle(this.radius * 1.5, hexColor, 0.4);
       this.trailGraphics.moveTo(this.history[0].x, this.history[0].y);

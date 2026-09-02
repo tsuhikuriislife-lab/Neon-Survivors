@@ -82,6 +82,33 @@ export const state = {
   floatingTextPool,
 
   reset() {
+    const destroyEntity = (e) => {
+      if (!e) return;
+      if (typeof e.destroy === 'function') {
+        e.destroy();
+      } else {
+        if (e.sprite && e.sprite.destroy) {
+          if (e.sprite.parent) e.sprite.parent.removeChild(e.sprite);
+          e.sprite.destroy();
+        }
+        if (e.graphics && e.graphics.destroy) {
+          if (e.graphics.parent) e.graphics.parent.removeChild(e.graphics);
+          e.graphics.destroy();
+        }
+      }
+    };
+
+    if (this.enemies) this.enemies.forEach(destroyEntity);
+    if (this.bosses) this.bosses.forEach(destroyEntity);
+    if (this.projectiles) this.projectiles.forEach(destroyEntity);
+    if (this.enemyProjectiles) this.enemyProjectiles.forEach(destroyEntity);
+    if (this.acceleratingProjectiles) this.acceleratingProjectiles.forEach(destroyEntity);
+    if (this.fallingProjectiles) this.fallingProjectiles.forEach(destroyEntity);
+    if (this.hazardAreas) this.hazardAreas.forEach(destroyEntity);
+    if (this.shockwaves) this.shockwaves.forEach(destroyEntity);
+    if (this.laserBeams) this.laserBeams.forEach(destroyEntity);
+    if (this.gems) this.gems.forEach(destroyEntity);
+
     this.enemies = [];
     this.bosses = [];
     this.currentAmalgamBoss = null;

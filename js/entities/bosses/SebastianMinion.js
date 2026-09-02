@@ -12,6 +12,11 @@ import { worldLayer } from '../../main.js';
 export class SebastianMinion extends Boss {
   constructor(x, y, hp, initialAngle = Math.random() * Math.PI * 2, initialSpeed = 7.5, maxHp = hp) {
     super(x, y, "Sebastian", maxHp, 36, "#ff5500", hp);
+    if (this.sprite) {
+      if (this.sprite.parent) this.sprite.parent.removeChild(this.sprite);
+      this.sprite.destroy();
+      this.sprite = null;
+    }
     this.segmentCount = 15;
     this.segmentLength = 36;
     this.radius = 36;
@@ -51,6 +56,18 @@ export class SebastianMinion extends Boss {
         y: this.y - Math.sin(initialAngle) * i * this.segmentLength, 
         angle: initialAngle 
       });
+    }
+
+    this.texture = textures['boss_sebastian_seg'];
+    this.segmentSprites = [];
+    for (let i = 0; i < this.segmentCount; i++) {
+      let spr = new PIXI.Sprite();
+      if (textures['boss_sebastian_seg']) {
+          spr.texture = textures['boss_sebastian_seg'];
+      }
+      spr.anchor.set(0.5);
+      worldLayer.addChild(spr);
+      this.segmentSprites.push(spr);
     }
   }
 
@@ -316,9 +333,10 @@ export class SebastianMinion extends Boss {
   }
 
   die() {
+    super.die();
     if (this.segmentSprites) {
       this.segmentSprites.forEach(spr => {
-        worldLayer.removeChild(spr);
+        if (spr.parent) spr.parent.removeChild(spr);
         spr.destroy();
       });
       this.segmentSprites = [];

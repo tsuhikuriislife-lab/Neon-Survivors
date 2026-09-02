@@ -61,7 +61,7 @@ export class Shockwave extends Projectile {
       
       let hexColor = 0x00ffb4;
       if (typeof this.color === 'string' && this.color.startsWith('#')) {
-        hexColor = parseInt(this.color.replace('#', ''), 16);
+        const parsed = parseInt(this.color.replace('#', ''), 16); if (!isNaN(parsed)) hexColor = parsed;
       }
       
       this.graphics.lineStyle(4, hexColor, 1);

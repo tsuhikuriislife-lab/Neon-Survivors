@@ -25,6 +25,9 @@ export function initGame() {
     vectorTitle = null;
   }
 
+  if (state.player && typeof state.player.destroy === 'function') {
+    state.player.destroy();
+  }
   state.player = new Player();
   if (state.camera) {
     state.camera.reset();
@@ -199,7 +202,24 @@ export function updateBackgroundLayer() {
   const linesProps = state.environment.gridLines.getComputedProps(state.gameTime);
   
   // 1. Base background
-  const bgColorHex = parseInt((bgProps.color || "#04030a").replace('#', '0x'), 16) || 0x04030a;
+  let bgColorHex = 0x04030a;
+  const parseBgColor = (c) => {
+    if (!c) return null;
+    if (c.startsWith('#')) {
+      const p = parseInt(c.replace('#', ''), 16);
+      return isNaN(p) ? null : p;
+    }
+    if (c.startsWith('rgb')) {
+      const matches = c.match(/\d+/g);
+      if (matches && matches.length >= 3) {
+        return (parseInt(matches[0]) << 16) | (parseInt(matches[1]) << 8) | parseInt(matches[2]);
+      }
+    }
+    return null;
+  };
+  const parsedBg = parseBgColor(bgProps.color);
+  if (parsedBg !== null) bgColorHex = parsedBg;
+
   backgroundGraphics.clear();
   backgroundGraphics.beginFill(bgColorHex);
   backgroundGraphics.drawRect(0, 0, state.width, state.height);
@@ -264,20 +284,30 @@ export function updateBackgroundLayer() {
   let outerHex = 0xff00ff;
   let innerHex = 0xffffff;
   let cornerHex = 0xff00ff;
-  try {
-    const pOuter = (borderProps.outerColor || "#ff00ff").replace('#','');
-    outerHex = parseInt(pOuter, 16);
-  } catch(e) {}
   
-  try {
-    // "rgba(255, 255, 255, 0.7)" -> we just use 0xffffff with alpha
-    innerHex = 0xffffff;
-  } catch(e) {}
+  const parseBorderColor = (c) => {
+    if (!c) return null;
+    if (c.startsWith('#')) {
+      const p = parseInt(c.replace('#', ''), 16);
+      return isNaN(p) ? null : p;
+    }
+    if (c.startsWith('rgb')) {
+      const matches = c.match(/\d+/g);
+      if (matches && matches.length >= 3) {
+        return (parseInt(matches[0]) << 16) | (parseInt(matches[1]) << 8) | parseInt(matches[2]);
+      }
+    }
+    return null;
+  };
+
+  const parsedOuter = parseBorderColor(borderProps.outerColor);
+  if (parsedOuter !== null) outerHex = parsedOuter;
+
+  const parsedInner = parseBorderColor(borderProps.innerColor);
+  if (parsedInner !== null) innerHex = parsedInner;
   
-  try {
-    const pCorner = (borderProps.cornerColor || "#ff00ff").replace('#','');
-    cornerHex = parseInt(pCorner, 16);
-  } catch(e) {}
+  const parsedCorner = parseBorderColor(borderProps.cornerColor);
+  if (parsedCorner !== null) cornerHex = parsedCorner;
 
   // Outer glow (simulated with thick low-alpha line)
   arenaBoundaryGraphics.lineStyle(10, outerHex, 0.3);
@@ -354,19 +384,18 @@ export function updateBossSpawnBeacon() {
   
   // Unfortunately setLineDash is not natively in PIXI Graphics. We will draw arcs.
   bossBeaconGraphics.lineStyle(2.5, 0xff0055, 0.6 + pulse * 0.4);
+  bossBeaconGraphics.moveTo(bx + Math.cos(rot) * (maxRadius * 0.85), by + Math.sin(rot) * (maxRadius * 0.85));
   bossBeaconGraphics.arc(bx, by, maxRadius * 0.85, rot, rot + Math.PI * 1.8); 
   
   bossBeaconGraphics.lineStyle(2, 0xff78a0, 0.7 + pulse * 0.3);
-  bossBeaconGraphics.beginPath();
+  bossBeaconGraphics.moveTo(bx + Math.cos(-rot * 1.5) * (maxRadius * 0.5), by + Math.sin(-rot * 1.5) * (maxRadius * 0.5));
   bossBeaconGraphics.arc(bx, by, maxRadius * 0.5, -rot * 1.5, -rot * 1.5 + Math.PI * 1.8);
-  bossBeaconGraphics.stroke();
 
   // Central crosshair & warning core
   bossBeaconGraphics.lineStyle(2, 0xffffff, 0.8 + pulse * 0.2);
   const crossSize = 24 + pulse * 8;
   bossBeaconGraphics.moveTo(bx - crossSize, by); bossBeaconGraphics.lineTo(bx + crossSize, by);
   bossBeaconGraphics.moveTo(bx, by - crossSize); bossBeaconGraphics.lineTo(bx, by + crossSize);
-  bossBeaconGraphics.stroke();
 
   bossBeaconGraphics.lineStyle(0);
   bossBeaconGraphics.beginFill(0xffffff, 1.0);
@@ -694,6 +723,8 @@ export function loop(timestamp) {
       b.getTargetables().forEach(processDot);
       if (b.getTargetables().length === 0) {
         const bossName = b.constructor.name;
+        if (typeof b.die === 'function') b.die();
+        if (typeof b.destroy === 'function') b.destroy();
         state.bosses[i] = state.bosses[state.bosses.length - 1];
         state.bosses.pop();
         

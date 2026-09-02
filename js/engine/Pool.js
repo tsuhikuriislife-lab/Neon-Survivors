@@ -53,9 +53,14 @@ class PooledParticle {
     this.alpha = 1.0;
     this.decay = decay * (Math.random() * 0.5 + 0.75);
     this.size = size;
+    let hexString = this.color;
+    if (typeof hexString === 'string' && hexString.startsWith('#')) {
+      hexString = hexString.replace('#', '0x');
+    }
+    const parsedColor = parseInt(hexString, 16);
+    this.sprite.tint = isNaN(parsedColor) ? 0xffffff : parsedColor;
     this.active = true;
 
-    this.sprite.tint = parseInt(this.color.replace('#', '0x'), 16);
     this.sprite.width = this.size;
     this.sprite.height = this.size;
     this.sprite.x = this.x;
@@ -188,7 +193,12 @@ class PooledProjectile {
       this.sprite.tint = 0xffffff;
     } else {
       this.sprite.texture = getParticleTexture();
-      this.sprite.tint = parseInt(this.color.replace('#', '0x'), 16);
+      let hexString = this.color;
+      if (typeof hexString === 'string' && hexString.startsWith('#')) {
+        hexString = hexString.replace('#', '0x');
+      }
+      const parsedColor = parseInt(hexString, 16);
+      this.sprite.tint = isNaN(parsedColor) ? 0xffffff : parsedColor;
       this.sprite.width = this.radius * 2;
       this.sprite.height = this.radius * 2;
     }

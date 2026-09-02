@@ -40,7 +40,8 @@ export class HazardArea {
       let hexColor = 0xffffff;
       if (typeof this.color === 'string') {
         if (this.color.startsWith('#')) {
-          hexColor = parseInt(this.color.replace('#', ''), 16);
+          const parsed = parseInt(this.color.replace('#', ''), 16);
+          if (!isNaN(parsed)) hexColor = parsed;
         } else if (this.color.startsWith('rgb')) {
           const matches = this.color.match(/\d+/g);
           if (matches && matches.length >= 3) {
