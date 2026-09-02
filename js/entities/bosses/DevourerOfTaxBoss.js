@@ -6,7 +6,10 @@ import { spawnExplosion } from '../effects/spawnExplosion.js';
 import { HazardArea } from '../effects/HazardArea.js';
 import { audioManager } from '../../engine/AudioManager.js';
 import { Boss } from './Boss.js';
-import { proceduralBatch, hslToRgb } from '../../engine/ProceduralBatchRenderer.js';
+
+import { getOrCachePolygon, textures } from '../../engine/TextureCache.js';
+import { worldLayer } from '../../main.js';
+
 
 export class DevourerOfTaxBoss extends Boss {
   constructor(x, y, hp, maxHp) {
@@ -26,12 +29,7 @@ export class DevourerOfTaxBoss extends Boss {
     this.vx = 0;
     this.vy = 2;
 
-    // Precalcular colores RGB estaticos para cada segmento (Zero GC en render)
-    this.segmentRgb = new Array(this.segmentCount);
-    for (let i = 0; i < this.segmentCount; i++) {
-      const hue = Math.floor((i / this.segmentCount) * 12) * 30;
-      this.segmentRgb[i] = hslToRgb(hue / 360, 1.0, 0.55);
-    }
+    // segmentRgb precalculation removed for WebGL
 
     // Fisicas y Mecanicas Estilo Eater of Worlds
     this.outsideSpeed = 14.0;       // Velocidad maxima incrementada para embestidas
@@ -62,6 +60,17 @@ export class DevourerOfTaxBoss extends Boss {
     for (let i = 0; i < this.segmentCount; i++) {
       this.segments.push({ x: this.x, y: this.y - i * this.segmentLength, angle: 0 });
     }
+    this.segmentSprites = [];
+    for (let i = 0; i < this.segmentCount; i++) {
+      let spr = new PIXI.Sprite();
+      if (textures['boss_carlos_seg']) {
+          spr.texture = textures['boss_carlos_seg'];
+      }
+      spr.anchor.set(0.5);
+      worldLayer.addChild(spr);
+      this.segmentSprites.push(spr);
+    }
+
 
     this.acidTimer = 0;
     this.dashTimer = 0;
@@ -371,44 +380,27 @@ export class DevourerOfTaxBoss extends Boss {
         }
       }
     }
-  }
 
-  draw(ctx) {
-    if (this.carlos && !this.carlos.dead) this.carlos.draw(ctx);
-    if (this.sebastian && !this.sebastian.dead) this.sebastian.draw(ctx);
-
-    if (this.dead) return;
-
-    const player = state.player;
-
-    for (let i = this.segmentCount - 1; i >= 0; i--) {
-      const seg = this.segments[i];
-      const rgb = this.segmentRgb[i] || { r: 57, g: 255, b: 20 };
-
-      // Transparencia dinamica en segmentos del cuerpo que se superpongan con el jugador
-      let alpha = 1.0;
-      if (player && i > 0) {
-        const d = dist(seg.x, seg.y, player.x, player.y);
-        if (d < this.proximityFadeRadius) {
-          alpha = Math.max(this.minAlphaOnPlayer, d / this.proximityFadeRadius);
+    if (this.segmentSprites && this.segments) {
+      for (let i = 0; i < this.segments.length; i++) {
+        if (this.segmentSprites[i]) {
+          this.segmentSprites[i].x = this.segments[i].x;
+          this.segmentSprites[i].y = this.segments[i].y;
+          this.segmentSprites[i].rotation = this.segments[i].angle || 0;
+          if (this.alpha !== undefined) this.segmentSprites[i].alpha = this.alpha;
         }
       }
+    }
 
-      // La cabeza (i=0) tiene radio ligeramente mayor o forma de rombo/triangulo
-      const sides = i === 0 ? 4 : 3;
-      const radius = i === 0 ? this.radius * 1.15 : this.radius;
+  }
 
-      proceduralBatch.submit(
-        sides,
-        seg.x,
-        seg.y,
-        radius,
-        seg.angle,
-        rgb.r,
-        rgb.g,
-        rgb.b,
-        alpha
-      );
+  die() {
+    if (this.segmentSprites) {
+      this.segmentSprites.forEach(spr => {
+        worldLayer.removeChild(spr);
+        spr.destroy();
+      });
+      this.segmentSprites = [];
     }
   }
 }

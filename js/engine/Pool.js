@@ -1,10 +1,25 @@
-import { bitmapFont } from "./BitmapFont.js";
 // ============================================================================
 // Pool.js - Zero-Allocation Object Pools for High Performance 60FPS
 // ============================================================================
 
-import { textures, drawCachedTexture } from './TextureCache.js';
+import { textures } from './TextureCache.js';
 import { dist } from './Utils.js';
+
+let particleTex;
+function getParticleTexture() {
+    if (!particleTex) {
+        const canvas = document.createElement('canvas');
+        canvas.width = 16;
+        canvas.height = 16;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(8, 8, 8, 0, Math.PI * 2);
+        ctx.fill();
+        particleTex = PIXI.Texture.from(canvas);
+    }
+    return particleTex;
+}
 
 // ----------------------------------------------------------------------------
 // 1. PARTICLE POOL (1500 particles)
@@ -20,6 +35,11 @@ class PooledParticle {
     this.decay = 0.02;
     this.size = 3;
     this.active = false;
+
+    this.sprite = new PIXI.Sprite(getParticleTexture());
+    this.sprite.anchor.set(0.5);
+    this.sprite.visible = false;
+    // worldLayer.addChild(this.sprite);
   }
 
   reset(x, y, color, speed = 2, decay = 0.02, size = 3) {
@@ -34,6 +54,14 @@ class PooledParticle {
     this.decay = decay * (Math.random() * 0.5 + 0.75);
     this.size = size;
     this.active = true;
+
+    this.sprite.tint = parseInt(this.color.replace('#', '0x'), 16);
+    this.sprite.width = this.size;
+    this.sprite.height = this.size;
+    this.sprite.x = this.x;
+    this.sprite.y = this.y;
+    this.sprite.alpha = this.alpha;
+    this.sprite.visible = true;
   }
 
   update() {
@@ -43,20 +71,26 @@ class PooledParticle {
     this.vx *= 0.96;
     this.vy *= 0.96;
     this.alpha -= this.decay;
+
+    this.sprite.x = this.x;
+    this.sprite.y = this.y;
+    this.sprite.alpha = this.alpha;
+
     if (this.alpha <= 0) {
       this.active = false;
+      this.sprite.visible = false;
     }
   }
 }
 
 export class ParticlePool {
+  initSprites(layer) { for(let i=0; i<this.pool.length; i++) { layer.addChild(this.pool[i].sprite); } }
   constructor(size = 1500) {
     this.pool = new Array(size);
     for (let i = 0; i < size; i++) {
       this.pool[i] = new PooledParticle();
     }
     this.searchIndex = 0;
-    this.colorBuckets = new Map();
   }
 
   acquire(x, y, color, speed = 2, decay = 0.02, size = 3) {
@@ -70,7 +104,6 @@ export class ParticlePool {
         return p;
       }
     }
-    // Fallback: recycle oldest
     const p = this.pool[this.searchIndex];
     p.reset(x, y, color, speed, decay, size);
     this.searchIndex = (this.searchIndex + 1) % len;
@@ -87,6 +120,7 @@ export class ParticlePool {
     const len = this.pool.length;
     for (let i = 0; i < len; i++) {
       this.pool[i].active = false;
+      this.pool[i].sprite.visible = false;
     }
   }
 
@@ -98,38 +132,6 @@ export class ParticlePool {
         p.update();
       }
     }
-  }
-
-  drawBatch(ctx) {
-    this.colorBuckets.clear();
-    const len = this.pool.length;
-
-    for (let i = 0; i < len; i++) {
-      const p = this.pool[i];
-      if (!p.active) continue;
-
-      let list = this.colorBuckets.get(p.color);
-      if (!list) {
-        list = [];
-        this.colorBuckets.set(p.color, list);
-      }
-      list.push(p);
-    }
-
-    ctx.save();
-    ctx.shadowBlur = 0;
-
-    for (const [color, list] of this.colorBuckets) {
-      ctx.fillStyle = color;
-      const listLen = list.length;
-      for (let i = 0; i < listLen; i++) {
-        const p = list[i];
-        ctx.globalAlpha = Math.max(0, p.alpha);
-        ctx.fillRect((p.x - p.size * 0.5) | 0, (p.y - p.size * 0.5) | 0, p.size, p.size);
-      }
-    }
-
-    ctx.restore();
   }
 }
 
@@ -151,6 +153,11 @@ class PooledProjectile {
     this.pierce = false;
     this.active = false;
     this.texture = null;
+
+    this.sprite = new PIXI.Sprite();
+    this.sprite.anchor.set(0.5);
+    this.sprite.visible = false;
+    // worldLayer.addChild(this.sprite);
   }
 
   reset(x, y, vx, vy, damage, color = "#00ffff", radius = 4, isEnemy = false, homingStrength = 0) {
@@ -175,6 +182,28 @@ class PooledProjectile {
     } else {
       this.texture = textures['proj_blaster'];
     }
+
+    if (this.texture) {
+      this.sprite.texture = this.texture;
+      this.sprite.tint = 0xffffff;
+    } else {
+      this.sprite.texture = getParticleTexture();
+      this.sprite.tint = parseInt(this.color.replace('#', '0x'), 16);
+      this.sprite.width = this.radius * 2;
+      this.sprite.height = this.radius * 2;
+    }
+
+    this.sprite.x = this.x;
+    this.sprite.y = this.y;
+    
+    // Attempt to set rotation to face velocity (for missiles/etc) if texture exists
+    if (this.texture && (this.vx !== 0 || this.vy !== 0)) {
+       this.sprite.rotation = Math.atan2(this.vy, this.vx);
+    } else {
+       this.sprite.rotation = 0;
+    }
+    
+    this.sprite.visible = true;
   }
 
   update(worldWidth = 1920, worldHeight = 1920) {
@@ -184,36 +213,33 @@ class PooledProjectile {
     this.y += this.vy;
     this.life--;
 
+    this.sprite.x = this.x;
+    this.sprite.y = this.y;
+    
+    if (this.texture && (this.vx !== 0 || this.vy !== 0)) {
+       this.sprite.rotation = Math.atan2(this.vy, this.vx);
+    }
+
     const inBounds = this.x >= 0 && this.x <= worldWidth && this.y >= 0 && this.y <= worldHeight;
     if (this.isEnemy) {
       if (!inBounds) {
         this.active = false;
+        this.sprite.visible = false;
         return false;
       }
     } else {
       if (this.life <= 0 || !inBounds) {
         this.active = false;
+        this.sprite.visible = false;
         return false;
       }
     }
     return true;
   }
-
-  draw(ctx) {
-    if (!this.active) return;
-    if (this.x < 0 || this.x > 1920 || this.y < 0 || this.y > 1920) return;
-    if (this.texture) {
-      drawCachedTexture(ctx, this.texture, this.x, this.y);
-    } else {
-      ctx.fillStyle = this.color;
-      ctx.beginPath();
-      ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-      ctx.fill();
-    }
-  }
 }
 
 export class ProjectilePool {
+  initSprites(layer) { for(let i=0; i<this.pool.length; i++) { layer.addChild(this.pool[i].sprite); } }
   constructor(size = 400) {
     this.pool = new Array(size);
     for (let i = 0; i < size; i++) {
@@ -243,6 +269,17 @@ export class ProjectilePool {
     const len = this.pool.length;
     for (let i = 0; i < len; i++) {
       this.pool[i].active = false;
+      this.pool[i].sprite.visible = false;
+    }
+  }
+  
+  update() {
+    const len = this.pool.length;
+    for (let i = 0; i < len; i++) {
+      const p = this.pool[i];
+      if (p.active) {
+        p.update();
+      }
     }
   }
 }
@@ -260,6 +297,11 @@ class PooledGem {
     this.color = "#39ff14";
     this.active = false;
     this.texture = null;
+
+    this.sprite = new PIXI.Sprite();
+    this.sprite.anchor.set(0.5);
+    this.sprite.visible = false;
+    // worldLayer.addChild(this.sprite);
   }
 
   reset(x, y, value) {
@@ -283,6 +325,15 @@ class PooledGem {
       this.color = "#39ff14";
       this.texture = textures['gem_green'];
     }
+
+    if (this.texture) {
+      this.sprite.texture = this.texture;
+    }
+    
+    this.sprite.x = this.x;
+    this.sprite.y = this.y;
+    this.sprite.rotation = this.angle;
+    this.sprite.visible = true;
   }
 
   update(player) {
@@ -297,21 +348,19 @@ class PooledGem {
       if (d < player.radius + 8) {
         player.gainXP(this.value);
         this.active = false;
+        this.sprite.visible = false;
         return false;
       }
     }
+    this.sprite.x = this.x;
+    this.sprite.y = this.y;
+    this.sprite.rotation = this.angle;
     return true;
-  }
-
-  draw(ctx) {
-    if (!this.active) return;
-    if (this.texture) {
-      drawCachedTexture(ctx, this.texture, this.x, this.y, this.angle);
-    }
   }
 }
 
 export class GemPool {
+  initSprites(layer) { for(let i=0; i<this.pool.length; i++) { layer.addChild(this.pool[i].sprite); } }
   constructor(size = 500) {
     this.pool = new Array(size);
     for (let i = 0; i < size; i++) {
@@ -341,6 +390,7 @@ export class GemPool {
     const len = this.pool.length;
     for (let i = 0; i < len; i++) {
       this.pool[i].active = false;
+      this.pool[i].sprite.visible = false;
     }
   }
 
@@ -350,16 +400,6 @@ export class GemPool {
       const g = this.pool[i];
       if (g.active) {
         g.update(player);
-      }
-    }
-  }
-
-  draw(ctx) {
-    const len = this.pool.length;
-    for (let i = 0; i < len; i++) {
-      const g = this.pool[i];
-      if (g.active) {
-        g.draw(ctx);
       }
     }
   }
@@ -380,6 +420,17 @@ class PooledFloatingText {
     this.alpha = 0;
     this.vy = -1.2;
     this.active = false;
+
+    this.sprite = new PIXI.Text("", {
+      fontFamily: "'Segoe UI', sans-serif",
+      fontWeight: '900',
+      fontSize: 14,
+      fill: 0xffffff,
+      align: 'center'
+    });
+    this.sprite.anchor.set(0.5);
+    this.sprite.visible = false;
+    // worldLayer.addChild(this.sprite);
   }
 
   reset(x, y, text, color = "#fff", size = 14, isCrit = false) {
@@ -393,30 +444,46 @@ class PooledFloatingText {
     this.alpha = 1.0;
     this.vy = isCrit ? -1.6 : -1.2;
     this.active = true;
+
+    this.sprite.text = text;
+    this.sprite.style.fontSize = size;
+    this.sprite.style.fill = color;
+
+    if (isCrit) {
+      this.sprite.style.dropShadow = true;
+      this.sprite.style.dropShadowColor = color;
+      this.sprite.style.dropShadowBlur = 12;
+      this.sprite.style.dropShadowDistance = 0;
+      this.sprite.style.dropShadowAlpha = 1;
+    } else {
+      this.sprite.style.dropShadow = false;
+    }
+
+    this.sprite.x = this.x;
+    this.sprite.y = this.y;
+    this.sprite.rotation = this.rotation;
+    this.sprite.alpha = this.alpha;
+    this.sprite.visible = true;
   }
 
   update() {
     if (!this.active) return;
     this.y += this.vy;
     this.alpha -= this.isCrit ? 0.015 : 0.02;
+    
+    this.sprite.x = this.x;
+    this.sprite.y = this.y;
+    this.sprite.alpha = this.alpha;
+
     if (this.alpha <= 0) {
       this.active = false;
+      this.sprite.visible = false;
     }
   }
 }
 
-const fontCacheBold = {};
-
-function getFont900(size) {
-  let font = fontCache900[size];
-  if (!font) {
-    font = `900 ${size}px 'Segoe UI', sans-serif`;
-    fontCache900[size] = font;
-  }
-  return font;
-}
-
 export class FloatingTextPool {
+  initSprites(layer) { for(let i=0; i<this.pool.length; i++) { layer.addChild(this.pool[i].sprite); } }
   constructor(size = 300) {
     this.pool = new Array(size);
     for (let i = 0; i < size; i++) {
@@ -446,6 +513,7 @@ export class FloatingTextPool {
     const len = this.pool.length;
     for (let i = 0; i < len; i++) {
       this.pool[i].active = false;
+      this.pool[i].sprite.visible = false;
     }
   }
 
@@ -457,28 +525,6 @@ export class FloatingTextPool {
         ft.update();
       }
     }
-  }
-
-  drawBatch(ctx) {
-    const len = this.pool.length;
-    for (let i = 0; i < len; i++) {
-      const ft = this.pool[i];
-      if (!ft.active) continue;
-
-      const alpha = Math.max(0, ft.alpha);
-
-      if (ft.isCrit) {
-        // Vibrant neon glow matching the weapon's color
-        bitmapFont.queueText(ft.text, ft.x, ft.y, ft.size, ft.color, true, "center", "middle", alpha, 12, ft.color, ft.rotation);
-        
-        // Bright white core highlight for punchy luminosity
-        bitmapFont.queueText(ft.text, ft.x, ft.y, Math.max(10, ft.size - 4), "#ffffff", true, "center", "middle", Math.max(0, alpha * 0.7), 0, "", ft.rotation);
-      } else {
-        // Standard damage numbers
-        bitmapFont.queueText(ft.text, ft.x, ft.y, ft.size, ft.color, true, "center", "middle", alpha);
-      }
-    }
-    bitmapFont.flushBatch(ctx);
   }
 }
 

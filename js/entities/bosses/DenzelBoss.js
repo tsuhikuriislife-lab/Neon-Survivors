@@ -4,7 +4,9 @@ import { spawnExplosion } from '../effects/spawnExplosion.js';
 import { FallingProjectile } from '../projectiles/FallingProjectile.js';
 import { audioManager } from '../../engine/AudioManager.js';
 import { Boss } from './Boss.js';
-import { textures, drawCachedTexture } from '../../engine/TextureCache.js';
+import { getOrCachePolygon, textures, drawCachedTexture } from '../../engine/TextureCache.js';
+import { worldLayer } from '../../main.js';
+
 
 export class DenzelBoss extends Boss {
   constructor(x, y, hp, maxHp) {
@@ -73,12 +75,7 @@ export class DenzelBoss extends Boss {
     if (dist(this.x, this.y, player.x, player.y) < this.radius + player.radius) {
       player.takeDamage(22, this.color);
     }
+    super.update(player);
   }
 
-  draw(ctx) {
-    if (this.dead) return;
-    if (this.texture) {
-      drawCachedTexture(ctx, this.texture, this.x, this.y, this.angle);
-    }
-  }
 }

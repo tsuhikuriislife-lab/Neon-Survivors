@@ -3,9 +3,6 @@
 // ============================================================================
 
 function createCanvas(width, height) {
-  if (typeof OffscreenCanvas !== 'undefined') {
-    return new OffscreenCanvas(width, height);
-  }
   const c = document.createElement('canvas');
   c.width = width;
   c.height = height;
@@ -44,14 +41,7 @@ export function createPolygonTexture(radius, sides, color, glow = 10, fill = nul
   ctx.stroke();
   ctx.restore();
 
-  return {
-    canvas,
-    width: size,
-    height: size,
-    halfWidth: cx,
-    halfHeight: cy,
-    radius
-  };
+  return PIXI.Texture.from(canvas);
 }
 
 export function createCircleTexture(radius, strokeColor, fillColor = "#ffffff", glow = 10, lineWidth = 2) {
@@ -77,14 +67,7 @@ export function createCircleTexture(radius, strokeColor, fillColor = "#ffffff", 
   ctx.stroke();
   ctx.restore();
 
-  return {
-    canvas,
-    width: size,
-    height: size,
-    halfWidth: cx,
-    halfHeight: cy,
-    radius
-  };
+  return PIXI.Texture.from(canvas);
 }
 
 export function createMissileTexture(color = "#ff4400", glow = 10) {
@@ -113,14 +96,7 @@ export function createMissileTexture(color = "#ff4400", glow = 10) {
   ctx.stroke();
   ctx.restore();
 
-  return {
-    canvas,
-    width: size,
-    height: size,
-    halfWidth: cx,
-    halfHeight: cy,
-    radius: 6
-  };
+  return PIXI.Texture.from(canvas);
 }
 
 export const textures = {};

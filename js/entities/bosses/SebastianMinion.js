@@ -4,7 +4,10 @@ import { spawnExplosion } from '../effects/spawnExplosion.js';
 import { HazardArea } from '../effects/HazardArea.js';
 import { audioManager } from '../../engine/AudioManager.js';
 import { Boss } from './Boss.js';
-import { proceduralBatch } from '../../engine/ProceduralBatchRenderer.js';
+
+import { getOrCachePolygon, textures } from '../../engine/TextureCache.js';
+import { worldLayer } from '../../main.js';
+
 
 export class SebastianMinion extends Boss {
   constructor(x, y, hp, initialAngle = Math.random() * Math.PI * 2, initialSpeed = 7.5, maxHp = hp) {
@@ -298,36 +301,27 @@ export class SebastianMinion extends Boss {
         }
       }
     }
-  }
 
-  draw(ctx) {
-    if (this.dead) return;
-    const player = state.player;
-
-    for (let i = this.segmentCount - 1; i >= 0; i--) {
-      const seg = this.segments[i];
-      let alpha = 1.0;
-      if (player && i > 0) {
-        const d = dist(seg.x, seg.y, player.x, player.y);
-        if (d < this.proximityFadeRadius) {
-          alpha = Math.max(this.minAlphaOnPlayer, d / this.proximityFadeRadius);
+    if (this.segmentSprites && this.segments) {
+      for (let i = 0; i < this.segments.length; i++) {
+        if (this.segmentSprites[i]) {
+          this.segmentSprites[i].x = this.segments[i].x;
+          this.segmentSprites[i].y = this.segments[i].y;
+          this.segmentSprites[i].rotation = this.segments[i].angle || 0;
+          if (this.alpha !== undefined) this.segmentSprites[i].alpha = this.alpha;
         }
       }
+    }
 
-      const sides = i === 0 ? 4 : 3;
-      const radius = i === 0 ? this.radius * 1.15 : this.radius;
+  }
 
-      proceduralBatch.submit(
-        sides,
-        seg.x,
-        seg.y,
-        radius,
-        seg.angle,
-        this.rgb.r,
-        this.rgb.g,
-        this.rgb.b,
-        alpha
-      );
+  die() {
+    if (this.segmentSprites) {
+      this.segmentSprites.forEach(spr => {
+        worldLayer.removeChild(spr);
+        spr.destroy();
+      });
+      this.segmentSprites = [];
     }
   }
 }

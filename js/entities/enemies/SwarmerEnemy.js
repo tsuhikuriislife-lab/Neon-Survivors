@@ -1,6 +1,8 @@
 import { state } from '../../engine/gameState.js';
 import { Enemy } from './Enemy.js';
-import { textures } from '../../engine/TextureCache.js';
+import { getOrCachePolygon, textures } from '../../engine/TextureCache.js';
+import { worldLayer } from '../../main.js';
+
 
 export class SwarmerEnemy extends Enemy {
   constructor(x, y) {

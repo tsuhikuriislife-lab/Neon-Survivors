@@ -8,38 +8,23 @@ import { dist } from './Utils.js';
 import { spawnExplosion } from '../entities/effects/spawnExplosion.js';
 import { MenuBackgroundShowcase, VectorTitleRenderer } from './MenuScene.js';
 import { audioManager } from './AudioManager.js';
-import { proceduralBatch } from './ProceduralBatchRenderer.js';
+import { worldLayer } from '../main.js';
 
-export const menuShowcase = new MenuBackgroundShowcase();
-export const vectorTitle = new VectorTitleRenderer("NEON SURVIVORS");
-
-export let animationFrameId = null;
-let gameCtx = null;
-
-export function stopGameLoop() {
-  if (animationFrameId) {
-    cancelAnimationFrame(animationFrameId);
-    animationFrameId = null;
-  }
-}
-
-export function startGameLoop(ctx = null) {
-  if (ctx) gameCtx = ctx;
-  if (!gameCtx) {
-    const canvas = document.getElementById("gameCanvas");
-    if (canvas) gameCtx = canvas.getContext("2d");
-  }
-  stopGameLoop();
-  if (gameCtx) {
-    animationFrameId = requestAnimationFrame((ts) => loop(ts, gameCtx));
-  }
-}
+export let menuShowcase = null;
+export let vectorTitle = null;
 
 export function initGame() {
-  stopGameLoop();
   state.isInMenu = false;
   state.reset();
-  resetInputState();
+  if (menuShowcase) {
+    menuShowcase.destroy();
+    menuShowcase = null;
+  }
+  if (vectorTitle) {
+    vectorTitle.destroy();
+    vectorTitle = null;
+  }
+
   state.player = new Player();
   if (state.camera) {
     state.camera.reset();
@@ -50,7 +35,6 @@ export function initGame() {
   }
   startUILoop();
   triggerHUDUpdate();
-  startGameLoop();
 }
 
 let gridOffset = 0;
@@ -64,187 +48,127 @@ if (tileCanvas) {
 let cachedLinesProps = null;
 let gridPattern = null;
 
-export function drawBackground(ctx) {
-  gridOffset = (gridOffset + 0.5) % 40;
+// --- PIXI Environment Setup ---
+export const backgroundGraphics = new PIXI.Graphics();
+export let gridTilingSprite = null;
+export const arenaBoundaryGraphics = new PIXI.Graphics();
+export let floorControlsSprite = null;
+let environmentInitialized = false;
 
-  const bgProps = state.environment.background.getComputedProps(state.gameTime);
-  const linesProps = state.environment.gridLines.getComputedProps(state.gameTime);
+export let floorControlsCanvas = null;
+
+function generateFloorControlsCanvas() {
+  if (typeof document === 'undefined') return;
+  floorControlsCanvas = document.createElement('canvas');
+  floorControlsCanvas.width = state.width || 1920;
+  floorControlsCanvas.height = state.height || 1080;
+  const offCtx = floorControlsCanvas.getContext('2d');
   
-  // Arena base background with dynamic environment control
-  ctx.fillStyle = bgProps.color || "#04030a";
-  ctx.fillRect(0, 0, state.width, state.height);
-
-  const linesColor = linesProps.color || "rgba(0, 255, 255, 0.04)";
-  const linesWidth = Math.max(1, (linesProps.computedBrightness || 1.0));
-  const linesKey = linesColor + '_' + linesWidth.toFixed(2);
-
-  if (tileCanvas && cachedLinesProps !== linesKey) {
-    tileCtx.clearRect(0, 0, 40, 40);
-    tileCtx.strokeStyle = linesColor;
-    tileCtx.lineWidth = linesWidth;
-    tileCtx.beginPath();
-    // Centered lines to avoid clipping on canvas edges
-    tileCtx.moveTo(20, 0);
-    tileCtx.lineTo(20, 40);
-    tileCtx.moveTo(0, 20);
-    tileCtx.lineTo(40, 20);
-    tileCtx.stroke();
-    cachedLinesProps = linesKey;
-    gridPattern = ctx.createPattern(tileCanvas, 'repeat');
-  }
-
-  if (gridPattern) {
-    ctx.save();
-    // Translate the grid downwards
-    ctx.translate(0, gridOffset);
-    ctx.fillStyle = gridPattern;
-    // Fill slightly outside the screen to cover the translated offset
-    ctx.fillRect(0, -40, state.width, state.height + 40);
-    ctx.restore();
-  }
-
-  drawFloorControls(ctx);
-}
-
-let floorControlsCanvas = null;
-export function drawFloorControls(ctx) {
-  if (state.isInMenu || state.gameTime >= 60) return;
-
-  const fadeStart = 50;
-  const fadeEnd = 60;
-  let alphaFactor = 1.0;
-  if (state.gameTime > fadeStart) {
-    alphaFactor = Math.max(0, (fadeEnd - state.gameTime) / (fadeEnd - fadeStart));
-  }
-
-  if (alphaFactor <= 0) return;
-
   const isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+  const cx = floorControlsCanvas.width / 2;
+  const cy = floorControlsCanvas.height / 2;
+  
+  if (!isTouch) {
+    const mx = cx - 360;
+    const my = cy + 120;
+    const rx = cx + 360;
+    const ry = cy + 120;
 
-  if (!floorControlsCanvas) {
-    floorControlsCanvas = document.createElement('canvas');
-    floorControlsCanvas.width = state.width;
-    floorControlsCanvas.height = state.height;
-    const offCtx = floorControlsCanvas.getContext('2d');
-    
-    const cx = state.width / 2;
-    const cy = state.height / 2;
-    
-    if (!isTouch) {
-      const mx = cx - 360;
-      const my = cy + 120;
-      const rx = cx + 360;
-      const ry = cy + 120;
+    offCtx.lineWidth = 2;
+    offCtx.strokeStyle = `rgba(0, 255, 255, 0.22)`;
+    offCtx.fillStyle = `rgba(0, 255, 255, 0.04)`;
+    offCtx.beginPath();
+    offCtx.roundRect(mx - 22, my - 55 - 22, 44, 44, 6);
+    offCtx.roundRect(mx - 55 - 22, my - 22, 44, 44, 6);
+    offCtx.roundRect(mx - 22, my - 22, 44, 44, 6);
+    offCtx.roundRect(mx + 55 - 22, my - 22, 44, 44, 6);
+    offCtx.fill();
+    offCtx.stroke();
 
-      // --- BATCH 1: Shapes ---
-      offCtx.lineWidth = 2;
-      
-      offCtx.strokeStyle = `rgba(0, 255, 255, 0.22)`;
-      offCtx.fillStyle = `rgba(0, 255, 255, 0.04)`;
-      offCtx.beginPath();
-      offCtx.roundRect(mx - 22, my - 55 - 22, 44, 44, 6);
-      offCtx.roundRect(mx - 55 - 22, my - 22, 44, 44, 6);
-      offCtx.roundRect(mx - 22, my - 22, 44, 44, 6);
-      offCtx.roundRect(mx + 55 - 22, my - 22, 44, 44, 6);
-      offCtx.fill();
-      offCtx.stroke();
+    offCtx.beginPath();
+    offCtx.roundRect(rx - 25, ry - 55, 50, 80, 25);
+    offCtx.fill();
+    offCtx.stroke();
 
-      offCtx.beginPath();
-      offCtx.roundRect(rx - 25, ry - 55, 50, 80, 25);
-      offCtx.fill();
-      offCtx.stroke();
+    offCtx.fillStyle = `rgba(0, 255, 136, 0.25)`;
+    offCtx.strokeStyle = `rgba(0, 255, 136, 0.6)`;
+    offCtx.beginPath();
+    offCtx.roundRect(rx - 23, ry - 53, 22, 35, [22, 0, 0, 0]);
+    offCtx.fill();
+    offCtx.stroke();
 
-      offCtx.fillStyle = `rgba(0, 255, 136, 0.25)`;
-      offCtx.strokeStyle = `rgba(0, 255, 136, 0.6)`;
-      offCtx.beginPath();
-      offCtx.roundRect(rx - 23, ry - 53, 22, 35, [22, 0, 0, 0]);
-      offCtx.fill();
-      offCtx.stroke();
+    offCtx.strokeStyle = `rgba(0, 255, 255, 0.25)`;
+    offCtx.beginPath();
+    offCtx.moveTo(rx, ry - 55);
+    offCtx.lineTo(rx, ry - 18);
+    offCtx.stroke();
 
-      offCtx.strokeStyle = `rgba(0, 255, 255, 0.25)`;
-      offCtx.beginPath();
-      offCtx.moveTo(rx, ry - 55);
-      offCtx.lineTo(rx, ry - 18);
-      offCtx.stroke();
-
-      // --- BATCH 2: Texts via BitmapFont ---
-      // 16px key labels
+    if (bitmapFont) {
       bitmapFont.drawCachedText(offCtx, "W", mx, my - 55 - 4, 16, "#00ffff", true, "center", "middle", 0.65);
       bitmapFont.drawCachedText(offCtx, "A", mx - 55, my - 4, 16, "#00ffff", true, "center", "middle", 0.65);
       bitmapFont.drawCachedText(offCtx, "S", mx, my - 4, 16, "#00ffff", true, "center", "middle", 0.65);
       bitmapFont.drawCachedText(offCtx, "D", mx + 55, my - 4, 16, "#00ffff", true, "center", "middle", 0.65);
 
-      // 11px key arrows
-      bitmapFont.drawCachedText(offCtx, "▲", mx, my - 55 + 11, 11, "#ffffff", false, "center", "middle", 0.35);
-      bitmapFont.drawCachedText(offCtx, "◀", mx - 55, my + 11, 11, "#ffffff", false, "center", "middle", 0.35);
-      bitmapFont.drawCachedText(offCtx, "▼", mx, my + 11, 11, "#ffffff", false, "center", "middle", 0.35);
-      bitmapFont.drawCachedText(offCtx, "▶", mx + 55, my + 11, 11, "#ffffff", false, "center", "middle", 0.35);
-
-      // 15px titles
       bitmapFont.drawCachedText(offCtx, "MOVEMENT", mx, my + 55, 15, "#00ffff", true, "center", "alphabetic", 0.75);
       bitmapFont.drawCachedText(offCtx, "LASER CANNON", rx, ry + 55, 15, "#00ff88", true, "center", "alphabetic", 0.75);
 
-      // 12px descriptions
       bitmapFont.drawCachedText(offCtx, "WASD / ARROW KEYS", mx, my + 75, 12, "#a0aec0", false, "center", "alphabetic", 0.5);
       bitmapFont.drawCachedText(offCtx, "HOLD CLICK: AIM", rx, ry + 75, 12, "#a0aec0", false, "center", "alphabetic", 0.5);
       bitmapFont.drawCachedText(offCtx, "RELEASE: FIRE", rx, ry + 93, 12, "#a0aec0", false, "center", "alphabetic", 0.5);
+    }
+  } else {
+    const mx = cx - 360;
+    const my = cy + 120;
+    const rx = cx + 360;
+    const ry = cy + 120;
 
-    } else {
-      // MOBILE / TOUCH FLOOR CONTROLS
-      const mx = cx - 360;
-      const my = cy + 120;
-      const rx = cx + 360;
-      const ry = cy + 120;
+    offCtx.lineWidth = 2;
+    offCtx.strokeStyle = `rgba(0, 255, 255, 0.22)`;
+    offCtx.fillStyle = `rgba(0, 255, 255, 0.04)`;
+    offCtx.beginPath();
+    offCtx.arc(mx, my - 20, 50, 0, Math.PI * 2);
+    offCtx.fill();
+    offCtx.stroke();
 
-      // --- BATCH 1: Shapes ---
-      offCtx.lineWidth = 2;
-      
-      offCtx.strokeStyle = `rgba(0, 255, 255, 0.22)`;
-      offCtx.fillStyle = `rgba(0, 255, 255, 0.04)`;
-      offCtx.beginPath();
-      offCtx.arc(mx, my - 20, 50, 0, Math.PI * 2);
-      offCtx.fill();
-      offCtx.stroke();
+    offCtx.fillStyle = `rgba(0, 255, 255, 0.2)`;
+    offCtx.strokeStyle = `rgba(0, 255, 255, 0.6)`;
+    offCtx.beginPath();
+    offCtx.arc(mx, my - 20, 22, 0, Math.PI * 2);
+    offCtx.fill();
+    offCtx.stroke();
 
-      offCtx.fillStyle = `rgba(0, 255, 255, 0.2)`;
-      offCtx.strokeStyle = `rgba(0, 255, 255, 0.6)`;
-      offCtx.beginPath();
-      offCtx.arc(mx, my - 20, 22, 0, Math.PI * 2);
-      offCtx.fill();
-      offCtx.stroke();
-
-      const drawChevron = (x, y, angle) => {
-        offCtx.save();
-        offCtx.translate(x, y);
-        offCtx.rotate(angle);
-        offCtx.strokeStyle = `rgba(0, 255, 255, 0.4)`;
-        offCtx.lineWidth = 2;
-        offCtx.beginPath();
-        offCtx.moveTo(-6, -4); offCtx.lineTo(0, 3); offCtx.lineTo(6, -4);
-        offCtx.stroke();
-        offCtx.restore();
-      };
-      drawChevron(mx, my - 20 - 36, Math.PI);
-      drawChevron(mx, my - 20 + 36, 0);
-      drawChevron(mx - 36, my - 20, Math.PI / 2);
-      drawChevron(mx + 36, my - 20, -Math.PI / 2);
-
-      offCtx.strokeStyle = `rgba(0, 255, 136, 0.22)`;
-      offCtx.fillStyle = `rgba(0, 255, 136, 0.04)`;
+    const drawChevron = (x, y, angle) => {
+      offCtx.save();
+      offCtx.translate(x, y);
+      offCtx.rotate(angle);
+      offCtx.strokeStyle = `rgba(0, 255, 255, 0.4)`;
       offCtx.lineWidth = 2;
       offCtx.beginPath();
-      offCtx.arc(rx, ry - 20, 50, 0, Math.PI * 2);
-      offCtx.fill();
+      offCtx.moveTo(-6, -4); offCtx.lineTo(0, 3); offCtx.lineTo(6, -4);
       offCtx.stroke();
+      offCtx.restore();
+    };
+    drawChevron(mx, my - 20 - 36, Math.PI);
+    drawChevron(mx, my - 20 + 36, 0);
+    drawChevron(mx - 36, my - 20, Math.PI / 2);
+    drawChevron(mx + 36, my - 20, -Math.PI / 2);
 
-      offCtx.strokeStyle = `rgba(0, 255, 136, 0.6)`;
-      offCtx.lineWidth = 1.5;
-      offCtx.beginPath();
-      offCtx.moveTo(rx - 25, ry - 20); offCtx.lineTo(rx + 25, ry - 20);
-      offCtx.moveTo(rx, ry - 20 - 25); offCtx.lineTo(rx, ry - 20 + 25);
-      offCtx.stroke();
+    offCtx.strokeStyle = `rgba(0, 255, 136, 0.22)`;
+    offCtx.fillStyle = `rgba(0, 255, 136, 0.04)`;
+    offCtx.lineWidth = 2;
+    offCtx.beginPath();
+    offCtx.arc(rx, ry - 20, 50, 0, Math.PI * 2);
+    offCtx.fill();
+    offCtx.stroke();
 
-      // --- BATCH 2: Texts via BitmapFont ---
+    offCtx.strokeStyle = `rgba(0, 255, 136, 0.6)`;
+    offCtx.lineWidth = 1.5;
+    offCtx.beginPath();
+    offCtx.moveTo(rx - 25, ry - 20); offCtx.lineTo(rx + 25, ry - 20);
+    offCtx.moveTo(rx, ry - 20 - 25); offCtx.lineTo(rx, ry - 20 + 25);
+    offCtx.stroke();
+
+    if (bitmapFont) {
       bitmapFont.drawCachedText(offCtx, "LEFT ZONE", mx, my + 55, 15, "#00ffff", true, "center", "alphabetic", 0.75);
       bitmapFont.drawCachedText(offCtx, "RIGHT ZONE", rx, ry + 55, 15, "#00ff88", true, "center", "alphabetic", 0.75);
 
@@ -253,124 +177,208 @@ export function drawFloorControls(ctx) {
       bitmapFont.drawCachedText(offCtx, "RELEASE: FIRE", rx, ry + 93, 12, "#a0aec0", false, "center", "alphabetic", 0.5);
     }
   }
-
-  ctx.save();
-  ctx.globalAlpha = alphaFactor;
-  ctx.drawImage(floorControlsCanvas, 0, 0);
-  ctx.restore();
 }
 
-export function drawArenaBoundary(ctx) {
+function initEnvironmentLayers() {
+  if (environmentInitialized) return;
+  worldLayer.addChildAt(arenaBoundaryGraphics, 0);
+  
+  if (tileCanvas) {
+    gridTilingSprite = new PIXI.TilingSprite(PIXI.Texture.from(tileCanvas), state.width, state.height);
+    worldLayer.addChildAt(gridTilingSprite, 0);
+  }
+  
+  worldLayer.addChildAt(backgroundGraphics, 0);
+  environmentInitialized = true;
+}
+
+export function updateBackgroundLayer() {
+  initEnvironmentLayers();
+
+  const bgProps = state.environment.background.getComputedProps(state.gameTime);
+  const linesProps = state.environment.gridLines.getComputedProps(state.gameTime);
+  
+  // 1. Base background
+  const bgColorHex = parseInt((bgProps.color || "#04030a").replace('#', '0x'), 16) || 0x04030a;
+  backgroundGraphics.clear();
+  backgroundGraphics.beginFill(bgColorHex);
+  backgroundGraphics.drawRect(0, 0, state.width, state.height);
+  backgroundGraphics.endFill();
+
+  // 2. Grid (update tileCanvas if changed)
+  const linesColorStr = linesProps.color || "rgba(0, 255, 255, 0.04)";
+  const linesWidth = Math.max(1, (linesProps.computedBrightness || 1.0));
+  const linesKey = linesColorStr + '_' + linesWidth.toFixed(2);
+
+  if (tileCanvas && cachedLinesProps !== linesKey) {
+    tileCtx.clearRect(0, 0, 40, 40);
+    tileCtx.strokeStyle = linesColorStr;
+    tileCtx.lineWidth = linesWidth;
+    tileCtx.beginPath();
+    tileCtx.moveTo(20, 0);
+    tileCtx.lineTo(20, 40);
+    tileCtx.moveTo(0, 20);
+    tileCtx.lineTo(40, 20);
+    tileCtx.stroke();
+    cachedLinesProps = linesKey;
+    if (gridTilingSprite) {
+      gridTilingSprite.texture.update();
+    }
+  }
+
+  if (gridTilingSprite) {
+    gridOffset = (gridOffset + 0.5) % 40;
+    gridTilingSprite.tilePosition.y = gridOffset;
+  }
+
+  // 3. Floor Controls
+  if (!state.isInMenu && state.gameTime < 60) {
+    if (!floorControlsCanvas) {
+      generateFloorControlsCanvas();
+    }
+    if (!floorControlsSprite && floorControlsCanvas) {
+      floorControlsSprite = new PIXI.Sprite(PIXI.Texture.from(floorControlsCanvas));
+      worldLayer.addChildAt(floorControlsSprite, 2);
+    }
+    
+    if (floorControlsSprite) {
+      const fadeStart = 50;
+      const fadeEnd = 60;
+      let alphaFactor = 1.0;
+      if (state.gameTime > fadeStart) {
+        alphaFactor = Math.max(0, (fadeEnd - state.gameTime) / (fadeEnd - fadeStart));
+      }
+      floorControlsSprite.alpha = alphaFactor;
+    }
+  } else if (floorControlsSprite) {
+    floorControlsSprite.visible = false;
+  }
+
+  // 4. Arena Boundary
   const borderProps = state.environment.borders.getComputedProps(state.gameTime);
-  const glow = (borderProps.glow || 15) * (borderProps.computedBrightness || 1.0);
+  const glow = 15 + Math.sin(state.gameTime * 2) * 5;
+  
+  arenaBoundaryGraphics.clear();
 
-  ctx.save();
-  ctx.strokeStyle = borderProps.color || "rgba(0, 255, 255, 0.35)";
-  ctx.lineWidth = 4 * (borderProps.computedBrightness || 1.0);
-  ctx.shadowColor = borderProps.color || "#00ffff";
-  ctx.shadowBlur = glow;
-  ctx.strokeRect(0, 0, state.width, state.height);
+  // Parse colors to hex
+  let outerHex = 0xff00ff;
+  let innerHex = 0xffffff;
+  let cornerHex = 0xff00ff;
+  try {
+    const pOuter = (borderProps.outerColor || "#ff00ff").replace('#','');
+    outerHex = parseInt(pOuter, 16);
+  } catch(e) {}
+  
+  try {
+    // "rgba(255, 255, 255, 0.7)" -> we just use 0xffffff with alpha
+    innerHex = 0xffffff;
+  } catch(e) {}
+  
+  try {
+    const pCorner = (borderProps.cornerColor || "#ff00ff").replace('#','');
+    cornerHex = parseInt(pCorner, 16);
+  } catch(e) {}
 
-  ctx.strokeStyle = borderProps.innerColor || "rgba(255, 255, 255, 0.7)";
-  ctx.lineWidth = 1.5;
-  ctx.shadowBlur = 0;
-  ctx.strokeRect(0, 0, state.width, state.height);
+  // Outer glow (simulated with thick low-alpha line)
+  arenaBoundaryGraphics.lineStyle(10, outerHex, 0.3);
+  arenaBoundaryGraphics.drawRect(0, 0, state.width, state.height);
 
+  // Inner line
+  arenaBoundaryGraphics.lineStyle(1.5, innerHex, 0.7);
+  arenaBoundaryGraphics.drawRect(0, 0, state.width, state.height);
+
+  // Corners
   const cornerLen = 50;
-  ctx.strokeStyle = borderProps.cornerColor || "#ff00ff";
-  ctx.lineWidth = 3;
-  ctx.shadowColor = borderProps.cornerColor || "#ff00ff";
-  ctx.shadowBlur = glow * 0.8;
-
+  arenaBoundaryGraphics.lineStyle(3, cornerHex, 1.0);
+  
   // Top-Left
-  ctx.beginPath();
-  ctx.moveTo(0, cornerLen); ctx.lineTo(0, 0); ctx.lineTo(cornerLen, 0);
-  ctx.stroke();
-
+  arenaBoundaryGraphics.moveTo(0, cornerLen);
+  arenaBoundaryGraphics.lineTo(0, 0);
+  arenaBoundaryGraphics.lineTo(cornerLen, 0);
+  
   // Top-Right
-  ctx.beginPath();
-  ctx.moveTo(state.width - cornerLen, 0); ctx.lineTo(state.width, 0); ctx.lineTo(state.width, cornerLen);
-  ctx.stroke();
-
+  arenaBoundaryGraphics.moveTo(state.width - cornerLen, 0);
+  arenaBoundaryGraphics.lineTo(state.width, 0);
+  arenaBoundaryGraphics.lineTo(state.width, cornerLen);
+  
   // Bottom-Right
-  ctx.beginPath();
-  ctx.moveTo(state.width, state.height - cornerLen); ctx.lineTo(state.width, state.height); ctx.lineTo(state.width - cornerLen, state.height);
-  ctx.stroke();
-
+  arenaBoundaryGraphics.moveTo(state.width, state.height - cornerLen);
+  arenaBoundaryGraphics.lineTo(state.width, state.height);
+  arenaBoundaryGraphics.lineTo(state.width - cornerLen, state.height);
+  
   // Bottom-Left
-  ctx.beginPath();
-  ctx.moveTo(cornerLen, state.height); ctx.lineTo(0, state.height); ctx.lineTo(0, state.height - cornerLen);
-  ctx.stroke();
-
-  ctx.restore();
+  arenaBoundaryGraphics.moveTo(cornerLen, state.height);
+  arenaBoundaryGraphics.lineTo(0, state.height);
+  arenaBoundaryGraphics.lineTo(0, state.height - cornerLen);
 }
 
-export function drawBossSpawnBeacon(ctx, pending) {
-  if (!pending) return;
+export const bossBeaconGraphics = new PIXI.Graphics();
+let beaconAdded = false;
+
+export function updateBossSpawnBeacon() {
+  const pending = state.pendingBossSpawn;
+  if (!beaconAdded) {
+    worldLayer.addChild(bossBeaconGraphics);
+    beaconAdded = true;
+  }
+  
+  bossBeaconGraphics.clear();
+  
+  if (!pending) {
+    return;
+  }
 
   const progress = 1 - (pending.timer / pending.duration);
   const pulseSpeed = 4 + progress * 14;
   const pulse = (Math.sin(performance.now() * 0.001 * pulseSpeed * Math.PI) + 1) / 2;
 
-  ctx.save();
-  ctx.translate(pending.x, pending.y);
+  // Use the boss beacon position
+  const bx = pending.x;
+  const by = pending.y;
 
-  // Outer danger glow
   const maxRadius = 130 + progress * 30;
-  const gradient = ctx.createRadialGradient(0, 0, 10, 0, 0, maxRadius);
-  gradient.addColorStop(0, `rgba(255, 0, 50, ${0.45 + pulse * 0.35})`);
-  gradient.addColorStop(0.5, `rgba(255, 0, 50, ${0.15 + pulse * 0.2})`);
-  gradient.addColorStop(1, "rgba(255, 0, 50, 0)");
-  ctx.fillStyle = gradient;
-  ctx.beginPath();
-  ctx.arc(0, 0, maxRadius, 0, Math.PI * 2);
-  ctx.fill();
+  
+  // Since PIXI gradients are tough, we can draw a series of circles to simulate a gradient
+  const steps = 10;
+  for (let i = 0; i < steps; i++) {
+    const r = maxRadius * (1 - i/steps);
+    // alpha decreases as radius increases
+    const alpha = (0.15 + pulse * 0.2) * (i/steps);
+    bossBeaconGraphics.beginFill(0xff0032, alpha);
+    bossBeaconGraphics.drawCircle(bx, by, r);
+    bossBeaconGraphics.endFill();
+  }
 
   // Concentric rotating beacon rings
   const rot = performance.now() * 0.002;
   
-  ctx.strokeStyle = `rgba(255, 0, 85, ${0.6 + pulse * 0.4})`;
-  ctx.lineWidth = 2.5;
-  ctx.shadowColor = "#ff0055";
-  ctx.shadowBlur = 15;
-  ctx.setLineDash([16, 10]);
-  ctx.beginPath();
-  ctx.arc(0, 0, maxRadius * 0.85, rot, rot + Math.PI * 2);
-  ctx.stroke();
-
-  ctx.strokeStyle = `rgba(255, 120, 160, ${0.7 + pulse * 0.3})`;
-  ctx.lineWidth = 2;
-  ctx.setLineDash([8, 8]);
-  ctx.beginPath();
-  ctx.arc(0, 0, maxRadius * 0.5, -rot * 1.5, -rot * 1.5 + Math.PI * 2);
-  ctx.stroke();
+  // Unfortunately setLineDash is not natively in PIXI Graphics. We will draw arcs.
+  bossBeaconGraphics.lineStyle(2.5, 0xff0055, 0.6 + pulse * 0.4);
+  bossBeaconGraphics.arc(bx, by, maxRadius * 0.85, rot, rot + Math.PI * 1.8); 
+  
+  bossBeaconGraphics.lineStyle(2, 0xff78a0, 0.7 + pulse * 0.3);
+  bossBeaconGraphics.beginPath();
+  bossBeaconGraphics.arc(bx, by, maxRadius * 0.5, -rot * 1.5, -rot * 1.5 + Math.PI * 1.8);
+  bossBeaconGraphics.stroke();
 
   // Central crosshair & warning core
-  ctx.setLineDash([]);
-  ctx.strokeStyle = `rgba(255, 255, 255, ${0.8 + pulse * 0.2})`;
-  ctx.lineWidth = 2;
+  bossBeaconGraphics.lineStyle(2, 0xffffff, 0.8 + pulse * 0.2);
   const crossSize = 24 + pulse * 8;
-  ctx.beginPath();
-  ctx.moveTo(-crossSize, 0); ctx.lineTo(crossSize, 0);
-  ctx.moveTo(0, -crossSize); ctx.lineTo(0, crossSize);
-  ctx.stroke();
+  bossBeaconGraphics.moveTo(bx - crossSize, by); bossBeaconGraphics.lineTo(bx + crossSize, by);
+  bossBeaconGraphics.moveTo(bx, by - crossSize); bossBeaconGraphics.lineTo(bx, by + crossSize);
+  bossBeaconGraphics.stroke();
 
-  ctx.fillStyle = "#ffffff";
-  ctx.shadowBlur = 20;
-  ctx.shadowColor = "#ff0055";
-  ctx.beginPath();
-  ctx.arc(0, 0, 7 + pulse * 4, 0, Math.PI * 2);
-  ctx.fill();
-
-  ctx.restore();
+  bossBeaconGraphics.lineStyle(0);
+  bossBeaconGraphics.beginFill(0xffffff, 1.0);
+  bossBeaconGraphics.drawCircle(bx, by, 7 + pulse * 4);
+  bossBeaconGraphics.endFill();
 }
 
-export function loop(timestamp, ctx) {
+export function loop(timestamp) {
   // Freezes all game updates and canvas rendering while an ad is active
   // releasing 100% of CPU and GPU resources to the video ad player
   if (state.isAdPlaying) {
     state.lastFrameTime = timestamp;
-    animationFrameId = requestAnimationFrame((ts) => loop(ts, ctx));
     return;
   }
 
@@ -381,6 +389,9 @@ export function loop(timestamp, ctx) {
   // START SCREEN / MAIN MENU MODE
   // =========================================================================
   if (state.isInMenu) {
+    if (!menuShowcase) menuShowcase = new MenuBackgroundShowcase();
+    if (!vectorTitle) vectorTitle = new VectorTitleRenderer("NEON SURVIVORS");
+
     menuShowcase.update(dt);
     vectorTitle.update(dt);
 
@@ -390,33 +401,13 @@ export function loop(timestamp, ctx) {
       state.camera.targetY = 960 + Math.cos(time * 0.18) * 50;
       state.camera.x += (state.camera.targetX - state.camera.x) * (dt * 2.0);
       state.camera.y += (state.camera.targetY - state.camera.y) * (dt * 2.0);
+      state.camera.applyToLayer(worldLayer);
     }
 
     audioManager.playMusic('music_main');
 
-    // Clear Canvas
-    ctx.save();
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
-    const screenW = state.camera.screenWidth || ctx.canvas.width;
-    const screenH = state.camera.screenHeight || ctx.canvas.height;
-    ctx.clearRect(0, 0, screenW, screenH);
+    updateBackgroundLayer();
 
-    // 1. Draw World Layer
-    state.camera.applyTransform(ctx);
-
-    drawBackground(ctx);
-    drawArenaBoundary(ctx);
-    menuShowcase.draw(ctx);
-
-    ctx.restore();
-
-    // 2. Draw Screen UI Layer
-    ctx.save();
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
-    vectorTitle.draw(ctx, screenW, screenH);
-    ctx.restore();
-
-    animationFrameId = requestAnimationFrame((ts) => loop(ts, ctx));
     return;
   }
 
@@ -441,6 +432,7 @@ export function loop(timestamp, ctx) {
 
     updatePendingBossSpawn(dt);
     updateWave(dt);
+    updateBossSpawnBeacon();
     handleSpawning();
 
     // Update Environment Transitions (Background, Lines, Borders)
@@ -479,7 +471,7 @@ export function loop(timestamp, ctx) {
     // Update Hazard Areas
     for (let i = state.hazardAreas.length - 1; i >= 0; i--) {
       if (!state.hazardAreas[i].update(state.player)) {
-        state.hazardAreas[i] = state.hazardAreas[state.hazardAreas.length - 1];
+        if (state.hazardAreas[i].destroy) state.hazardAreas[i].destroy(); state.hazardAreas[i] = state.hazardAreas[state.hazardAreas.length - 1];
         state.hazardAreas.pop();
       }
     }
@@ -507,7 +499,7 @@ export function loop(timestamp, ctx) {
 
             e.takeDamage(p.damage, p.color);
 
-            p.active = false;
+            p.active = false; p.sprite.visible = false;
             hit = true;
             return true;
           });
@@ -522,7 +514,7 @@ export function loop(timestamp, ctx) {
                 audioManager.playSound('hit_main_gun', { volume: 0.4, throttleMs: 40 });
                 state.recordDamage('blaster', p.damage);
                 target.takeDamage(p.damage, p.color);
-                p.active = false;
+                p.active = false; p.sprite.visible = false;
                 hit = true;
                 break;
               }
@@ -534,7 +526,7 @@ export function loop(timestamp, ctx) {
           if (state.player && dist(p.x, p.y, state.player.x, state.player.y) < p.radius + state.player.radius) {
             state.player.takeDamage(p.damage, p.color);
             spawnExplosion(p.x, p.y, p.color, 6, 2);
-            p.active = false;
+            p.active = false; p.sprite.visible = false;
           }
         }
       }
@@ -544,7 +536,7 @@ export function loop(timestamp, ctx) {
     for (let i = state.projectiles.length - 1; i >= 0; i--) {
       const p = state.projectiles[i];
       if (!p.update()) {
-        state.projectiles[i] = state.projectiles[state.projectiles.length - 1];
+        if (p.destroy) p.destroy(); state.projectiles[i] = state.projectiles[state.projectiles.length - 1];
         state.projectiles.pop();
         continue;
       }
@@ -572,7 +564,7 @@ export function loop(timestamp, ctx) {
         e.takeDamage(p.damage, p.color);
         
         if (!p.pierce) {
-          state.projectiles[i] = state.projectiles[state.projectiles.length - 1];
+          if (p.destroy) p.destroy(); state.projectiles[i] = state.projectiles[state.projectiles.length - 1];
           state.projectiles.pop();
           hit = true;
           return true;
@@ -601,7 +593,7 @@ export function loop(timestamp, ctx) {
             target.takeDamage(p.damage, p.color);
 
             if (!p.pierce) {
-              state.projectiles[i] = state.projectiles[state.projectiles.length - 1];
+              if (p.destroy) p.destroy(); state.projectiles[i] = state.projectiles[state.projectiles.length - 1];
               state.projectiles.pop();
               hit = true;
               break;
@@ -616,14 +608,14 @@ export function loop(timestamp, ctx) {
     for (let i = state.enemyProjectiles.length - 1; i >= 0; i--) {
       const ep = state.enemyProjectiles[i];
       if (!ep.update()) {
-        state.enemyProjectiles[i] = state.enemyProjectiles[state.enemyProjectiles.length - 1];
+        if (state.enemyProjectiles[i].destroy) state.enemyProjectiles[i].destroy(); state.enemyProjectiles[i] = state.enemyProjectiles[state.enemyProjectiles.length - 1];
         state.enemyProjectiles.pop();
         continue;
       }
       if (dist(ep.x, ep.y, state.player.x, state.player.y) < ep.radius + state.player.radius) {
         state.player.takeDamage(ep.damage, ep.color);
         spawnExplosion(ep.x, ep.y, ep.color, 6, 2);
-        state.enemyProjectiles[i] = state.enemyProjectiles[state.enemyProjectiles.length - 1];
+        if (state.enemyProjectiles[i].destroy) state.enemyProjectiles[i].destroy(); state.enemyProjectiles[i] = state.enemyProjectiles[state.enemyProjectiles.length - 1];
         state.enemyProjectiles.pop();
       }
     }
@@ -631,14 +623,14 @@ export function loop(timestamp, ctx) {
     for (let i = state.acceleratingProjectiles.length - 1; i >= 0; i--) {
       const ap = state.acceleratingProjectiles[i];
       if (!ap.update()) {
-        state.acceleratingProjectiles[i] = state.acceleratingProjectiles[state.acceleratingProjectiles.length - 1];
+        if (state.acceleratingProjectiles[i].destroy) state.acceleratingProjectiles[i].destroy(); state.acceleratingProjectiles[i] = state.acceleratingProjectiles[state.acceleratingProjectiles.length - 1];
         state.acceleratingProjectiles.pop();
         continue;
       }
       if (dist(ap.x, ap.y, state.player.x, state.player.y) < ap.radius + state.player.radius) {
         state.player.takeDamage(ap.damage, ap.color);
         spawnExplosion(ap.x, ap.y, ap.color, 6, 2);
-        state.acceleratingProjectiles[i] = state.acceleratingProjectiles[state.acceleratingProjectiles.length - 1];
+        if (state.acceleratingProjectiles[i].destroy) state.acceleratingProjectiles[i].destroy(); state.acceleratingProjectiles[i] = state.acceleratingProjectiles[state.acceleratingProjectiles.length - 1];
         state.acceleratingProjectiles.pop();
       }
     }
@@ -646,28 +638,28 @@ export function loop(timestamp, ctx) {
     for (let i = state.fallingProjectiles.length - 1; i >= 0; i--) {
       const fp = state.fallingProjectiles[i];
       if (!fp.update()) {
-        state.fallingProjectiles[i] = state.fallingProjectiles[state.fallingProjectiles.length - 1];
+        if (state.fallingProjectiles[i].destroy) state.fallingProjectiles[i].destroy(); state.fallingProjectiles[i] = state.fallingProjectiles[state.fallingProjectiles.length - 1];
         state.fallingProjectiles.pop();
         continue;
       }
       if (dist(fp.x, fp.y, state.player.x, state.player.y) < fp.radius + state.player.radius) {
         state.player.takeDamage(fp.damage, fp.color);
         spawnExplosion(fp.x, fp.y, fp.color, 6, 2);
-        state.fallingProjectiles[i] = state.fallingProjectiles[state.fallingProjectiles.length - 1];
+        if (state.fallingProjectiles[i].destroy) state.fallingProjectiles[i].destroy(); state.fallingProjectiles[i] = state.fallingProjectiles[state.fallingProjectiles.length - 1];
         state.fallingProjectiles.pop();
       }
     }
 
     for (let i = state.shockwaves.length - 1; i >= 0; i--) {
       if (!state.shockwaves[i].update()) {
-        state.shockwaves[i] = state.shockwaves[state.shockwaves.length - 1];
+        if (state.shockwaves[i].destroy) state.shockwaves[i].destroy(); state.shockwaves[i] = state.shockwaves[state.shockwaves.length - 1];
         state.shockwaves.pop();
       }
     }
 
     for (let i = state.laserBeams.length - 1; i >= 0; i--) {
       if (!state.laserBeams[i].update()) {
-        state.laserBeams[i] = state.laserBeams[state.laserBeams.length - 1];
+        if (state.laserBeams[i].destroy) state.laserBeams[i].destroy(); state.laserBeams[i] = state.laserBeams[state.laserBeams.length - 1];
         state.laserBeams.pop();
       }
     }
@@ -763,93 +755,11 @@ export function loop(timestamp, ctx) {
   }
 
   // =========================================================================
-  // RENDER PHASE
+  // PIXI SYNC PHASE
   // =========================================================================
-  ctx.save();
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
-  const screenW = state.camera.screenWidth || ctx.canvas.width;
-  const screenH = state.camera.screenHeight || ctx.canvas.height;
-  ctx.clearRect(0, 0, screenW, screenH);
-
-  // Apply Full Camera Transformation (DPR, Zoom, Screenshake, Rotation, Scale, Tracking)
-  state.camera.applyTransform(ctx);
-
-  drawBackground(ctx);
-  drawArenaBoundary(ctx);
-  drawBossSpawnBeacon(ctx, state.pendingBossSpawn);
-
-  // 1. Hazard Areas
-  for (let i = 0; i < state.hazardAreas.length; i++) {
-    state.hazardAreas[i].draw(ctx);
+  updateBackgroundLayer();
+  if (state.camera) {
+    state.camera.applyToLayer(worldLayer);
   }
 
-  // 2. XP Gems (Pooled + Legacy)
-  if (state.gemPool) state.gemPool.draw(ctx);
-  for (let i = 0; i < state.gems.length; i++) {
-    state.gems[i].draw(ctx);
-  }
-
-  // 3. Enemies & Bosses (Dynamic Batching & Instanced Geometry)
-  proceduralBatch.beginFrame(state.camera);
-
-  ctx.save();
-  ctx.beginPath();
-  ctx.rect(0, 0, state.width, state.height);
-  ctx.clip();
-  for (let i = 0; i < state.enemies.length; i++) {
-    state.enemies[i].draw(ctx);
-  }
-  ctx.restore();
-
-  for (let i = 0; i < state.bosses.length; i++) {
-    state.bosses[i].draw(ctx);
-  }
-
-  proceduralBatch.flush(ctx);
-
-  // 4. Projectiles
-  if (state.projectilePool) {
-    const pPool = state.projectilePool.pool;
-    const pLen = pPool.length;
-    for (let i = 0; i < pLen; i++) {
-      if (pPool[i].active) pPool[i].draw(ctx);
-    }
-  }
-  for (let i = 0; i < state.projectiles.length; i++) {
-    state.projectiles[i].draw(ctx);
-  }
-  for (let i = 0; i < state.enemyProjectiles.length; i++) {
-    state.enemyProjectiles[i].draw(ctx);
-  }
-  for (let i = 0; i < state.acceleratingProjectiles.length; i++) {
-    state.acceleratingProjectiles[i].draw(ctx);
-  }
-  for (let i = 0; i < state.fallingProjectiles.length; i++) {
-    state.fallingProjectiles[i].draw(ctx);
-  }
-  for (let i = 0; i < state.shockwaves.length; i++) {
-    state.shockwaves[i].draw(ctx);
-  }
-  for (let i = 0; i < state.laserBeams.length; i++) {
-    state.laserBeams[i].draw(ctx);
-  }
-
-  // 5. Player
-  if (state.player) state.player.draw(ctx);
-
-  // 6. Particles (Batch Drawn with zero shadowBlur)
-  if (state.particlePool) state.particlePool.drawBatch(ctx);
-  for (let i = 0; i < state.particles.length; i++) {
-    state.particles[i].draw(ctx);
-  }
-
-  // 7. Floating Texts (Batch Drawn)
-  if (state.floatingTextPool) state.floatingTextPool.drawBatch(ctx);
-  for (let i = 0; i < state.floatingTexts.length; i++) {
-    state.floatingTexts[i].draw(ctx);
-  }
-
-  ctx.restore();
-
-  animationFrameId = requestAnimationFrame((ts) => loop(ts, ctx));
 }

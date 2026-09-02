@@ -2,7 +2,10 @@ import { state } from '../../engine/gameState.js';
 import { dist } from '../../engine/Utils.js';
 import { spawnExplosion } from '../effects/spawnExplosion.js';
 import { audioManager } from '../../engine/AudioManager.js';
-import { proceduralBatch, parseColorToRgb } from '../../engine/ProceduralBatchRenderer.js';
+
+import { getOrCachePolygon, textures } from '../../engine/TextureCache.js';
+import { worldLayer } from '../../main.js';
+
 
 export class Enemy {
   constructor(x, y) {
@@ -40,7 +43,14 @@ export class Enemy {
     this.xpValue = 1;
     this.damage = 10;
     this.deathSoundKey = 'enemy_death_small';
-    this.texture = null;
+    this.sprite = new PIXI.Sprite();
+    this.sprite.anchor.set(0.5);
+    worldLayer.addChild(this.sprite);
+    this._texture = null;
+    Object.defineProperty(this, "texture", {
+      get() { return this._texture; },
+      set(val) { this._texture = val; if(this.sprite) this.sprite.texture = val; }
+    });
     this._spatialStamp = 0;
   }
 
@@ -48,6 +58,12 @@ export class Enemy {
     this.angle += 0.02;
     if (dist(this.x, this.y, player.x, player.y) < this.radius + player.radius) {
       player.takeDamage(this.damage, this.color);
+    }
+    if (this.sprite) {
+      this.sprite.x = this.x;
+      this.sprite.y = this.y;
+      this.sprite.rotation = this.angle;
+      if (this.alpha !== undefined) this.sprite.alpha = this.alpha;
     }
   }
 
@@ -82,6 +98,11 @@ export class Enemy {
     spawnExplosion(this.x, this.y, this.color, 14, 3);
     this.dropLoot();
     this.playDeathSound();
+    if (this.sprite) {
+      worldLayer.removeChild(this.sprite);
+      this.sprite.destroy();
+      this.sprite = null;
+    }
   }
 
   dropLoot() {
@@ -116,20 +137,4 @@ export class Enemy {
     audioManager.playSound(this.deathSoundKey, { volume: 0.5, throttleMs: 80 });
   }
 
-  draw(ctx) {
-    if (!this.rgb) {
-      this.rgb = parseColorToRgb(this.color);
-    }
-    proceduralBatch.submit(
-      this.sides,
-      this.x,
-      this.y,
-      this.radius,
-      this.angle,
-      this.rgb.r,
-      this.rgb.g,
-      this.rgb.b,
-      1.0
-    );
-  }
 }

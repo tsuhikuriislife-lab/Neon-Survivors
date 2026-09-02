@@ -1,6 +1,7 @@
 import { state } from '../../engine/gameState.js';
 import { dist } from '../../engine/Utils.js';
 import { audioManager } from '../../engine/AudioManager.js';
+import { worldLayer } from '../../main.js';
 
 export class LaserBeam {
   constructor(startX, startY, angle, damage, width, life, isSubLaser = false, dotDamage = 0, dotDuration = 0, tickDamage = false) {
@@ -21,11 +22,17 @@ export class LaserBeam {
     this.tickTimer = 0;
     
     this.length = 2000;
+    
+    this.graphics = new PIXI.Graphics();
+    worldLayer.addChild(this.graphics);
   }
   
   update() {
     this.life--;
-    if (this.life <= 0) return false;
+    if (this.life <= 0) {
+      this.destroy();
+      return false;
+    }
     
     this.tickTimer--;
     let canDamageThisFrame = false;
@@ -42,12 +49,12 @@ export class LaserBeam {
        }
     }
     
+    const cosA = Math.cos(this.angle);
+    const sinA = Math.sin(this.angle);
+    const endX = this.startX + cosA * this.length;
+    const endY = this.startY + sinA * this.length;
+    
     if (canDamageThisFrame) {
-      const cosA = Math.cos(this.angle);
-      const sinA = Math.sin(this.angle);
-      const endX = this.startX + cosA * this.length;
-      const endY = this.startY + sinA * this.length;
-      
       const targetsToHit = [];
 
       // Query enemies via spatial grid
@@ -109,31 +116,31 @@ export class LaserBeam {
        }
     }
     
+    if (this.graphics) {
+      const alpha = this.life / this.maxLife;
+      this.graphics.clear();
+      this.graphics.alpha = alpha;
+      
+      // inner core
+      this.graphics.lineStyle(this.width * 0.4, 0xffffff, 1);
+      this.graphics.moveTo(this.startX, this.startY);
+      this.graphics.lineTo(endX, endY);
+      
+      // outer glow
+      this.graphics.lineStyle(this.width, 0x00ff00, 0.6); // Wait, blend mode doesn't work on lines as easily in standard PIXI, we just use a thicker line with alpha
+      // Wait, PIXI supports blendMode on Graphics? No, we can just draw lines
+      this.graphics.moveTo(this.startX, this.startY);
+      this.graphics.lineTo(endX, endY);
+    }
+    
     return true;
   }
   
-  draw(ctx) {
-    const alpha = this.life / this.maxLife;
-    ctx.save();
-    ctx.globalAlpha = alpha;
-    
-    ctx.strokeStyle = "#ffffff";
-    ctx.lineWidth = this.width * 0.4;
-    ctx.beginPath();
-    ctx.moveTo(this.startX, this.startY);
-    ctx.lineTo(this.startX + Math.cos(this.angle) * this.length, this.startY + Math.sin(this.angle) * this.length);
-    ctx.stroke();
-    
-    ctx.globalCompositeOperation = "lighter";
-    ctx.strokeStyle = "#00ff00";
-    ctx.shadowColor = "#00ff00";
-    ctx.shadowBlur = 10;
-    ctx.lineWidth = this.width;
-    ctx.beginPath();
-    ctx.moveTo(this.startX, this.startY);
-    ctx.lineTo(this.startX + Math.cos(this.angle) * this.length, this.startY + Math.sin(this.angle) * this.length);
-    ctx.stroke();
-    
-    ctx.restore();
+  destroy() {
+    if (this.graphics) {
+      worldLayer.removeChild(this.graphics);
+      this.graphics.destroy();
+      this.graphics = null;
+    }
   }
 }

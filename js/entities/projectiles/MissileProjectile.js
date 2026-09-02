@@ -3,7 +3,8 @@ import { state } from '../../engine/gameState.js';
 import { dist } from '../../engine/Utils.js';
 import { spawnExplosion } from '../effects/spawnExplosion.js';
 import { audioManager } from '../../engine/AudioManager.js';
-import { textures, drawCachedTexture } from '../../engine/TextureCache.js';
+import { textures } from '../../engine/TextureCache.js';
+import { worldLayer } from '../../main.js';
 
 export class MissileProjectile extends Projectile {
   constructor(x, y, vx, vy, damage, homingStrength, aoeRadius) {
@@ -14,7 +15,26 @@ export class MissileProjectile extends Projectile {
     this.color = "#ff4400";
     this.pierce = false;
     this.isEnemy = false;
+    
+    if (this.sprite) {
+      worldLayer.removeChild(this.sprite);
+      this.sprite.destroy();
+      this.sprite = null;
+    }
+    
     this.texture = textures['proj_missile'];
+    if (this.texture) {
+      this.sprite = new PIXI.Sprite(this.texture);
+      this.sprite.anchor.set(0.5);
+    } else {
+      this.sprite = new PIXI.Graphics();
+      this.sprite.beginFill(0xff4400);
+      this.sprite.drawCircle(0, 0, this.radius);
+      this.sprite.endFill();
+    }
+    this.sprite.x = this.x;
+    this.sprite.y = this.y;
+    worldLayer.addChild(this.sprite);
   }
   
   onHit() {
@@ -116,8 +136,16 @@ export class MissileProjectile extends Projectile {
     this.x += this.vx;
     this.y += this.vy;
     this.life--;
+    
+    if (this.sprite) {
+      this.sprite.x = this.x;
+      this.sprite.y = this.y;
+      this.sprite.rotation = Math.atan2(this.vy, this.vx);
+    }
+    
     if (this.life <= 0) {
       this.onHit();
+      this.destroy();
       return false;
     }
     
@@ -125,14 +153,8 @@ export class MissileProjectile extends Projectile {
       state.particlePool.acquire(this.x, this.y, "#ff8800", 0.5, 0.1, 2);
     }
 
-    return this.x >= 0 && this.x <= state.width && this.y >= 0 && this.y <= state.height;
-  }
-
-  draw(ctx) {
-    if (this.x < 0 || this.x > state.width || this.y < 0 || this.y > state.height) return;
-    if (this.texture) {
-      const angle = Math.atan2(this.vy, this.vx);
-      drawCachedTexture(ctx, this.texture, this.x, this.y, angle);
-    }
+    const isAlive = this.x >= 0 && this.x <= state.width && this.y >= 0 && this.y <= state.height;
+    if (!isAlive) this.destroy();
+    return isAlive;
   }
 }

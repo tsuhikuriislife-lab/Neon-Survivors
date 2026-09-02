@@ -5,7 +5,9 @@ import { Projectile } from '../projectiles/Projectile.js';
 import { AcceleratingProjectile } from '../projectiles/AcceleratingProjectile.js';
 import { audioManager } from '../../engine/AudioManager.js';
 import { Boss } from './Boss.js';
-import { textures, drawCachedTexture } from '../../engine/TextureCache.js';
+import { getOrCachePolygon, textures, drawCachedTexture } from '../../engine/TextureCache.js';
+import { worldLayer } from '../../main.js';
+
 
 export class AmalgamNode extends Boss {
   constructor(name, x, y, hp, maxHp, stage, vx, vy) {
@@ -224,6 +226,7 @@ export class AmalgamNode extends Boss {
     if (dist(this.x, this.y, player.x, player.y) < this.radius + player.radius) {
       player.takeDamage(20, this.color);
     }
+    super.update(player);
   }
 
   fireSpray(originX, originY, dx, dy) {
@@ -256,10 +259,4 @@ export class AmalgamNode extends Boss {
     audioManager.playSound('enemy_projectile', { volume: 0.7, throttleMs: 80 });
   }
 
-  draw(ctx) {
-    if (this.dead) return;
-    if (this.texture) {
-      drawCachedTexture(ctx, this.texture, this.x, this.y, this.angle);
-    }
-  }
 }

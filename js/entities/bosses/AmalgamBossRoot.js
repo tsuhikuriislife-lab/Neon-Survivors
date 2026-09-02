@@ -10,6 +10,9 @@ import { FallingProjectile } from '../projectiles/FallingProjectile.js';
 
 
 import { Boss } from './Boss.js';
+import { getOrCachePolygon, textures } from '../../engine/TextureCache.js';
+import { worldLayer } from '../../main.js';
+
 
 export class AmalgamBossRoot {
   constructor(x, y) {
@@ -29,8 +32,5 @@ export class AmalgamBossRoot {
     this.nodes.forEach(n => n.update(player));
   }
 
-  draw(ctx) {
-    this.nodes.forEach(n => n.draw(ctx));
-  }
 }
 

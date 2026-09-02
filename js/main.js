@@ -9,8 +9,28 @@ import { initTextureCache } from './engine/TextureCache.js';
 export const VIRTUAL_WIDTH = 1920;
 export const VIRTUAL_HEIGHT = 1080;
 
-const canvas = document.getElementById("gameCanvas");
-const ctx = canvas.getContext("2d");
+export const app = new PIXI.Application({
+  width: VIRTUAL_WIDTH,
+  height: VIRTUAL_HEIGHT,
+  backgroundColor: 0x04030a,
+  antialias: true,
+  autoDensity: true,
+  resolution: window.devicePixelRatio || 1
+});
+document.getElementById("game-container").insertBefore(app.view, document.getElementById("game-container").firstChild);
+const oldCanvas = document.getElementById("gameCanvas");
+if (oldCanvas) oldCanvas.remove();
+
+export const worldLayer = new PIXI.Container();
+export const uiLayer = new PIXI.Container();
+app.stage.addChild(worldLayer);
+app.stage.addChild(uiLayer);
+
+import { particlePool, projectilePool, gemPool, floatingTextPool } from './engine/Pool.js';
+particlePool.initSprites(worldLayer);
+projectilePool.initSprites(worldLayer);
+gemPool.initSprites(worldLayer);
+floatingTextPool.initSprites(worldLayer);
 
 export function getViewportSize() {
   if (typeof window !== 'undefined' && window.visualViewport) {
@@ -52,41 +72,27 @@ function checkOrientation() {
 }
 
 export function resize() {
-  const container = document.getElementById("game-container");
   const viewport = getViewportSize();
   const winW = Math.max(1, viewport.width);
   const winH = Math.max(1, viewport.height);
-  const ar = winW / winH;
 
-  // 1. Dynamic Virtual Resolution based on Viewport Aspect Ratio (No Letterboxing / Pillarboxing)
-  let virtualWidth = 1920;
-  let virtualHeight = 1080;
+  // Resize PixiJS renderer to match the actual viewport (game-container fills full screen)
+  app.renderer.resize(winW, winH);
 
-  if (ar >= 16 / 9) {
-    virtualWidth = Math.round(1080 * ar);
-    virtualHeight = 1080;
-  } else {
-    virtualWidth = 1920;
-    virtualHeight = Math.round(1920 / ar);
+  // Update camera with actual screen dimensions
+  if (state.camera) {
+    state.camera.screenWidth = winW;
+    state.camera.screenHeight = winH;
+    state.camera.baseScale = 1.0;
+    state.camera.dpr = 1.0;
   }
 
-  // 2. Set Canvas Buffer Dimensions
-  canvas.width = virtualWidth;
-  canvas.height = virtualHeight;
-
-  // 3. Scale Factor for UI
+  // UI scale relative to 1920x1080 reference
   const scale = Math.min(winW / 1920, winH / 1080);
+  const container = document.getElementById("game-container");
   if (container) {
-    container.style.width = '100%';
-    container.style.height = '100%';
     container.style.setProperty('--ui-scale', scale.toString());
   }
-
-  // 4. Camera virtual viewport setup
-  state.camera.screenWidth = virtualWidth;
-  state.camera.screenHeight = virtualHeight;
-  state.camera.baseScale = 1.0;
-  state.camera.dpr = 1.0;
 
   checkOrientation();
 }
@@ -140,5 +146,7 @@ window.addEventListener('touchend', startAudio, { passive: true });
 initInput();
 initUIListeners();
 
-requestAnimationFrame((ts) => loop(ts, ctx));
+app.ticker.add(() => {
+  loop(performance.now());
+});
 });

@@ -1,4 +1,4 @@
-import { bitmapFont } from "../../engine/BitmapFont.js";
+import { uiLayer } from "../../main.js";
 
 export class FloatingText {
   constructor(text, x, y, size = 20, color = "#ff0000", isCrit = false) {
@@ -17,19 +17,34 @@ export class FloatingText {
       this.maxLife = 80;
       this.life = 80;
     }
+
+    this.pixiText = new PIXI.Text(text, {
+      fontFamily: 'monospace',
+      fontSize: size,
+      fill: color,
+      align: 'center',
+      fontWeight: 'bold',
+      stroke: '#000000',
+      strokeThickness: 3
+    });
+    this.pixiText.anchor.set(0.5);
+    this.pixiText.x = this.x;
+    this.pixiText.y = this.y;
+    uiLayer.addChild(this.pixiText);
   }
+  
   update() {
     this.y += this.vy;
     this.life--;
     if (this.life < 20) {
       this.alpha = this.life / 20;
     }
-  }
-  draw(ctx) {
-    if (this.isCrit) {
-      bitmapFont.drawCachedText(ctx, this.text, this.x, this.y, this.size, this.color, true, "center", "middle", this.alpha);
-    } else {
-      bitmapFont.drawCachedText(ctx, this.text, this.x, this.y, this.size, this.color, true, "center", "middle", this.alpha);
+    this.pixiText.y = this.y;
+    this.pixiText.alpha = this.alpha;
+    
+    if (this.life <= 0) {
+        uiLayer.removeChild(this.pixiText);
+        this.pixiText.destroy();
     }
   }
 }

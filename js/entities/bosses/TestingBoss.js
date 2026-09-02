@@ -1,6 +1,8 @@
 import { Boss } from './Boss.js';
 import { state } from '../../engine/gameState.js';
-import { textures, drawCachedTexture } from '../../engine/TextureCache.js';
+import { getOrCachePolygon, textures, drawCachedTexture } from '../../engine/TextureCache.js';
+import { worldLayer } from '../../main.js';
+
 
 export class TestingBoss extends Boss {
   constructor() {
@@ -17,11 +19,7 @@ export class TestingBoss extends Boss {
     this.x = state.width / 2;
     this.y = state.height / 2;
     this.angle = (this.angle || 0) + 0.01;
+    super.update(player);
   }
 
-  draw(ctx) {
-    if (this.texture) {
-      drawCachedTexture(ctx, this.texture, this.x, this.y, this.angle || 0);
-    }
-  }
 }

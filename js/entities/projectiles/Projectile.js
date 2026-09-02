@@ -1,6 +1,7 @@
 import { state } from '../../engine/gameState.js';
 import { dist } from '../../engine/Utils.js';
-import { textures, drawCachedTexture } from '../../engine/TextureCache.js';
+import { textures } from '../../engine/TextureCache.js';
+import { worldLayer } from '../../main.js';
 
 export class Projectile {
   constructor(x, y, vx, vy, damage, color = "#00ffff", radius = 4, isEnemy = false, homingStrength = 0) {
@@ -15,6 +16,7 @@ export class Projectile {
     this.homingStrength = homingStrength;
     this.life = 120;
     this.pierce = false;
+    this.sprite = null;
 
     if (isEnemy) {
       if (color === '#00ccff') this.texture = textures['proj_enemy_ranger'];
@@ -24,6 +26,26 @@ export class Projectile {
     } else {
       this.texture = textures['proj_blaster'];
     }
+
+    if (this.texture) {
+      this.sprite = new PIXI.Sprite(this.texture);
+    } else {
+      this.sprite = new PIXI.Graphics();
+      let hexColor = 0xffffff;
+      if (typeof this.color === 'string' && this.color.startsWith('#')) {
+        hexColor = parseInt(this.color.replace('#', ''), 16);
+      }
+      this.sprite.beginFill(hexColor);
+      this.sprite.drawCircle(0, 0, this.radius);
+      this.sprite.endFill();
+    }
+    
+    if (this.sprite instanceof PIXI.Sprite) {
+      this.sprite.anchor.set(0.5);
+    }
+    this.sprite.x = this.x;
+    this.sprite.y = this.y;
+    worldLayer.addChild(this.sprite);
   }
 
   update() {
@@ -62,19 +84,22 @@ export class Projectile {
     this.x += this.vx;
     this.y += this.vy;
     this.life--;
+    
+    if (this.sprite) {
+      this.sprite.x = this.x;
+      this.sprite.y = this.y;
+      this.sprite.rotation = Math.atan2(this.vy, this.vx);
+    }
+
     const inBounds = this.x >= 0 && this.x <= state.width && this.y >= 0 && this.y <= state.height;
     return this.isEnemy ? inBounds : (this.life > 0 && inBounds);
   }
-
-  draw(ctx) {
-    if (this.x < 0 || this.x > state.width || this.y < 0 || this.y > state.height) return;
-    if (this.texture) {
-      drawCachedTexture(ctx, this.texture, this.x, this.y);
-    } else {
-      ctx.fillStyle = this.color;
-      ctx.beginPath();
-      ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-      ctx.fill();
+  
+  destroy() {
+    if (this.sprite) {
+      worldLayer.removeChild(this.sprite);
+      this.sprite.destroy();
+      this.sprite = null;
     }
   }
 }

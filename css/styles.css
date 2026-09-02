@@ -16,26 +16,19 @@
       color: #fff;
       font-family: 'Eight-Bit Exposition', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       overflow: hidden;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      width: 100vw;
-      width: 100dvw;
-      height: 100vh;
-      height: 100dvh;
       margin: 0;
       padding: 0;
       touch-action: none;
     }
     #game-container {
-      position: relative;
+      position: fixed;
+      top: 0;
+      left: 0;
       width: 100vw;
       width: 100dvw;
       height: 100vh;
       height: 100dvh;
-      background: radial-gradient(circle at center, #0f0c1b 0%, #030206 100%);
       overflow: hidden;
-      box-shadow: none;
       touch-action: none;
       user-select: none;
       container-type: size;

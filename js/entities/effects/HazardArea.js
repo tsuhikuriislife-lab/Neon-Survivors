@@ -1,5 +1,6 @@
 import { dist } from '../../engine/Utils.js';
 import { audioManager } from '../../engine/AudioManager.js';
+import { worldLayer } from '../../main.js';
 
 export class HazardArea {
   constructor(x, y, radius, duration, color, damage, isAcid = false) {
@@ -13,8 +14,14 @@ export class HazardArea {
     this.isAcid = isAcid;
     this.pulse = 0;
     
+    this.graphics = new PIXI.Graphics();
+    this.graphics.x = this.x;
+    this.graphics.y = this.y;
+    worldLayer.addChild(this.graphics);
+    
     audioManager.playSound('enemy_aoe', { volume: 0.6 });
   }
+  
   update(player) {
     this.duration--;
     this.pulse += 0.05;
@@ -24,20 +31,40 @@ export class HazardArea {
         player.slowTimer = Math.max(player.slowTimer, 10);
       }
     }
-    return this.duration > 0;
+    
+    if (this.graphics) {
+      const alpha = Math.min(0.6, (this.duration / this.maxDuration) * 0.6);
+      this.graphics.clear();
+      this.graphics.alpha = alpha;
+      
+      let hexColor = 0xffffff;
+      if (typeof this.color === 'string') {
+        if (this.color.startsWith('#')) {
+          hexColor = parseInt(this.color.replace('#', ''), 16);
+        } else if (this.color.startsWith('rgb')) {
+          const matches = this.color.match(/\d+/g);
+          if (matches && matches.length >= 3) {
+            hexColor = (parseInt(matches[0]) << 16) | (parseInt(matches[1]) << 8) | parseInt(matches[2]);
+          }
+        }
+      }
+      
+      this.graphics.beginFill(hexColor, 1);
+      this.graphics.lineStyle(1.5, hexColor, 1);
+      this.graphics.drawCircle(0, 0, this.radius + Math.sin(this.pulse) * 3);
+      this.graphics.endFill();
+    }
+    
+    const isAlive = this.duration > 0;
+    if (!isAlive) this.destroy();
+    return isAlive;
   }
-  draw(ctx) {
-    const alpha = Math.min(0.6, (this.duration / this.maxDuration) * 0.6);
-    ctx.save();
-    ctx.beginPath();
-    ctx.arc(this.x, this.y, this.radius + Math.sin(this.pulse) * 3, 0, Math.PI * 2);
-    ctx.fillStyle = this.color.replace(')', `, ${alpha})`).replace('rgb', 'rgba');
-    ctx.fill();
-    ctx.strokeStyle = this.color;
-    ctx.lineWidth = 1.5;
-    ctx.shadowColor = this.color;
-    ctx.shadowBlur = 8;
-    ctx.stroke();
-    ctx.restore();
+  
+  destroy() {
+    if (this.graphics) {
+      worldLayer.removeChild(this.graphics);
+      this.graphics.destroy();
+      this.graphics = null;
+    }
   }
 }

@@ -1,7 +1,9 @@
 import { state } from '../../engine/gameState.js';
 import { Enemy } from './Enemy.js';
 import { MotherChildEnemy } from './MotherChildEnemy.js';
-import { textures } from '../../engine/TextureCache.js';
+import { getOrCachePolygon, textures } from '../../engine/TextureCache.js';
+import { worldLayer } from '../../main.js';
+
 
 export class MotherEnemy extends Enemy {
   constructor(x, y) {
