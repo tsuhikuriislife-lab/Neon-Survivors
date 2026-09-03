@@ -175,7 +175,7 @@ export class Player {
           this.shield.charges = Math.min(this.shield.maxCharges, this.shield.charges + 1);
           const cColor = this.getShieldColor(this.shield.charges);
           if (state.floatingTextPool) {
-            state.floatingTextPool.acquire(this.x, this.y - 25, "+1 ESCUDO", cColor, 14);
+            state.floatingTextPool.acquire(this.x, this.y - 25, "+1 SHIELD", cColor, 14);
           }
           audioManager.playSound('hit_satellite', { volume: 0.6, pitch: 1.4, throttleMs: 100 });
           spawnExplosion(this.x, this.y, cColor, 12, 2.0);

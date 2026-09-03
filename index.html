@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
@@ -25,7 +25,7 @@
     </div>
 
     <!-- Laser Cancel Zone (Mobile) -->
-    <div id="laser-cancel-zone" class="laser-cancel-zone" style="display: none;" title="Arrastra aquí para cancelar disparo">
+    <div id="laser-cancel-zone" class="laser-cancel-zone" style="display: none;" title="Drag here to cancel shot">
       <span class="laser-cancel-icon">✕</span>
     </div>
 
@@ -34,8 +34,8 @@
       <div class="xp-container">
         <div class="xp-bar" id="hudXpBar"></div>
       </div>
-      <div id="boss-warning-banner" class="boss-warning-banner" style="display: none;">⚠️ ¡ALERTA: UN JEFE SE APROXIMA! ⚠️</div>
-      <div id="wave-warning-banner" class="wave-warning-banner" style="display: none;">🌊 ¡OLEADA ENEMIGA EN CURSO (x4 SPAWN)! 🌊</div>
+      <div id="boss-warning-banner" class="boss-warning-banner" style="display: none;">⚠️ WARNING: A BOSS IS APPROACHING! ⚠️</div>
+      <div id="wave-warning-banner" class="wave-warning-banner" style="display: none;">🌊 ENEMY SWARM INCOMING (x4 SPAWN)! 🌊</div>
       <div class="stats-hud">
         <div class="stat-box"><span id="hudTime">00:00</span></div>
         <div class="stat-box"><span id="hudKills">0</span> Kills</div>
@@ -71,7 +71,7 @@
 
       <!-- Testing Panel (DPS & Damage Breakdown) -->
       <div id="testing-panel" style="display: none;">
-        <div class="testing-panel-header">📊 TEST DPS TEST DPS & DAÑO DAMAGE</div>
+        <div class="testing-panel-header">📊 TEST DPS & DAMAGE</div>
         <div class="testing-panel-row">
           <span>Total Damage:</span>
           <span id="testTotalDamage" style="color: #ffff00; font-weight: bold;">0</span>
@@ -83,7 +83,7 @@
         <div id="testWeaponStats" style="margin-top: 6px;"></div>
       </div>
       <!-- Pause Button (Top Right) -->
-      <button id="pause-btn" class="pause-btn" title="Pausa / Opciones" aria-label="Pausa">
+      <button id="pause-btn" class="pause-btn" title="Pause / Options" aria-label="Pause">
         <span class="pause-bar"></span>
         <span class="pause-bar"></span>
       </button>

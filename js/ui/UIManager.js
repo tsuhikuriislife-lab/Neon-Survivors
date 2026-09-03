@@ -553,7 +553,7 @@ export function initUIListeners() {
   };
 
   document.getElementById("adminBtnSpawnEnemy").onclick = () => {
-    adminSubTitle.innerText = "SPAWN ENEMIGO";
+    adminSubTitle.innerText = "SPAWN ENEMY";
     adminSubContent.innerHTML = "";
     adminSubContent.className = "admin-sub-content admin-cards-grid";
     adminSubContent.parentElement.classList.add("wide-box");
@@ -614,7 +614,7 @@ export function initUIListeners() {
   };
 
   document.getElementById("adminBtnUpgrades").onclick = () => {
-    adminSubTitle.innerText = "RECIBIR MEJORA";
+    adminSubTitle.innerText = "RECEIVE UPGRADE";
     adminSubContent.innerHTML = "";
     adminSubContent.className = "admin-sub-content admin-cards-grid";
     adminSubContent.parentElement.classList.add("wide-box");
@@ -647,8 +647,8 @@ export function initUIListeners() {
     resetCard.className = "card";
     resetCard.innerHTML = `
       <div class="card-icon">❌</div>
-      <div class="card-name">RESTABLECER MEJORAS</div>
-      <div class="card-desc">Elimina todas las armas y restablece estadisticas base.</div>
+      <div class="card-name">RESET UPGRADES</div>
+      <div class="card-desc">Removes all weapons and resets base stats.</div>
     `;
     resetCard.onclick = () => {
       state.player.resetUpgrades();
@@ -691,7 +691,7 @@ export function triggerGameOver() {
   const btnRevive = document.getElementById("btnRevive");
   if (btnRevive) {
     btnRevive.disabled = false;
-    btnRevive.innerText = "❤ REVIVIR (1 POR PARTIDA)";
+    btnRevive.innerText = "❤ REVIVE (1 PER GAME)";
     if (state.player && !state.player.hasRevivedOnce) {
       btnRevive.style.display = "block";
     } else {
@@ -730,7 +730,7 @@ export function revivePlayer() {
   // Efectos visuales y sonoros
   spawnExplosion(state.player.x, state.player.y, "#00ffff", 30, 4);
   if (state.floatingTextPool) {
-    state.floatingTextPool.acquire(state.player.x, state.player.y - 30, "¡REVIVIDO!", "#00ffcc", 20);
+    state.floatingTextPool.acquire(state.player.x, state.player.y - 30, "REVIVED!", "#00ffcc", 20);
   }
   audioManager.playSound('level_up', { volume: 0.9, throttleMs: 50 });
 
@@ -927,7 +927,7 @@ export function showBossRewardMenu(bossName) {
   modal.style.display = "flex";
   container.innerHTML = "";
   particles.innerHTML = "";
-  instruction.innerText = "Recompensa de Jefe: Elige una carta";
+  instruction.innerText = "Boss Reward: Choose a card";
 
   const available = upgradeDatabase.filter(u => !u.isAvailable || u.isAvailable(state.player));
 
@@ -997,7 +997,7 @@ export function showBossRewardMenu(bossName) {
         isFirstPick = false;
         if (Math.random() < 0.05) {
           // JACKPOT!
-          instruction.innerText = "¡JACKPOT! Has obtenido todas las cartas. Clickea en el fondo para salir.";
+          instruction.innerText = "JACKPOT! You obtained all cards. Click the background to exit.";
           audioManager.playSound('jackpot', { volume: 0.9, throttleMs: 50 });
           picksLeft = 0; // consumed all picks
           
@@ -1030,7 +1030,7 @@ export function showBossRewardMenu(bossName) {
       if (picksLeft <= 0) {
         instruction.innerText = "Upgrades obtained. Click on the background to exit.";
       } else {
-        instruction.innerText = `¡Suerte! Puedes elegir ${picksLeft} carta(s) mas.`;
+        instruction.innerText = `Lucky! You can choose ${picksLeft} more card(s).`;
       }
     };
     

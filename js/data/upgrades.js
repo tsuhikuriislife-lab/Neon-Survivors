@@ -6,7 +6,7 @@ export const upgradeDatabase = [
     rarity: 'uncommon',
     name: 'Multi-Laser Fire Rate',
     icon: '🔫',
-    desc: '+1 Focused projectile per shot to the same target (Max. 4).',
+    desc: '+1 Neon cannon projectile per shot.',
     isAvailable: (p) => p.weapons.blaster.projectileCount < 5,
     apply: (p) => { p.weapons.blaster.projectileCount += 1; }
   },
@@ -15,7 +15,7 @@ export const upgradeDatabase = [
     rarity: 'common',
     name: 'Fire Overload',
     icon: '⚡',
-    desc: '+25% Neon Cannon reload speed (Max. 4).',
+    desc: '+25% Neon Cannon reload speed.',
     isAvailable: (p) => (p.blasterRateUpgrades || 0) < 4,
     apply: (p) => { 
       p.weapons.blaster.cooldown = Math.max(8, p.weapons.blaster.cooldown * 0.75); 
@@ -25,9 +25,9 @@ export const upgradeDatabase = [
   {
     id: 'hp_regen',
     rarity: 'legendary',
-    name: 'Nanobots Reparadores',
+    name: 'Repairing Nanobots',
     icon: '💉',
-    desc: '+1.0 Regeneracion de HP por segundo. (Max. 3)',
+    desc: '+1.0 HP/s regen.',
     isAvailable: (p) => p.regenUpgradesCount  === 0,
     apply: (p) => { 
         p.hpRegen += 1.0; 
@@ -37,9 +37,9 @@ export const upgradeDatabase = [
   {
     id: 'iframe_extend',
     rarity: 'rare',
-    name: 'Blindaje Cuantico',
+    name: 'Timewarping Shield',
     icon: '🛡',
-    desc: '+0.25s Duracion de inmunidad tras recibir impacto (Max. 3).',
+    desc: '+0.25s Invulnerability duration.',
     isAvailable: (p) => p.iFrameUpgradesCount < 3,
     apply: (p) => { 
       p.invulnerabilityMaxTime += 0.25; 
@@ -49,9 +49,9 @@ export const upgradeDatabase = [
   {
     id: 'speed_boost',
     rarity: 'uncommon',
-    name: 'Propulsores Vectoriales',
+    name: 'Vector Thrusters',
     icon: '👟',
-    desc: '+20% Velocidad de movimiento del nucleo (Max. 4).',
+    desc: '+20% Core movement speed (Max. 4).',
     isAvailable: (p) => (p.speedUpgradesCount || 0) < 4,
     apply: (p) => { 
         p.baseSpeed *= 1.20; 
@@ -61,9 +61,9 @@ export const upgradeDatabase = [
   {
     id: 'magnet_boost',
     rarity: 'rare',
-    name: 'Atraccion Magnetica',
+    name: 'Magnetic Attraction',
     icon: '🧲',
-    desc: '+50% Radio de recoleccion de energia XP (Max. 4).',
+    desc: '+50% Pickup radius for XP energy (Max. 4).',
     isAvailable: (p) => (p.magnetUpgrades || 0) < 4,
     apply: (p) => { 
       p.pickupRadius *= 1.5; 
@@ -73,9 +73,9 @@ export const upgradeDatabase = [
   {
     id: 'damage_boost',
     rarity: 'common',
-    name: 'Amplificador Cuantico',
+    name: 'Quantum Amplifier',
     icon: '⚔',
-    desc: '+25% Dano general de todas las armas (Max. 5).',
+    desc: '+25% General damage of all weapons (Max. 5).',
     isAvailable: (p) => (p.damageUpgradesCount || 0) < 5,
     apply: (p) => { 
         p.damageMult += 0.25; 
@@ -85,9 +85,9 @@ export const upgradeDatabase = [
   {
     id: 'repair_hull',
     rarity: 'uncommon',
-    name: 'Refuerzo de Casco',
+    name: 'Hull Reinforcement',
     icon: '❤',
-    desc: 'Restores 50 HP y aumenta la salud maxima en +25 (Max. 5).',
+    desc: 'Restores 50 HP and increases maximum health by +25 (Max. 5).',
     isAvailable: (p) => (p.hullUpgradesCount || 0) < 5,
     apply: (p) => { 
       p.maxHp += 25; 
@@ -98,9 +98,9 @@ export const upgradeDatabase = [
   {
     id: 'nova_unlock',
     rarity: 'common',
-    name: 'Desbloqueo Nova',
+    name: 'Nova Discharge',
     icon: '🌀',
-    desc: 'Dispara periodicamente una salva radial de 8 proyectiles.',
+    desc: 'Periodically fires a radial volley of 8 projectiles.',
     isAvailable: (p) => p.weapons.nova.level === 0,
     apply: (p) => {
       p.weapons.nova.level = 1;
@@ -110,9 +110,9 @@ export const upgradeDatabase = [
   {
     id: 'nova_up',
     rarity: 'uncommon',
-    name: '+ Proyectiles Nova',
+    name: '+ Nova Projectiles',
     icon: '✨',
-    desc: '+2 Proyectiles a la salva Nova (Max. 3).',
+    desc: '+2 Projectiles per Nova volley (Max. 3).',
     isAvailable: (p) => p.weapons.nova.level > 0 && p.weapons.nova.level <= 3,
     apply: (p) => {
       p.weapons.nova.level++;
@@ -122,9 +122,9 @@ export const upgradeDatabase = [
   {
     id: 'nova_spiral',
     rarity: 'legendary',
-    name: 'Vortice Angular',
+    name: 'Angular Vortex',
     icon: '🌪',
-    desc: 'Los proyectiles Nova conservan su expansion pero giran en espiral continua.',
+    desc: 'Nova projectiles retain their expansion while spinning continuously in a spiral.',
     isAvailable: (p) => p.weapons.nova.level > 0 && !p.weapons.nova.spiral,
     apply: (p) => {
       p.weapons.nova.spiral = true;
@@ -133,9 +133,9 @@ export const upgradeDatabase = [
   {
     id: 'orbital_unlock',
     rarity: 'common',
-    name: 'Escudo Orbital Plasma',
+    name: 'Orbital Plasma Shield',
     icon: '🔮',
-    desc: 'Desbloquea 2 orbes rotatorios que causan dano al contacto.',
+    desc: 'Unlocks 2 rotating orbs that deal contact damage.',
     isAvailable: (p) => p.weapons.orbitals.level === 0,
     apply: (p) => { 
       p.weapons.orbitals.level = 1;
@@ -145,9 +145,9 @@ export const upgradeDatabase = [
   {
     id: 'orbital_count',
     rarity: 'uncommon',
-    name: '+ Satelites',
+    name: '+ Satellites',
     icon: '🪐',
-    desc: 'Anade +2 satelites al escudo orbital (Max. 2).',
+    desc: 'Adds +2 satellites to the orbital shield (Max. 2).',
     isAvailable: (p) => p.weapons.orbitals.level > 0 && (p.weapons.orbitals.countUpgrades || 0) < 2,
     apply: (p) => {
       p.weapons.orbitals.count += 2;
@@ -157,9 +157,9 @@ export const upgradeDatabase = [
   {
     id: 'orbital_size',
     rarity: 'rare',
-    name: 'Expansion Orbital',
+    name: 'Orbital Expansion',
     icon: '🌌',
-    desc: '+20% Tamano de los satelites (Max. 3).',
+    desc: '+20% Satellite size (Max. 3).',
     isAvailable: (p) => p.weapons.orbitals.level > 0 && (p.weapons.orbitals.sizeUpgrades || 0) < 3,
     apply: (p) => {
       p.weapons.orbitals.size = (p.weapons.orbitals.size || 8) * 1.2;
@@ -169,9 +169,9 @@ export const upgradeDatabase = [
   {
     id: 'orbital_speed',
     rarity: 'rare',
-    name: 'Giro Acelerado',
+    name: 'Accelerated Spin',
     icon: '🔄',
-    desc: '+15% Velocidad de rotacion orbital (Max. 3).',
+    desc: '+15% Orbital rotation speed (Max. 3).',
     isAvailable: (p) => p.weapons.orbitals.level > 0 && (p.weapons.orbitals.speedUpgrades || 0) < 3,
     apply: (p) => {
       p.weapons.orbitals.speed *= 1.15;
@@ -181,9 +181,9 @@ export const upgradeDatabase = [
   {
     id: 'shockwave_unlock',
     rarity: 'common',
-    name: 'Pulso Radial Sismico',
+    name: 'Seismic Radial Pulse',
     icon: '💥',
-    desc: 'Desbloquea una onda expansiva periodica.',
+    desc: 'Unlocks a periodic shockwave pulse.',
     isAvailable: (p) => p.weapons.shockwave.level === 0,
     apply: (p) => { 
       p.weapons.shockwave.level = 1;
@@ -192,9 +192,9 @@ export const upgradeDatabase = [
   {
     id: 'shockwave_range',
     rarity: 'uncommon',
-    name: 'Amplitud Sismica',
+    name: 'Seismic Amplitude',
     icon: '🌊',
-    desc: '+30% Rango de la onda expansiva (Max. 3).',
+    desc: '+30% Shockwave range (Max. 3).',
     isAvailable: (p) => p.weapons.shockwave.level > 0 && (p.weapons.shockwave.rangeUpgrades || 0) < 3,
     apply: (p) => {
       p.weapons.shockwave.radius *= 1.30;
@@ -204,9 +204,9 @@ export const upgradeDatabase = [
   {
     id: 'shockwave_rate',
     rarity: 'rare',
-    name: 'Frecuencia Sismica',
+    name: 'Seismic Frequency',
     icon: '⏱',
-    desc: '+25% Velocidad de disparo de la onda expansiva (Max. 4).',
+    desc: '+25% Shockwave fire rate (Max. 4).',
     isAvailable: (p) => p.weapons.shockwave.level > 0 && (p.weapons.shockwave.rateUpgrades || 0) < 4,
     apply: (p) => {
       p.weapons.shockwave.cooldown = Math.max(30, p.weapons.shockwave.cooldown * 0.75); 
@@ -216,9 +216,9 @@ export const upgradeDatabase = [
   {
     id: 'missiles_unlock',
     rarity: 'common',
-    name: 'Bateria de Misiles',
+    name: 'Missile Battery',
     icon: '🚀',
-    desc: 'Lanza 6 misiles en direcciones aleatorias con rastreo leve y dano en area.',
+    desc: 'Launches 6 missiles in random directions with light homing and AoE damage.',
     isAvailable: (p) => p.weapons.missiles.level === 0,
     apply: (p) => {
       p.weapons.missiles.level = 1;
@@ -227,9 +227,9 @@ export const upgradeDatabase = [
   {
     id: 'missiles_count',
     rarity: 'uncommon',
-    name: '+ Misiles',
+    name: '+ Missiles',
     icon: '🎆',
-    desc: '+2 Misiles por salva (Max. 3).',
+    desc: '+2 Missiles per volley (Max. 3).',
     isAvailable: (p) => p.weapons.missiles.level > 0 && (p.weapons.missiles.countUpgrades || 0) < 3,
     apply: (p) => {
       p.weapons.missiles.count += 2;
@@ -239,9 +239,9 @@ export const upgradeDatabase = [
   {
     id: 'missiles_speed',
     rarity: 'rare',
-    name: 'Propulsion de Misiles',
+    name: 'Missile Propulsion',
     icon: '☄',
-    desc: '+20% Velocidad de misiles (Max. 4).',
+    desc: '+20% Missile speed (Max. 4).',
     isAvailable: (p) => p.weapons.missiles.level > 0 && (p.weapons.missiles.speedUpgrades || 0) < 4,
     apply: (p) => {
       p.weapons.missiles.speed *= 1.20;
@@ -251,9 +251,9 @@ export const upgradeDatabase = [
   {
     id: 'missiles_homing',
     rarity: 'legendary',
-    name: 'Rastreo Avanzado',
+    name: 'Advanced Tracking',
     icon: '📡',
-    desc: 'Mejora drasticamente el rastreo de los misiles (Unico).',
+    desc: 'Drastically improves missile tracking (Unique).',
     isAvailable: (p) => p.weapons.missiles.level > 0 && !p.weapons.missiles.homingUpgrade,
     apply: (p) => {
       p.weapons.missiles.homing += 0.08;
@@ -263,9 +263,9 @@ export const upgradeDatabase = [
   {
     id: 'missiles_aoe',
     rarity: 'uncommon',
-    name: 'Carga Explosiva',
+    name: 'Explosive Payload',
     icon: '💣',
-    desc: '+30% Area de dano de los misiles (Max. 3).',
+    desc: '+30% Missile damage radius (Max. 3).',
     isAvailable: (p) => p.weapons.missiles.level > 0 && (p.weapons.missiles.aoeUpgrades || 0) < 3,
     apply: (p) => {
       p.weapons.missiles.aoe *= 1.30;
@@ -275,9 +275,9 @@ export const upgradeDatabase = [
   {
     id: 'double_gem',
     rarity: 'legendary',
-    name: 'Experiencia Duplicada',
+    name: 'Duplicate Experience',
     icon: '💎',
-    desc: '5% de probabilidad de que los enemigos suelten 2 orbes de experiencia (Max. 2).',
+    desc: '5% chance for enemies to drop 2 experience gems (Max. 2).',
     isAvailable: (p) => (p.doubleGemUpgradesCount || 0) < 2,
     apply: (p) => {
       p.doubleGemChance = (p.doubleGemChance || 0) + 0.05;
@@ -288,9 +288,9 @@ export const upgradeDatabase = [
   {
     id: 'laser_unlock',
     rarity: 'common',
-    name: 'Canon Laser',
+    name: 'Laser Cannon',
     icon: '🔦',
-    desc: 'Un canon de apuntado manual que perfora infinitamente.',
+    desc: 'A manually aimed cannon with infinite piercing.',
     isAvailable: (p) => p.weapons.laserCannon.level === 0,
     apply: (p) => { 
       p.weapons.laserCannon.level = 1; 
@@ -300,9 +300,9 @@ export const upgradeDatabase = [
   {
     id: 'laser_charge',
     rarity: 'common',
-    name: 'Carga Rapida',
+    name: 'Quick Charge',
     icon: '🔋',
-    desc: '+15% Velocidad de carga del Canon Laser (Max. 4).',
+    desc: '+15% Laser Cannon charge speed (Max. 4).',
     isAvailable: (p) => p.weapons.laserCannon.level > 0 && (p.weapons.laserCannon.chargeUpgrades || 0) < 4,
     apply: (p) => {
       p.weapons.laserCannon.chargeSpeedMult *= 1.15;
@@ -312,9 +312,9 @@ export const upgradeDatabase = [
   {
     id: 'laser_damage',
     rarity: 'common',
-    name: 'Intensidad Laser',
+    name: 'Laser Intensity',
     icon: '🔥',
-    desc: '+25% Dano del Canon Laser (Max. 3).',
+    desc: '+25% Laser Cannon damage (Max. 3).',
     isAvailable: (p) => p.weapons.laserCannon.level > 0 && (p.weapons.laserCannon.dmgUpgrades || 0) < 3,
     apply: (p) => {
       p.weapons.laserCannon.damageMult += 0.25;
@@ -324,9 +324,9 @@ export const upgradeDatabase = [
   {
     id: 'laser_width',
     rarity: 'uncommon',
-    name: 'Haz Expandido',
+    name: 'Expanded Beam',
     icon: '📏',
-    desc: '+30% Anchura del Canon Laser (Max. 3).',
+    desc: '+30% Laser Cannon beam width (Max. 3).',
     isAvailable: (p) => p.weapons.laserCannon.level > 0 && (p.weapons.laserCannon.widthUpgrades || 0) < 3,
     apply: (p) => {
       p.weapons.laserCannon.widthMult += 0.30;
@@ -336,9 +336,9 @@ export const upgradeDatabase = [
   {
     id: 'laser_lifespan',
     rarity: 'uncommon',
-    name: 'Persistencia Luminica',
+    name: 'Luminous Persistence',
     icon: '⏱',
-    desc: '+0.1s de vida del Canon Laser (Max. 5).',
+    desc: '+0.1s Laser Cannon duration (Max. 5).',
     isAvailable: (p) => p.weapons.laserCannon.level > 0 && (p.weapons.laserCannon.lifeUpgrades || 0) < 5,
     apply: (p) => {
       p.weapons.laserCannon.duration += 6;
@@ -348,9 +348,9 @@ export const upgradeDatabase = [
   {
     id: 'laser_sublasers',
     rarity: 'rare',
-    name: 'Laseres Auxiliares',
+    name: 'Auxiliary Lasers',
     icon: '🔱',
-    desc: 'Dispara 2 sub-laseres en diagonal al 25% de poder (Unico).',
+    desc: 'Fires 2 diagonal sub-lasers at 25% power (Unique).',
     isAvailable: (p) => p.weapons.laserCannon.level > 0 && !p.weapons.laserCannon.subLasers,
     apply: (p) => {
       p.weapons.laserCannon.subLasers = true;
@@ -359,9 +359,9 @@ export const upgradeDatabase = [
   {
     id: 'laser_dot',
     rarity: 'rare',
-    name: 'Laser Corrosivo',
+    name: 'Corrosive Laser',
     icon: '☣',
-    desc: 'Los enemigos alcanzados reciben dano por tiempo (Unico).',
+    desc: 'Enemies struck suffer damage over time (Unique).',
     isAvailable: (p) => p.weapons.laserCannon.level > 0 && !p.weapons.laserCannon.dot,
     apply: (p) => {
       p.weapons.laserCannon.dot = true;
@@ -370,9 +370,9 @@ export const upgradeDatabase = [
   {
     id: 'laser_dot_up',
     rarity: 'rare',
-    name: 'Corrosion Profunda',
+    name: 'Deep Corrosion',
     icon: '☢',
-    desc: '+5 Dano de corrosion, +0.5s duracion (Max. 4).',
+    desc: '+5 Corrosion damage, +0.5s duration (Max. 4).',
     isAvailable: (p) => p.weapons.laserCannon.dot && (p.weapons.laserCannon.dotUpgrades || 0) < 4,
     apply: (p) => {
       p.weapons.laserCannon.dotDamage += 5;
@@ -383,9 +383,9 @@ export const upgradeDatabase = [
   {
     id: 'laser_tick',
     rarity: 'legendary',
-    name: 'Haz Continuo',
+    name: 'Continuous Beam',
     icon: '⚡',
-    desc: 'El laser inflige dano constantemente mientras permanece.',
+    desc: 'Laser continuously deals damage for its entire duration (Unique).',
     isAvailable: (p) => p.weapons.laserCannon.level > 0 && !p.weapons.laserCannon.tickDamage,
     apply: (p) => {
       p.weapons.laserCannon.tickDamage = true;
@@ -396,9 +396,9 @@ export const upgradeDatabase = [
   {
     id: 'shield_unlock',
     rarity: 'common',
-    name: 'Campo de Fuerza',
+    name: 'Force Field',
     icon: '🛡',
-    desc: 'Desbloquea un escudo protector que absorbe disparos y contacto enemigo.',
+    desc: 'Unlocks a protective shield that absorbs projectile and enemy contact damage.',
     isAvailable: (p) => !p.shield || !p.shield.unlocked,
     apply: (p) => {
       p.unlockShield();
@@ -407,9 +407,9 @@ export const upgradeDatabase = [
   {
     id: 'shield_damage_boost',
     rarity: 'common',
-    name: 'Potencia de Escudo',
+    name: 'Shield Power',
     icon: '⚔',
-    desc: '+5% de dano general mientras el escudo este activo (Max. 5).',
+    desc: '+5% General damage while shield is active (Max. 5).',
     isAvailable: (p) => p.shield && p.shield.unlocked && (p.shield.damageBonusUpgrades || 0) < 5,
     apply: (p) => {
       p.shield.damageBonusUpgrades = (p.shield.damageBonusUpgrades || 0) + 1;
@@ -418,9 +418,9 @@ export const upgradeDatabase = [
   {
     id: 'shield_rate_boost',
     rarity: 'common',
-    name: 'Cadencia Fortificada',
+    name: 'Fortified Fire Rate',
     icon: '💨',
-    desc: '+5% de velocidad de disparo de armas mientras el escudo este activo (Max. 5).',
+    desc: '+5% Weapon fire rate while shield is active (Max. 5).',
     isAvailable: (p) => p.shield && p.shield.unlocked && (p.shield.rateBonusUpgrades || 0) < 5,
     apply: (p) => {
       p.shield.rateBonusUpgrades = (p.shield.rateBonusUpgrades || 0) + 1;
@@ -429,9 +429,9 @@ export const upgradeDatabase = [
   {
     id: 'shield_recharge_speed',
     rarity: 'uncommon',
-    name: 'Recarga de Escudo Acelerada',
+    name: 'Accelerated Shield Recharge',
     icon: '🔋',
-    desc: '+15% de velocidad de regeneracion de escudo (Max. 2).',
+    desc: '+15% Shield recharge speed (Max. 2).',
     isAvailable: (p) => p.shield && p.shield.unlocked && (p.shield.rechargeUpgrades || 0) < 2,
     apply: (p) => {
       p.shield.rechargeSpeedMult *= 1.15;
@@ -441,9 +441,9 @@ export const upgradeDatabase = [
   {
     id: 'shield_explosion',
     rarity: 'rare',
-    name: 'Detonacion de Escudo',
+    name: 'Shield Detonation',
     icon: '💥',
-    desc: 'Al romper el escudo, este explota infligiendo dano en gran area (Unico).',
+    desc: 'When broken, shield detonates dealing damage in a large area (Unique).',
     isAvailable: (p) => p.shield && p.shield.unlocked && !p.shield.explodeOnBreak,
     apply: (p) => {
       p.shield.explodeOnBreak = true;
@@ -452,9 +452,9 @@ export const upgradeDatabase = [
   {
     id: 'shield_save_chance',
     rarity: 'rare',
-    name: 'Deflexion Cuantica',
+    name: 'Quantum Deflection',
     icon: '✨',
-    desc: '5% de probabilidad de no romper el escudo al recibir dano (Max. 2).',
+    desc: '5% chance to deflect incoming damage without losing a shield charge (Max. 2).',
     isAvailable: (p) => p.shield && p.shield.unlocked && (p.shield.saveChanceUpgrades || 0) < 2,
     apply: (p) => {
       p.shield.saveChargeChance = (p.shield.saveChargeChance || 0) + 0.05;
@@ -464,9 +464,9 @@ export const upgradeDatabase = [
   {
     id: 'shield_extra_charge',
     rarity: 'legendary',
-    name: 'Bateria de Campo Extra',
+    name: 'Extra Field Battery',
     icon: '💠',
-    desc: 'Aumenta las cargas del escudo en +1 (Max. 2).',
+    desc: 'Increases maximum shield charges by +1 (Max. 2).',
     isAvailable: (p) => p.shield && p.shield.unlocked && (p.shield.extraChargesUpgrades || 0) < 2,
     apply: (p) => {
       p.shield.maxCharges += 1;
@@ -475,14 +475,14 @@ export const upgradeDatabase = [
     }
   },
 
-  // NUEVAS MEJORAS INFINITAS
+  // INFINITE SCALING UPGRADES
   {
     id: 'damage_small',
     isInfinite: true,
     rarity: 'common',
-    name: 'Ajuste de Disparo',
+    name: 'Weapon Tuning',
     icon: '🔧',
-    desc: '+5% Dano general.',
+    desc: '+5% General damage.',
     isAvailable: (p) => (p.damageUpgradesCount || 0) >= 5, // Only if max dmg upgrades reached
     apply: (p) => { p.damageMult += 0.05; }
   },
@@ -490,9 +490,9 @@ export const upgradeDatabase = [
     id: 'heal_small',
     isInfinite: true,
     rarity: 'common',
-    name: 'Reparacion de Emergencia',
+    name: 'Emergency Repair',
     icon: '🩹',
-    desc: 'Restores un 10% de tu salud maxima.',
+    desc: 'Restores 10% of maximum health.',
     isAvailable: (p) => p.hp < p.maxHp,
     apply: (p) => { p.hp = Math.min(p.maxHp, p.hp + (p.maxHp * 0.10)); }
   },
@@ -500,18 +500,18 @@ export const upgradeDatabase = [
     id: 'crit_chance',
     isInfinite: true,
     rarity: 'common',
-    name: 'Precision Letal',
+    name: 'Lethal Precision',
     icon: '🎯',
-    desc: '+5% Probabilidad de Golpe Critico.',
+    desc: '+5% Critical Hit Chance.',
     apply: (p) => { p.critChance = (p.critChance || 0) + 0.05; }
   },
   {
     id: 'damage_med',
     isInfinite: true,
     rarity: 'uncommon',
-    name: 'Optimizacion de Plasma',
+    name: 'Plasma Optimization',
     icon: '🔋',
-    desc: '+10% Dano general.',
+    desc: '+10% General damage.',
     isAvailable: (p) => (p.damageUpgradesCount || 0) >= 5, // Only if max dmg upgrades reached
     apply: (p) => { p.damageMult += 0.10; }
   },
@@ -519,9 +519,9 @@ export const upgradeDatabase = [
     id: 'heal_med',
     isInfinite: true,
     rarity: 'uncommon',
-    name: 'Kit Medico Avanzado',
+    name: 'Advanced Medkit',
     icon: '💊',
-    desc: 'Restores un 25% de tu salud maxima.',
+    desc: 'Restores 25% of maximum health.',
     isAvailable: (p) => p.hp < p.maxHp,
     apply: (p) => { p.hp = Math.min(p.maxHp, p.hp + (p.maxHp * 0.25)); }
   },
@@ -529,9 +529,9 @@ export const upgradeDatabase = [
     id: 'xp_boost',
     isInfinite: true,
     rarity: 'rare',
-    name: 'Extraccion de Datos',
+    name: 'Data Extraction',
     icon: '💾',
-    desc: '+5% Ganancia de experiencia.',
+    desc: '+5% Experience gain.',
     isAvailable: (p) => p.level >= 40,
     apply: (p) => { p.xpMultiplier = (p.xpMultiplier || 1.0) + 0.05; }
   },
@@ -539,7 +539,7 @@ export const upgradeDatabase = [
     id: 'crit_damage',
     isInfinite: true,
     rarity: 'rare',
-    name: 'Impacto Devastador',
+    name: 'Devastating Impact',
     icon: '💥',
     desc: '+10% Critical Damage.',
     apply: (p) => { p.critDamage = (p.critDamage || 1.5) + 0.10; }
@@ -548,9 +548,9 @@ export const upgradeDatabase = [
     id: 'spawn_more_xp_less',
     isInfinite: true,
     rarity: 'rare',
-    name: 'Senal de Atraccion',
+    name: 'Lure Beacon',
     icon: '📡',
-    desc: '+10% Enemigos, pero -5% Experiencia.',
+    desc: '+10% Enemies, but -5% Experience.',
     apply: (p) => { 
         state.spawnRateMultiplier = (state.spawnRateMultiplier || 1.0) + 0.10;
         p.xpMultiplier = (p.xpMultiplier || 1.0) - 0.05;
@@ -560,9 +560,9 @@ export const upgradeDatabase = [
     id: 'spawn_less_xp_more',
     isInfinite: true,
     rarity: 'rare',
-    name: 'Camuflaje Activo',
+    name: 'Active Camouflage',
     icon: '👻',
-    desc: '-5% Enemigos, pero +10% Experiencia.',
+    desc: '-5% Enemies, but +10% Experience.',
     apply: (p) => { 
         state.spawnRateMultiplier = (state.spawnRateMultiplier || 1.0) - 0.05;
         p.xpMultiplier = (p.xpMultiplier || 1.0) + 0.10;
@@ -574,16 +574,16 @@ export const upgradeDatabase = [
     rarity: 'legendary',
     name: 'Passive Regeneration',
     icon: '🌱',
-    desc: '+0.4 Regeneracion de HP por segundo.',
+    desc: '+0.4 HP regeneration per second.',
     apply: (p) => { p.hpRegen += 0.4; }
   },
   {
     id: 'boss_hp_cut',
     isInfinite: true,
     rarity: 'legendary',
-    name: 'Hackeo de Nucleo',
+    name: 'Core Hack',
     icon: '💻',
-    desc: 'Reduce a la mitad la vida actual de todos los jefes activos.',
+    desc: 'Halves the current HP of all active bosses.',
     isAvailable: (p) => state.bosses.length > 0,
     apply: (p) => {
         if (state.bosses.length > 0) {
@@ -603,9 +603,9 @@ export const upgradeDatabase = [
     id: 'iframe_small',
     isInfinite: true,
     rarity: 'legendary',
-    name: 'Fase Temporal',
+    name: 'Temporal Phase',
     icon: '⏳',
-    desc: '+0.1s de Inmunidad tras recibir dano.',
+    desc: '+0.1s Invulnerability duration after taking damage.',
     apply: (p) => { p.invulnerabilityMaxTime += 0.1; }
   }
 
