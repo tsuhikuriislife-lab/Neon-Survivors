@@ -5,7 +5,9 @@ import { spawnExplosion } from '../effects/spawnExplosion.js';
 import { Projectile } from '../projectiles/Projectile.js';
 import { audioManager } from '../../engine/AudioManager.js';
 import { Boss } from './Boss.js';
-import { textures, drawCachedTexture } from '../../engine/TextureCache.js';
+import { getOrCachePolygon, textures, drawCachedTexture } from '../../engine/TextureCache.js';
+import { worldLayer } from '../../main.js';
+
 
 export class KyrenBoss extends Boss {
   constructor(x, y, hp, maxHp) {
@@ -44,8 +46,13 @@ export class KyrenBoss extends Boss {
     this.denzel = null;
     this.dead = false;
 
-    this.textureOuter = textures['boss_kyren_outer'];
+        this.textureOuter = textures['boss_kyren_outer'];
     this.textureInner = textures['boss_kyren_inner'];
+    
+    this.texture = this.textureOuter;
+    this.innerSprite = new PIXI.Sprite(this.textureInner);
+    this.innerSprite.anchor.set(0.5);
+    worldLayer.addChild(this.innerSprite);
   }
 
   getTargetables() {
@@ -80,12 +87,15 @@ export class KyrenBoss extends Boss {
 
     if (this.hp <= 0) {
       this.hp = 0;
-      this.dead = true;
-      audioManager.playSound('enemy_death_boss', { volume: 0.8, throttleMs: 200 });
-      spawnExplosion(this.x, this.y, this.color, 40, 6);
-      for (let i = 0; i < 15; i++) {
-        if (state.gemPool) {
-          state.gemPool.acquire(this.x + (Math.random() * 40 - 20), this.y + (Math.random() * 40 - 20), 10);
+      if (!this.dead) {
+        this.dead = true;
+        this.die();
+        audioManager.playSound('enemy_death_boss', { volume: 0.8, throttleMs: 200 });
+        spawnExplosion(this.x, this.y, this.color, 40, 6);
+        for (let i = 0; i < 15; i++) {
+          if (state.gemPool) {
+            state.gemPool.acquire(this.x + (Math.random() * 40 - 20), this.y + (Math.random() * 40 - 20), 10);
+          }
         }
       }
     }
@@ -95,6 +105,13 @@ export class KyrenBoss extends Boss {
     this.isSplit = true;
     const sharedHp = this.hp / 2;
     this.denzel = new DenzelBoss(this.x, this.y, sharedHp, sharedHp);
+    
+    // Eliminar el centro falso cuando Denzel spawnea
+    if (this.innerSprite) {
+      if (this.innerSprite.parent) this.innerSprite.parent.removeChild(this.innerSprite);
+      this.innerSprite.destroy();
+      this.innerSprite = null;
+    }
   }
 
   update(player) {
@@ -150,6 +167,13 @@ export class KyrenBoss extends Boss {
     if (dist(this.x, this.y, player.x, player.y) < this.radius + player.radius) {
       player.takeDamage(35, this.color);
     }
+        if (this.innerSprite) {
+      this.innerSprite.x = this.x;
+      this.innerSprite.y = this.y;
+      this.innerSprite.rotation = this.innerAngle;
+      if (this.alpha !== undefined) this.innerSprite.alpha = this.alpha;
+    }
+    super.update(player);
   }
 
   fireWave() {
@@ -167,32 +191,20 @@ export class KyrenBoss extends Boss {
     audioManager.playSound('enemy_projectile', { volume: 0.6, throttleMs: 100 });
   }
 
-  draw(ctx) {
-    if (this.denzel && !this.denzel.dead) {
-      this.denzel.draw(ctx);
+  die() {
+    if (this.innerSprite) {
+      if (this.innerSprite.parent) this.innerSprite.parent.removeChild(this.innerSprite);
+      this.innerSprite.destroy();
+      this.innerSprite = null;
     }
+    super.die();
+  }
 
-    if (this.dead) return;
-
-    if (this.state === 1) {
-      ctx.save();
-      ctx.beginPath();
-      ctx.moveTo(this.chargeStartX, this.chargeStartY);
-      ctx.lineTo(this.chargeTargetX, this.chargeTargetY);
-      ctx.strokeStyle = `rgba(0, 255, 204, ${Math.abs(Math.sin(this.stateTimer * 0.15))})`;
-      ctx.lineWidth = 6;
-      ctx.setLineDash([12, 8]);
-      ctx.shadowColor = "#00ffcc";
-      ctx.shadowBlur = 15;
-      ctx.stroke();
-      ctx.restore();
-    }
-
-    if (this.textureOuter) {
-      drawCachedTexture(ctx, this.textureOuter, this.x, this.y, this.angle);
-    }
-    if (!this.isSplit && this.textureInner) {
-      drawCachedTexture(ctx, this.textureInner, this.x, this.y, this.innerAngle);
+  destroy() {
+    if (this.denzel) {
+      if (typeof this.denzel.die === 'function') this.denzel.die();
+      if (typeof this.denzel.destroy === 'function') this.denzel.destroy();
     }
   }
 }
+

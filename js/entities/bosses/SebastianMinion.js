@@ -4,11 +4,19 @@ import { spawnExplosion } from '../effects/spawnExplosion.js';
 import { HazardArea } from '../effects/HazardArea.js';
 import { audioManager } from '../../engine/AudioManager.js';
 import { Boss } from './Boss.js';
-import { proceduralBatch } from '../../engine/ProceduralBatchRenderer.js';
+
+import { getOrCachePolygon, textures } from '../../engine/TextureCache.js';
+import { worldLayer } from '../../main.js';
+
 
 export class SebastianMinion extends Boss {
   constructor(x, y, hp, initialAngle = Math.random() * Math.PI * 2, initialSpeed = 7.5, maxHp = hp) {
     super(x, y, "Sebastian", maxHp, 36, "#ff5500", hp);
+    if (this.sprite) {
+      if (this.sprite.parent) this.sprite.parent.removeChild(this.sprite);
+      this.sprite.destroy();
+      this.sprite = null;
+    }
     this.segmentCount = 15;
     this.segmentLength = 36;
     this.radius = 36;
@@ -49,6 +57,18 @@ export class SebastianMinion extends Boss {
         angle: initialAngle 
       });
     }
+
+    this.texture = textures['boss_sebastian_seg'];
+    this.segmentSprites = [];
+    for (let i = 0; i < this.segmentCount; i++) {
+      let spr = new PIXI.Sprite();
+      if (textures['boss_sebastian_seg']) {
+          spr.texture = textures['boss_sebastian_seg'];
+      }
+      spr.anchor.set(0.5);
+      worldLayer.addChild(spr);
+      this.segmentSprites.push(spr);
+    }
   }
 
   getTargetables() {
@@ -88,9 +108,12 @@ export class SebastianMinion extends Boss {
 
     if (this.hp <= 0) {
       this.hp = 0;
-      this.dead = true;
-      audioManager.playSound('enemy_death_boss', { volume: 0.8, throttleMs: 200 });
-      spawnExplosion(this.x, this.y, "#a855f7", 20, 4);
+      if (!this.dead) {
+        this.dead = true;
+        this.die();
+        audioManager.playSound('enemy_death_boss', { volume: 0.8, throttleMs: 200 });
+        spawnExplosion(this.x, this.y, "#a855f7", 20, 4);
+      }
     }
   }
 
@@ -298,36 +321,28 @@ export class SebastianMinion extends Boss {
         }
       }
     }
-  }
 
-  draw(ctx) {
-    if (this.dead) return;
-    const player = state.player;
-
-    for (let i = this.segmentCount - 1; i >= 0; i--) {
-      const seg = this.segments[i];
-      let alpha = 1.0;
-      if (player && i > 0) {
-        const d = dist(seg.x, seg.y, player.x, player.y);
-        if (d < this.proximityFadeRadius) {
-          alpha = Math.max(this.minAlphaOnPlayer, d / this.proximityFadeRadius);
+    if (this.segmentSprites && this.segments) {
+      for (let i = 0; i < this.segments.length; i++) {
+        if (this.segmentSprites[i]) {
+          this.segmentSprites[i].x = this.segments[i].x;
+          this.segmentSprites[i].y = this.segments[i].y;
+          this.segmentSprites[i].rotation = this.segments[i].angle || 0;
+          if (this.alpha !== undefined) this.segmentSprites[i].alpha = this.alpha;
         }
       }
+    }
 
-      const sides = i === 0 ? 4 : 3;
-      const radius = i === 0 ? this.radius * 1.15 : this.radius;
+  }
 
-      proceduralBatch.submit(
-        sides,
-        seg.x,
-        seg.y,
-        radius,
-        seg.angle,
-        this.rgb.r,
-        this.rgb.g,
-        this.rgb.b,
-        alpha
-      );
+  die() {
+    super.die();
+    if (this.segmentSprites) {
+      this.segmentSprites.forEach(spr => {
+        if (spr.parent) spr.parent.removeChild(spr);
+        spr.destroy();
+      });
+      this.segmentSprites = [];
     }
   }
 }

@@ -6,7 +6,20 @@ import { spawnExplosion } from '../effects/spawnExplosion.js';
 import { HazardArea } from '../effects/HazardArea.js';
 import { audioManager } from '../../engine/AudioManager.js';
 import { Boss } from './Boss.js';
-import { proceduralBatch, hslToRgb } from '../../engine/ProceduralBatchRenderer.js';
+
+import { getOrCachePolygon, textures } from '../../engine/TextureCache.js';
+import { worldLayer } from '../../main.js';
+
+function hslToHex(h, s, l) {
+  l /= 100;
+  const a = s * Math.min(l, 1 - l) / 100;
+  const f = n => {
+    const k = (n + h / 30) % 12;
+    const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
+    return Math.round(255 * color).toString(16).padStart(2, '0');
+  };
+  return parseInt('0x' + f(0) + f(8) + f(4));
+}
 
 export class DevourerOfTaxBoss extends Boss {
   constructor(x, y, hp, maxHp) {
@@ -15,6 +28,11 @@ export class DevourerOfTaxBoss extends Boss {
     const finalMaxHp = maxHp !== undefined ? maxHp : defaultMaxHp;
     const finalHp = hp !== undefined ? hp : finalMaxHp;
     super(0, 0, "Devourer of Tax", finalMaxHp, 36, "#39ff14", finalHp);
+    if (this.sprite) {
+      if (this.sprite.parent) this.sprite.parent.removeChild(this.sprite);
+      this.sprite.destroy();
+      this.sprite = null;
+    }
     this.segmentCount = 90;
     this.segmentLength = 36;
     this.radius = 36;
@@ -26,12 +44,7 @@ export class DevourerOfTaxBoss extends Boss {
     this.vx = 0;
     this.vy = 2;
 
-    // Precalcular colores RGB estaticos para cada segmento (Zero GC en render)
-    this.segmentRgb = new Array(this.segmentCount);
-    for (let i = 0; i < this.segmentCount; i++) {
-      const hue = Math.floor((i / this.segmentCount) * 12) * 30;
-      this.segmentRgb[i] = hslToRgb(hue / 360, 1.0, 0.55);
-    }
+    // segmentRgb precalculation removed for WebGL
 
     // Fisicas y Mecanicas Estilo Eater of Worlds
     this.outsideSpeed = 14.0;       // Velocidad maxima incrementada para embestidas
@@ -62,6 +75,18 @@ export class DevourerOfTaxBoss extends Boss {
     for (let i = 0; i < this.segmentCount; i++) {
       this.segments.push({ x: this.x, y: this.y - i * this.segmentLength, angle: 0 });
     }
+    this.texture = textures['boss_devourer_seg'];
+    this.segmentSprites = [];
+    for (let i = 0; i < this.segmentCount; i++) {
+      let spr = new PIXI.Sprite();
+      if (textures['boss_devourer_seg']) {
+          spr.texture = textures['boss_devourer_seg'];
+      }
+      spr.anchor.set(0.5);
+      worldLayer.addChild(spr);
+      this.segmentSprites.push(spr);
+    }
+
 
     this.acidTimer = 0;
     this.dashTimer = 0;
@@ -116,12 +141,15 @@ export class DevourerOfTaxBoss extends Boss {
 
     if (this.hp <= 0) {
       this.hp = 0;
-      this.dead = true;
-      audioManager.playSound('enemy_death_boss', { volume: 0.8, throttleMs: 200 });
-      spawnExplosion(this.x, this.y, "#00ff66", 45, 6);
-      for (let i = 0; i < 18; i++) {
-        if (state.gemPool) {
-          state.gemPool.acquire(this.x + (Math.random() * 40 - 20), this.y + (Math.random() * 40 - 20), 10);
+      if (!this.dead) {
+        this.dead = true;
+        this.die();
+        audioManager.playSound('enemy_death_boss', { volume: 0.8, throttleMs: 200 });
+        spawnExplosion(this.x, this.y, "#00ff66", 45, 6);
+        for (let i = 0; i < 18; i++) {
+          if (state.gemPool) {
+            state.gemPool.acquire(this.x + (Math.random() * 40 - 20), this.y + (Math.random() * 40 - 20), 10);
+          }
         }
       }
     }
@@ -141,6 +169,15 @@ export class DevourerOfTaxBoss extends Boss {
     const minionSegments = (this.carlos ? this.carlos.segmentCount : 0) + (this.sebastian ? this.sebastian.segmentCount : 0);
     this.segmentCount = Math.max(1, this.segmentCount - minionSegments);
     this.segments = this.segments.slice(0, this.segmentCount);
+
+    if (this.segmentSprites) {
+      const orphanedSprites = this.segmentSprites.slice(this.segmentCount);
+      orphanedSprites.forEach(spr => {
+        if (spr.parent) spr.parent.removeChild(spr);
+        spr.destroy();
+      });
+      this.segmentSprites = this.segmentSprites.slice(0, this.segmentCount);
+    }
 
     spawnExplosion(this.x, this.y, "#39ff14", 30, 4);
   }
@@ -371,44 +408,47 @@ export class DevourerOfTaxBoss extends Boss {
         }
       }
     }
-  }
 
-  draw(ctx) {
-    if (this.carlos && !this.carlos.dead) this.carlos.draw(ctx);
-    if (this.sebastian && !this.sebastian.dead) this.sebastian.draw(ctx);
-
-    if (this.dead) return;
-
-    const player = state.player;
-
-    for (let i = this.segmentCount - 1; i >= 0; i--) {
-      const seg = this.segments[i];
-      const rgb = this.segmentRgb[i] || { r: 57, g: 255, b: 20 };
-
-      // Transparencia dinamica en segmentos del cuerpo que se superpongan con el jugador
-      let alpha = 1.0;
-      if (player && i > 0) {
-        const d = dist(seg.x, seg.y, player.x, player.y);
-        if (d < this.proximityFadeRadius) {
-          alpha = Math.max(this.minAlphaOnPlayer, d / this.proximityFadeRadius);
+    const time = performance.now() * 0.15;
+    if (this.segmentSprites && this.segments) {
+      for (let i = 0; i < this.segments.length; i++) {
+        if (this.segmentSprites[i]) {
+          this.segmentSprites[i].x = this.segments[i].x;
+          this.segmentSprites[i].y = this.segments[i].y;
+          this.segmentSprites[i].rotation = this.segments[i].angle || 0;
+          if (this.alpha !== undefined) this.segmentSprites[i].alpha = this.alpha;
+          
+          const hue = (time + i * 8) % 360;
+          this.segmentSprites[i].tint = hslToHex(hue, 100, 50);
         }
       }
+    }
+    
+    if (this.sprite) {
+      this.sprite.tint = hslToHex(time % 360, 100, 50);
+    }
 
-      // La cabeza (i=0) tiene radio ligeramente mayor o forma de rombo/triangulo
-      const sides = i === 0 ? 4 : 3;
-      const radius = i === 0 ? this.radius * 1.15 : this.radius;
+  }
 
-      proceduralBatch.submit(
-        sides,
-        seg.x,
-        seg.y,
-        radius,
-        seg.angle,
-        rgb.r,
-        rgb.g,
-        rgb.b,
-        alpha
-      );
+  die() {
+    super.die();
+    if (this.segmentSprites) {
+      this.segmentSprites.forEach(spr => {
+        if (spr.parent) spr.parent.removeChild(spr);
+        spr.destroy();
+      });
+      this.segmentSprites = [];
+    }
+  }
+
+  destroy() {
+    if (this.carlos) {
+      if (typeof this.carlos.die === 'function') this.carlos.die();
+      if (typeof this.carlos.destroy === 'function') this.carlos.destroy();
+    }
+    if (this.sebastian) {
+      if (typeof this.sebastian.die === 'function') this.sebastian.die();
+      if (typeof this.sebastian.destroy === 'function') this.sebastian.destroy();
     }
   }
 }

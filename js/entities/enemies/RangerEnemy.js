@@ -3,7 +3,9 @@ import { Enemy } from './Enemy.js';
 import { dist } from '../../engine/Utils.js';
 import { Projectile } from '../projectiles/Projectile.js';
 import { audioManager } from '../../engine/AudioManager.js';
-import { textures } from '../../engine/TextureCache.js';
+import { getOrCachePolygon, textures } from '../../engine/TextureCache.js';
+import { worldLayer } from '../../main.js';
+
 
 export class RangerEnemy extends Enemy {
   constructor(x, y) {

@@ -1,6 +1,7 @@
 import { Projectile } from './Projectile.js';
 import { state } from '../../engine/gameState.js';
-import { textures, drawCachedTexture } from '../../engine/TextureCache.js';
+import { textures } from '../../engine/TextureCache.js';
+import { worldLayer } from '../../main.js';
 
 export class AcceleratingProjectile extends Projectile {
   constructor(x, y, targetX, targetY, damage, color = "#00ff66", initialSpeed = 1.2, accel = 0.06) {
@@ -12,28 +13,50 @@ export class AcceleratingProjectile extends Projectile {
     this.dirY = Math.sin(angle);
     this.currentSpeed = initialSpeed;
     this.accel = accel;
+    
+    if (this.sprite) {
+      worldLayer.removeChild(this.sprite);
+      this.sprite.destroy();
+      this.sprite = null;
+    }
+    
     if (color === '#ff0033' || color === '#ff0055') {
       this.texture = textures['proj_accelerating_amalgam'] || textures['proj_enemy_amalgam'];
     } else {
       this.texture = textures['proj_accelerating'];
     }
+    
+    if (this.texture) {
+      this.sprite = new PIXI.Sprite(this.texture);
+    } else {
+      this.sprite = new PIXI.Graphics();
+      let hexColor = 0xffffff;
+      if (typeof this.color === 'string' && this.color.startsWith('#')) {
+        const parsed = parseInt(this.color.replace('#', ''), 16); if (!isNaN(parsed)) hexColor = parsed;
+      }
+      this.sprite.beginFill(hexColor);
+      this.sprite.drawCircle(0, 0, this.radius);
+      this.sprite.endFill();
+    }
+    
+    if (this.sprite instanceof PIXI.Sprite) {
+      this.sprite.anchor.set(0.5);
+    }
+    this.sprite.x = this.x;
+    this.sprite.y = this.y;
+    worldLayer.addChild(this.sprite);
   }
   update() {
     this.currentSpeed += this.accel;
     this.x += this.dirX * this.currentSpeed;
     this.y += this.dirY * this.currentSpeed;
-    return this.x >= 0 && this.x <= state.width && this.y >= 0 && this.y <= state.height;
-  }
-  draw(ctx) {
-    if (this.x < 0 || this.x > state.width || this.y < 0 || this.y > state.height) return;
-    const tex = this.texture || (this.color === '#ff0033' ? (textures['proj_accelerating_amalgam'] || textures['proj_enemy_amalgam']) : textures['proj_accelerating']);
-    if (tex) {
-      drawCachedTexture(ctx, tex, this.x, this.y);
-    } else {
-      ctx.fillStyle = this.color;
-      ctx.beginPath();
-      ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-      ctx.fill();
+    
+    if (this.sprite) {
+      this.sprite.x = this.x;
+      this.sprite.y = this.y;
+      this.sprite.rotation = Math.atan2(this.dirY, this.dirX);
     }
+    
+    return this.x >= 0 && this.x <= state.width && this.y >= 0 && this.y <= state.height;
   }
 }

@@ -43,7 +43,7 @@ export const aimInput = {
 };
 
 export function getVirtualCoords(clientX, clientY) {
-  const canvas = document.getElementById("gameCanvas");
+  const canvas = document.querySelector("#game-container canvas");
   if (!canvas) return { x: clientX, y: clientY };
   const rect = canvas.getBoundingClientRect();
   if (rect.width === 0 || rect.height === 0) return { x: clientX, y: clientY };
@@ -60,13 +60,15 @@ export function getVirtualCoords(clientX, clientY) {
 export function screenToWorld(clientX, clientY) {
   const v = getVirtualCoords(clientX, clientY);
   const cam = state.camera || { x: 960, y: 960, userZoom: 1, currentZoomFactor: 1, screenWidth: 1920, screenHeight: 1080 };
-  const effectiveZoom = (cam.userZoom || 1) * (cam.currentZoomFactor || 1);
+  const zoom = (cam.userZoom || 1) * (cam.currentZoomFactor || 1);
   const sw = cam.screenWidth || 1920;
   const sh = cam.screenHeight || 1080;
 
+  // Inverse of: layer.x = sw/2 - camX * zoom, layer.y = sh/2 - camY * zoom
+  // worldX = (screenX - sw/2) / zoom + camX
   return {
-    x: (v.x - sw / 2) / effectiveZoom + cam.x,
-    y: (v.y - sh / 2) / effectiveZoom + cam.y
+    x: (v.x - sw / 2) / zoom + cam.x,
+    y: (v.y - sh / 2) / zoom + cam.y
   };
 }
 

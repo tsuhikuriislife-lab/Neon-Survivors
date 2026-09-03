@@ -1,6 +1,7 @@
 import { Projectile } from './Projectile.js';
 import { state } from '../../engine/gameState.js';
-import { textures, drawCachedTexture } from '../../engine/TextureCache.js';
+import { textures } from '../../engine/TextureCache.js';
+import { worldLayer } from '../../main.js';
 
 export class NovaProjectile extends Projectile {
   constructor(x, y, vx, vy, damage, isSpiral = false) {
@@ -10,7 +11,6 @@ export class NovaProjectile extends Projectile {
     this.life = 4000;
     this.color = "#0088ff";
 
-    // For spiral motion
     this.startX = x;
     this.startY = y;
     this.baseX = x;
@@ -21,7 +21,27 @@ export class NovaProjectile extends Projectile {
     this.speed = Math.hypot(vx, vy);
     this.pierce = true;
     this.hitCooldowns = new Map();
+    
+    if (this.sprite) {
+      worldLayer.removeChild(this.sprite);
+      this.sprite.destroy();
+      this.sprite = null;
+    }
+    
     this.texture = textures['proj_nova'];
+    if (this.texture) {
+      this.sprite = new PIXI.Sprite(this.texture);
+      this.sprite.anchor.set(0.5);
+    } else {
+      this.sprite = new PIXI.Graphics();
+      let hexColor = 0x0088ff;
+      this.sprite.beginFill(hexColor);
+      this.sprite.drawCircle(0, 0, this.radius);
+      this.sprite.endFill();
+    }
+    this.sprite.x = this.x;
+    this.sprite.y = this.y;
+    worldLayer.addChild(this.sprite);
   }
 
   canHit(target) {
@@ -50,18 +70,17 @@ export class NovaProjectile extends Projectile {
       this.x = this.baseX;
       this.y = this.baseY;
     }
+    
+    if (this.sprite) {
+      this.sprite.x = this.x;
+      this.sprite.y = this.y;
+      this.sprite.rotation = this.time * 0.2;
+    }
 
     if (this.time % 2 === 0 && state.particlePool) {
       state.particlePool.acquire(this.x, this.y, this.color, 0.2, 0.08, 3);
     }
 
     return this.life > 0 && this.x >= 0 && this.x <= state.width && this.y >= 0 && this.y <= state.height;
-  }
-
-  draw(ctx) {
-    if (this.x < 0 || this.x > state.width || this.y < 0 || this.y > state.height) return;
-    if (this.texture) {
-      drawCachedTexture(ctx, this.texture, this.x, this.y, this.time * 0.2);
-    }
   }
 }

@@ -236,21 +236,20 @@ export class CameraController {
   }
 
   // --------------------------------------------------------------------------
-  // CANVAS MATRIX TRANSFORMATION (Fixed 1920x1080 Virtual Screen Space)
+  // PIXI CONTAINER TRANSFORMATION (Fixed 1920x1080 Virtual Screen Space)
   // --------------------------------------------------------------------------
-  applyTransform(ctx) {
-    const effectiveScale = (this.userZoom || 1) * this.currentShakeScale * this.currentZoomFactor;
-    const centerX = ((this.screenWidth || VIRTUAL_WIDTH) / 2) + this.shakeOffsetX;
-    const centerY = ((this.screenHeight || VIRTUAL_HEIGHT) / 2) + this.shakeOffsetY;
+  applyToLayer(layer) {
+    const zoom = (this.userZoom || 1) * this.currentShakeScale * this.currentZoomFactor;
+    const sw = this.screenWidth || VIRTUAL_WIDTH;
+    const sh = this.screenHeight || VIRTUAL_HEIGHT;
 
-    ctx.translate(centerX, centerY);
-    ctx.scale(effectiveScale, effectiveScale);
-
-    if (this.currentShakeRot !== 0) {
-      ctx.rotate(this.currentShakeRot);
-    }
-
-    ctx.translate(-this.x, -this.y);
+    // Equivalent to Canvas 2D: ctx.translate(-camX * zoom + sw/2, -camY * zoom + sh/2)
+    // This ensures world point (camX, camY) always maps to screen center (sw/2, sh/2)
+    layer.pivot.set(0, 0);
+    layer.scale.set(zoom, zoom);
+    layer.x = sw / 2 - this.x * zoom + this.shakeOffsetX;
+    layer.y = sh / 2 - this.y * zoom + this.shakeOffsetY;
+    layer.rotation = this.currentShakeRot || 0;
   }
 
   reset() {

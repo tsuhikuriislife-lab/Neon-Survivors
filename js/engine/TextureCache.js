@@ -3,9 +3,6 @@
 // ============================================================================
 
 function createCanvas(width, height) {
-  if (typeof OffscreenCanvas !== 'undefined') {
-    return new OffscreenCanvas(width, height);
-  }
   const c = document.createElement('canvas');
   c.width = width;
   c.height = height;
@@ -44,14 +41,7 @@ export function createPolygonTexture(radius, sides, color, glow = 10, fill = nul
   ctx.stroke();
   ctx.restore();
 
-  return {
-    canvas,
-    width: size,
-    height: size,
-    halfWidth: cx,
-    halfHeight: cy,
-    radius
-  };
+  return PIXI.Texture.from(canvas);
 }
 
 export function createCircleTexture(radius, strokeColor, fillColor = "#ffffff", glow = 10, lineWidth = 2) {
@@ -77,14 +67,7 @@ export function createCircleTexture(radius, strokeColor, fillColor = "#ffffff", 
   ctx.stroke();
   ctx.restore();
 
-  return {
-    canvas,
-    width: size,
-    height: size,
-    halfWidth: cx,
-    halfHeight: cy,
-    radius
-  };
+  return PIXI.Texture.from(canvas);
 }
 
 export function createMissileTexture(color = "#ff4400", glow = 10) {
@@ -113,14 +96,7 @@ export function createMissileTexture(color = "#ff4400", glow = 10) {
   ctx.stroke();
   ctx.restore();
 
-  return {
-    canvas,
-    width: size,
-    height: size,
-    halfWidth: cx,
-    halfHeight: cy,
-    radius: 6
-  };
+  return PIXI.Texture.from(canvas);
 }
 
 export const textures = {};
@@ -167,6 +143,7 @@ export function initTextureCache() {
   textures['boss_amalgam_2'] = createPolygonTexture(80, 10, "#ff0033", 14, "rgba(255, 0, 51, 0.2)", 2.5);
   textures['boss_amalgam_3'] = createPolygonTexture(40, 10, "#ff0033", 14, "rgba(255, 0, 51, 0.2)", 2.5);
   textures['boss_amalgam_4'] = createPolygonTexture(20, 10, "#ff0033", 14, "rgba(255, 0, 51, 0.2)", 2.5);
+  textures['boss_devourer_seg'] = createPolygonTexture(36, 3, "#ffffff", 8, "rgba(255, 255, 255, 0.2)", 2.5);
   textures['boss_carlos_seg'] = createPolygonTexture(36, 3, "#00ff88", 8, "rgba(0, 255, 136, 0.2)", 2.5);
   textures['boss_sebastian_seg'] = createPolygonTexture(36, 3, "#ff5500", 8, "rgba(255, 85, 0, 0.2)", 2.5);
   textures['boss_testing'] = createPolygonTexture(160, 10, "#00ffff", 14, "rgba(0, 255, 255, 0.2)", 3);

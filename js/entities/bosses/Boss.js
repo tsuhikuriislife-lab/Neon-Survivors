@@ -1,4 +1,7 @@
 import { state } from '../../engine/gameState.js';
+import { getOrCachePolygon, textures } from '../../engine/TextureCache.js';
+import { worldLayer } from '../../main.js';
+
 
 export class Boss {
   constructor(x, y, name, maxHp, radius, color, hp = maxHp) {
@@ -10,7 +13,14 @@ export class Boss {
     this.radius = radius;
     this.color = color;
     this.dead = false;
-    this.texture = null;
+    this.sprite = new PIXI.Sprite();
+    this.sprite.anchor.set(0.5);
+    worldLayer.addChild(this.sprite);
+    this._texture = null;
+    Object.defineProperty(this, "texture", {
+      get() { return this._texture; },
+      set(val) { this._texture = val; if(this.sprite) this.sprite.texture = val; }
+    });
     this._spatialStamp = 0;
   }
 
@@ -39,10 +49,19 @@ export class Boss {
   }
 
   update(player) {
-    // Implemented by subclasses
+    if (this.sprite) {
+      this.sprite.x = this.x;
+      this.sprite.y = this.y;
+      this.sprite.rotation = this.angle || 0;
+      if (this.alpha !== undefined) this.sprite.alpha = this.alpha;
+    }
   }
 
-  draw(ctx) {
-    // Implemented by subclasses
+  die() {
+    if (this.sprite) {
+      worldLayer.removeChild(this.sprite);
+      this.sprite.destroy();
+      this.sprite = null;
+    }
   }
 }

@@ -10,6 +10,9 @@ import { FallingProjectile } from '../projectiles/FallingProjectile.js';
 
 
 import { Boss } from './Boss.js';
+import { getOrCachePolygon, textures } from '../../engine/TextureCache.js';
+import { worldLayer } from '../../main.js';
+
 
 export class AmalgamBossRoot {
   constructor(x, y) {
@@ -17,7 +20,10 @@ export class AmalgamBossRoot {
     const multiplier = state.bossScaling['AmalgamBossRoot'] || 1.0;
     const startX = x !== undefined ? x : state.width / 2;
     const startY = y !== undefined ? y : state.height / 2;
-    this.nodes = [new AmalgamNode("Amalgam", startX, startY, 25000 * multiplier, 25000 * multiplier, 1)];
+    const initialNode = new AmalgamNode("Amalgam", startX, startY, 25000 * multiplier, 25000 * multiplier, 1);
+    initialNode.root = this;
+    this.nodes = [initialNode];
+    this.dead = false;
   }
 
   getTargetables() {
@@ -25,12 +31,26 @@ export class AmalgamBossRoot {
   }
 
   update(player) {
+    if (this.dead) return;
     this.nodes = this.nodes.filter(n => !n.dead);
-    this.nodes.forEach(n => n.update(player));
+    if (this.nodes.length === 0) {
+      this.dead = true;
+      return;
+    }
+    this.nodes.forEach(n => {
+      n.update(player);
+    });
   }
 
-  draw(ctx) {
-    this.nodes.forEach(n => n.draw(ctx));
+  die() {
+    this.nodes.forEach(n => {
+      if (typeof n.die === 'function') n.die();
+    });
+  }
+
+  destroy() {
+    this.nodes.forEach(n => {
+      if (typeof n.destroy === 'function') n.destroy();
+    });
   }
 }
-

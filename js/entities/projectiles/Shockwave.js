@@ -1,6 +1,7 @@
 import { state } from '../../engine/gameState.js';
 import { dist } from '../../engine/Utils.js';
 import { Projectile } from './Projectile.js';
+import { worldLayer } from '../../main.js';
 
 export class Shockwave extends Projectile {
   constructor(x, y, maxRadius, damage, color = "#00ffb4", weaponType = 'shockwave') {
@@ -12,7 +13,19 @@ export class Shockwave extends Projectile {
     this.weaponType = weaponType;
     this.alpha = 1;
     this.hitTargets = new Set();
+    
+    if (this.sprite) {
+      worldLayer.removeChild(this.sprite);
+      this.sprite.destroy();
+      this.sprite = null;
+    }
+    
+    this.graphics = new PIXI.Graphics();
+    this.graphics.x = this.x;
+    this.graphics.y = this.y;
+    worldLayer.addChild(this.graphics);
   }
+  
   update() {
     this.currentRadius += 7.5;
     this.alpha = Math.max(0, 1 - (this.currentRadius / this.maxRadius));
@@ -41,19 +54,32 @@ export class Shockwave extends Projectile {
         }
       }
     }
+    
+    if (this.graphics) {
+      this.graphics.clear();
+      this.graphics.alpha = Math.max(0, Math.min(1, this.alpha));
+      
+      let hexColor = 0x00ffb4;
+      if (typeof this.color === 'string' && this.color.startsWith('#')) {
+        const parsed = parseInt(this.color.replace('#', ''), 16); if (!isNaN(parsed)) hexColor = parsed;
+      }
+      
+      this.graphics.lineStyle(4, hexColor, 1);
+      this.graphics.drawCircle(0, 0, this.currentRadius);
+    }
 
-    return this.currentRadius < this.maxRadius;
+    const isAlive = this.currentRadius < this.maxRadius;
+    if (!isAlive) this.destroy();
+    return isAlive;
   }
-  draw(ctx) {
-    ctx.save();
-    ctx.globalAlpha = Math.max(0, Math.min(1, this.alpha));
-    ctx.beginPath();
-    ctx.arc(this.x, this.y, this.currentRadius, 0, Math.PI * 2);
-    ctx.strokeStyle = this.color;
-    ctx.lineWidth = 4;
-    ctx.shadowColor = this.color;
-    ctx.shadowBlur = 10;
-    ctx.stroke();
-    ctx.restore();
+  
+  destroy() {
+    if (this.graphics) {
+      worldLayer.removeChild(this.graphics);
+      this.graphics.destroy();
+      this.graphics = null;
+    }
+    // Also call super.destroy if it has sprite, but we set it to null
+    super.destroy();
   }
 }

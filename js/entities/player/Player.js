@@ -10,6 +10,7 @@ import { LaserBeam } from '../projectiles/LaserBeam.js';
 import { showUpgradeMenu, triggerGameOver, updateHUD } from '../../ui/UIManager.js';
 import { audioManager } from '../../engine/AudioManager.js';
 import { textures, drawCachedTexture, getOrCachePolygon } from '../../engine/TextureCache.js';
+import { worldLayer } from '../../main.js';
 
 export class Player {
   constructor() {
@@ -28,6 +29,31 @@ export class Player {
     this.xp = 0;
     this.nextXp = 10;
     this.pickupRadius = 130;
+    this.orbitalsRadius = 80;
+    this.orbitalsAngle = 0;
+
+    // --- PIXI Setup ---
+    this.container = new PIXI.Container();
+    
+    // Main ship sprite
+    this.sprite = new PIXI.Sprite(textures['player_ship']);
+    this.sprite.anchor.set(0.5);
+    this.container.addChild(this.sprite);
+
+    // Orbital container
+    this.orbitalContainer = new PIXI.Container();
+    this.container.addChild(this.orbitalContainer);
+    this.orbitalSprites = [];
+
+    // Shield Aura Graphics
+    this.shieldGraphics = new PIXI.Graphics();
+    this.container.addChild(this.shieldGraphics);
+
+    // Laser Bar Graphics
+    this.uiGraphics = new PIXI.Graphics();
+    this.container.addChild(this.uiGraphics);
+
+    worldLayer.addChild(this.container);
     this.magnetUpgrades = 0;
     this.angle = 0;
     this.hasRevivedOnce = false;
@@ -202,6 +228,15 @@ export class Player {
     this.updateMissiles();
     this.updateLaserCannon();
     this.updateActiveSkill(dt);
+
+    // --- PIXI Sync ---
+    this.container.x = this.x;
+    this.container.y = this.y;
+    this.sprite.rotation = this.angle;
+    this.orbitalContainer.rotation = this.orbitalsAngle;
+    
+    this.updateShieldAura();
+    this.updateUIBars();
   }
 
   onPause() {
@@ -313,9 +348,34 @@ export class Player {
   updateOrbitals() {
     const w = this.weapons.orbitals;
     if (w.level <= 0) return;
-    w.angle += w.speed;
-    
+    this.orbitalsAngle += w.speed;
+    w.angle = this.orbitalsAngle;
+
     if (!w.timers) w.timers = [];
+
+    // Sync PIXI Sprites for orbitals
+    const texName = w.size > 10 ? 'player_orbital_12' : 'player_orbital_8';
+    while (this.orbitalSprites.length < w.count) {
+        const sprite = new PIXI.Sprite(textures[texName]);
+        sprite.anchor.set(0.5);
+        this.orbitalSprites.push(sprite);
+        this.orbitalContainer.addChild(sprite);
+    }
+    while (this.orbitalSprites.length > w.count) {
+        const sprite = this.orbitalSprites.pop();
+        this.orbitalContainer.removeChild(sprite);
+        sprite.destroy();
+    }
+    for (let i = 0; i < w.count; i++) {
+        const sprite = this.orbitalSprites[i];
+        sprite.texture = textures[texName];
+        // Distribute them evenly around the player
+        const curAng = (i * 2 * Math.PI) / w.count;
+        sprite.x = Math.cos(curAng) * w.radius;
+        sprite.y = Math.sin(curAng) * w.radius;
+        // Counter-rotate if we want them facing outward or spinning independently
+        sprite.rotation = curAng * 2;
+    }
 
     for (let i = 0; i < w.count; i++) {
       if (w.timers[i] === undefined) {
@@ -784,15 +844,51 @@ export class Player {
       missiles: { level: 0, count: 6, timer: 0, cooldown: 220, speed: 7, homing: 0.05, aoe: 70, damage: 23, countUpgrades: 0, speedUpgrades: 0, homingUpgrade: false, aoeUpgrades: 0 },
       laserCannon: { level: 0, chargeTimer: 0, maxCharge: 1140, fullyCharged: false, damage: 250, width: 25, duration: 24, chargeSpeedMult: 1, damageMult: 1, widthMult: 1, subLasers: false, dot: false, dotDamage: 20, dotDuration: 5, tickDamage: false, soundNode: null, chargeUpgrades: 0, dmgUpgrades: 0, widthUpgrades: 0, lifeUpgrades: 0, dotUpgrades: 0 }
     };
+    
+    if (this.orbitalSprites) {
+      while (this.orbitalSprites.length > 0) {
+        const sprite = this.orbitalSprites.pop();
+        if (sprite.parent) sprite.parent.removeChild(sprite);
+        sprite.destroy();
+      }
+    }
 
     updateAimJoystickUI();
   }
 
-  draw(ctx) {
-    // Draw Aiming Guide Line
+  updateShieldAura() {
+    this.shieldGraphics.clear();
+    if (!this.hasActiveShield()) return;
+
+    const chargeColor = this.getShieldColor(this.shield.charges);
+    const chargeColorHex = parseInt(chargeColor.replace('#', '0x'), 16);
+    
+    const shieldRadius = this.radius + 10;
+    const t = performance.now() * 0.003;
+    const pulse = Math.sin(t * 3) * 1.5;
+
+    this.shieldGraphics.lineStyle(2, chargeColorHex, 1);
+    this.shieldGraphics.beginFill(chargeColorHex, 0.06 + (this.shield.charges * 0.04));
+    this.shieldGraphics.drawCircle(0, 0, shieldRadius + pulse);
+    this.shieldGraphics.endFill();
+
+    const charges = this.shield.charges;
+    for (let i = 0; i < charges; i++) {
+      const pipAngle = t * 2 + (i * 2 * Math.PI / charges);
+      const px = Math.cos(pipAngle) * (shieldRadius + 4);
+      const py = Math.sin(pipAngle) * (shieldRadius + 4);
+      this.shieldGraphics.beginFill(chargeColorHex, 1);
+      this.shieldGraphics.drawCircle(px, py, 2.5);
+      this.shieldGraphics.endFill();
+    }
+  }
+
+  updateUIBars() {
+    this.uiGraphics.clear();
+
+    // 1. Aiming Line
     let isAiming = false;
     let aimAngle = 0;
-
     if (aimInput.active && this.weapons.laserCannon.level > 0) {
       isAiming = true;
       aimAngle = aimInput.angle;
@@ -800,257 +896,75 @@ export class Player {
       isAiming = true;
       aimAngle = Math.atan2(mouse.y - this.y, mouse.x - this.x);
     }
-
-    if (isAiming) {
-      const maxLen = Math.max(state.width, state.height) * 1.5;
-      const endX = this.x + Math.cos(aimAngle) * maxLen;
-      const endY = this.y + Math.sin(aimAngle) * maxLen;
-
-      ctx.save();
-      ctx.strokeStyle = "rgba(0, 255, 0, 0.4)";
-      ctx.lineWidth = 3;
-      ctx.setLineDash([10, 8]);
-      ctx.shadowColor = "#00ff00";
-      ctx.shadowBlur = 10;
-      ctx.beginPath();
-      ctx.moveTo(this.x, this.y);
-      ctx.lineTo(endX, endY);
-      ctx.stroke();
-
-      ctx.strokeStyle = "rgba(180, 255, 180, 0.85)";
-      ctx.lineWidth = 1.2;
-      ctx.setLineDash([]);
-      ctx.beginPath();
-      ctx.moveTo(this.x, this.y);
-      ctx.lineTo(endX, endY);
-      ctx.stroke();
-
-      if (this.weapons.laserCannon.level > 0 && this.weapons.laserCannon.subLasers) {
-        ctx.strokeStyle = "rgba(0, 255, 0, 0.25)";
-        ctx.lineWidth = 1.5;
-        ctx.setLineDash([6, 6]);
-        for (let offset of [-Math.PI / 6, Math.PI / 6]) {
-          const subEndX = this.x + Math.cos(aimAngle + offset) * maxLen;
-          const subEndY = this.y + Math.sin(aimAngle + offset) * maxLen;
-          ctx.beginPath();
-          ctx.moveTo(this.x, this.y);
-          ctx.lineTo(subEndX, subEndY);
-          ctx.stroke();
-        }
-      }
-
-      ctx.restore();
-    }
-
-    // Draw active shield aura around player
-    if (this.hasActiveShield()) {
-      this.drawShieldAura(ctx);
-    }
-
-    if (this.invulnerabilityTimer > 0 && Math.floor(performance.now() / 80) % 2 === 0) {
-      // Blinking i-frame
-    } else {
-      if (this.activeSkill && this.activeSkill.isActive && this.activeSkill.id === 'dash') {
-        ctx.save();
-        ctx.shadowColor = this.activeSkill.color || "#ffff00";
-        ctx.shadowBlur = 18;
-        if (textures['player_ship']) {
-          drawCachedTexture(ctx, textures['player_ship'], this.x, this.y, this.angle);
-        }
-        ctx.restore();
-      } else if (textures['player_ship']) {
-        drawCachedTexture(ctx, textures['player_ship'], this.x, this.y, this.angle);
-      }
-    }
-
-    const orb = this.weapons.orbitals;
-    if (orb.level > 0) {
-      const orbTexture = orb.size > 10 ? (textures['player_orbital_12'] || textures['player_orbital_8']) : textures['player_orbital_8'];
-      for (let i = 0; i < orb.count; i++) {
-        const curAng = orb.angle + (i * 2 * Math.PI) / orb.count;
-        const ox = this.x + Math.cos(curAng) * orb.radius;
-        const oy = this.y + Math.sin(curAng) * orb.radius;
-        if (orbTexture) {
-          drawCachedTexture(ctx, orbTexture, ox, oy, curAng * 2);
-        }
-      }
-    }
-
-    // Draw Laser Cannon charge bar under player
-    this.drawLaserChargeBar(ctx);
-
-    // Draw Shield Recharge Cooldown Bar directly below laser bar
-    this.drawShieldRechargeBar(ctx);
-  }
-
-  drawShieldAura(ctx) {
-    const chargeColor = this.getShieldColor(this.shield.charges);
-    const shieldRadius = this.radius + 10;
-    const t = performance.now() * 0.003;
-    const pulse = Math.sin(t * 3) * 1.5;
-
-    ctx.save();
-    ctx.shadowColor = chargeColor;
-    ctx.shadowBlur = 12 + Math.abs(pulse) * 3;
-    ctx.strokeStyle = chargeColor;
-    ctx.lineWidth = 2;
     
-    // Outer shield perimeter
-    ctx.beginPath();
-    ctx.arc(this.x, this.y, shieldRadius + pulse, 0, Math.PI * 2);
-    ctx.stroke();
-
-    // Translucent shield energy fill
-    ctx.fillStyle = chargeColor;
-    ctx.globalAlpha = 0.06 + (this.shield.charges * 0.04);
-    ctx.fill();
-    ctx.globalAlpha = 1.0;
-
-    // Orbiting charge indicator pips around shield rim
-    const charges = this.shield.charges;
-    for (let i = 0; i < charges; i++) {
-      const pipAngle = t * 2 + (i * 2 * Math.PI / charges);
-      const px = this.x + Math.cos(pipAngle) * (shieldRadius + 4);
-      const py = this.y + Math.sin(pipAngle) * (shieldRadius + 4);
-
-      ctx.beginPath();
-      ctx.arc(px, py, 2.5, 0, Math.PI * 2);
-      ctx.fillStyle = chargeColor;
-      ctx.shadowBlur = 8;
-      ctx.fill();
-    }
-
-    ctx.restore();
-  }
-
-  drawLaserChargeBar(ctx) {
-    const w = this.weapons.laserCannon;
-    if (!w || w.level <= 0) return;
-
-    const barWidth = 36;
-    const barHeight = 4;
-    const barX = this.x - barWidth / 2;
-    const barY = this.y + 24;
-    const radius = 2;
-
-    const chargeRatio = w.fullyCharged ? 1.0 : Math.min(1.0, Math.max(0.0, w.chargeTimer / w.maxCharge));
-
-    ctx.save();
-
-    if (w.fullyCharged) {
-      // Slow pulse when fully charged (breathing neon glow)
-      const t = performance.now() * 0.003;
-      const pulse = 0.5 + 0.5 * Math.sin(t);
-
-      // Outer glow and container
-      ctx.shadowColor = "#00ff88";
-      ctx.shadowBlur = 8 + pulse * 10;
-      ctx.fillStyle = "rgba(0, 30, 15, 0.75)";
-      ctx.strokeStyle = `rgba(0, 255, 136, ${0.7 + pulse * 0.3})`;
-      ctx.lineWidth = 1.2;
-
-      ctx.beginPath();
-      if (ctx.roundRect) {
-        ctx.roundRect(barX, barY, barWidth, barHeight, radius);
-      } else {
-        ctx.rect(barX, barY, barWidth, barHeight);
-      }
-      ctx.fill();
-      ctx.stroke();
-
-      // Pulsing full bar fill
-      ctx.fillStyle = `rgba(0, 255, 136, ${0.85 + pulse * 0.15})`;
-      ctx.beginPath();
-      if (ctx.roundRect) {
-        ctx.roundRect(barX, barY, barWidth, barHeight, radius);
-      } else {
-        ctx.rect(barX, barY, barWidth, barHeight);
-      }
-      ctx.fill();
-
-      // Crisp inner bright line
-      ctx.shadowBlur = 0;
-      ctx.fillStyle = `rgba(255, 255, 255, ${0.5 + pulse * 0.4})`;
-      ctx.fillRect(barX + 2, barY + 1, barWidth - 4, 1.5);
-    } else {
-      // Charging state
-      ctx.shadowColor = "#00ff66";
-      ctx.shadowBlur = 4;
-      ctx.fillStyle = "rgba(10, 20, 15, 0.7)";
-      ctx.strokeStyle = "rgba(0, 255, 100, 0.4)";
-      ctx.lineWidth = 1;
-
-      ctx.beginPath();
-      if (ctx.roundRect) {
-        ctx.roundRect(barX, barY, barWidth, barHeight, radius);
-      } else {
-        ctx.rect(barX, barY, barWidth, barHeight);
-      }
-      ctx.fill();
-      ctx.stroke();
-
-      // Progressive fill
-      const fillW = Math.max(0, barWidth * chargeRatio);
-      if (fillW > 0) {
-        ctx.fillStyle = "#00ff66";
-        ctx.shadowBlur = 6;
-        ctx.beginPath();
-        if (ctx.roundRect) {
-          ctx.roundRect(barX, barY, fillW, barHeight, radius);
-        } else {
-          ctx.rect(barX, barY, fillW, barHeight);
+    if (isAiming) {
+      const maxLen = 2000;
+      const endX = Math.cos(aimAngle) * maxLen;
+      const endY = Math.sin(aimAngle) * maxLen;
+      
+      this.uiGraphics.lineStyle(1.2, 0xb4ffb4, 0.85);
+      this.uiGraphics.moveTo(0, 0);
+      this.uiGraphics.lineTo(endX, endY);
+      
+      if (this.weapons.laserCannon.level > 0 && this.weapons.laserCannon.subLasers) {
+        this.uiGraphics.lineStyle(1.5, 0x00ff00, 0.25);
+        for (let offset of [-Math.PI / 6, Math.PI / 6]) {
+          const subEndX = Math.cos(aimAngle + offset) * maxLen;
+          const subEndY = Math.sin(aimAngle + offset) * maxLen;
+          this.uiGraphics.moveTo(0, 0);
+          this.uiGraphics.lineTo(subEndX, subEndY);
         }
-        ctx.fill();
       }
     }
 
-    ctx.restore();
-  }
+    // 2. Laser Charge Bar
+    const w = this.weapons.laserCannon;
+    if (w && w.level > 0) {
+      const barWidth = 36;
+      const barHeight = 4;
+      const barX = -barWidth / 2;
+      const barY = 24;
+      const radius = 2;
+      const chargeRatio = w.fullyCharged ? 1.0 : Math.min(1.0, Math.max(0.0, w.chargeTimer / w.maxCharge));
 
-  drawShieldRechargeBar(ctx) {
-    if (!this.shield || !this.shield.unlocked) return;
-    if (this.shield.charges >= this.shield.maxCharges) return;
+      this.uiGraphics.lineStyle(1, 0x00ff64, 0.4);
+      this.uiGraphics.beginFill(0x0a140f, 0.7);
+      this.uiGraphics.drawRoundedRect(barX, barY, barWidth, barHeight, radius);
+      this.uiGraphics.endFill();
 
-    const hasLaser = this.weapons.laserCannon && this.weapons.laserCannon.level > 0;
-    const barWidth = 36;
-    const barHeight = 4;
-    const barX = this.x - barWidth / 2;
-    const barY = hasLaser ? (this.y + 32) : (this.y + 24);
-    const radius = 2;
-
-    const chargeColor = this.getShieldTargetRechargeColor();
-    const rechargeRatio = Math.min(1.0, Math.max(0.0, this.shield.rechargeTimer / this.shield.baseRechargeTime));
-
-    ctx.save();
-    ctx.shadowColor = chargeColor;
-    ctx.shadowBlur = 4;
-    ctx.fillStyle = "rgba(10, 20, 25, 0.75)";
-    ctx.strokeStyle = chargeColor;
-    ctx.lineWidth = 1;
-
-    ctx.beginPath();
-    if (ctx.roundRect) {
-      ctx.roundRect(barX, barY, barWidth, barHeight, radius);
-    } else {
-      ctx.rect(barX, barY, barWidth, barHeight);
-    }
-    ctx.fill();
-    ctx.stroke();
-
-    // Progressive fill in target charge color
-    const fillW = Math.max(0, barWidth * rechargeRatio);
-    if (fillW > 0) {
-      ctx.fillStyle = chargeColor;
-      ctx.shadowBlur = 6;
-      ctx.beginPath();
-      if (ctx.roundRect) {
-        ctx.roundRect(barX, barY, fillW, barHeight, radius);
-      } else {
-        ctx.rect(barX, barY, fillW, barHeight);
+      const fillW = Math.max(0.01, barWidth * chargeRatio);
+      if (fillW > 0) {
+        this.uiGraphics.beginFill(w.fullyCharged ? 0x00ff88 : 0x00ff66, w.fullyCharged ? 0.9 : 1.0);
+        this.uiGraphics.drawRoundedRect(barX, barY, fillW, barHeight, radius);
+        this.uiGraphics.endFill();
       }
-      ctx.fill();
     }
 
-    ctx.restore();
+    // 3. Shield Recharge Bar
+    if (this.shield && this.shield.unlocked && this.shield.charges < this.shield.maxCharges) {
+      const hasLaser = w && w.level > 0;
+      const barWidth = 36;
+      const barHeight = 4;
+      const barX = -barWidth / 2;
+      const barY = hasLaser ? 32 : 24;
+      const radius = 2;
+      
+      let chargeColorStr = this.getShieldTargetRechargeColor();
+      if (!chargeColorStr.startsWith('#')) chargeColorStr = '#ffffff';
+      const chargeColorHex = parseInt(chargeColorStr.replace('#', '0x'), 16);
+      const rechargeRatio = Math.min(1.0, Math.max(0.0, this.shield.rechargeTimer / this.shield.baseRechargeTime));
+
+      this.uiGraphics.lineStyle(1, chargeColorHex, 1.0);
+      this.uiGraphics.beginFill(0x0a1419, 0.75);
+      this.uiGraphics.drawRoundedRect(barX, barY, barWidth, barHeight, radius);
+      this.uiGraphics.endFill();
+
+      const fillW = Math.max(0.01, barWidth * rechargeRatio);
+      if (fillW > 0) {
+        this.uiGraphics.beginFill(chargeColorHex, 1.0);
+        this.uiGraphics.drawRoundedRect(barX, barY, fillW, barHeight, radius);
+        this.uiGraphics.endFill();
+      }
+    }
   }
 }
