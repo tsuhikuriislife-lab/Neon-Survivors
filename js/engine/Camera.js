@@ -239,12 +239,13 @@ export class CameraController {
   // PIXI CONTAINER TRANSFORMATION (Fixed 1920x1080 Virtual Screen Space)
   // --------------------------------------------------------------------------
   applyToLayer(layer) {
-    const zoom = (this.userZoom || 1) * this.currentShakeScale * this.currentZoomFactor;
     const sw = this.screenWidth || VIRTUAL_WIDTH;
     const sh = this.screenHeight || VIRTUAL_HEIGHT;
+    
+    // Fixed Vertical Height Scaling: Siempre encajar 1080 píxeles virtuales en la altura de la pantalla
+    const baseScale = sh / VIRTUAL_HEIGHT;
+    const zoom = (this.userZoom || 1) * this.currentShakeScale * this.currentZoomFactor * baseScale;
 
-    // Equivalent to Canvas 2D: ctx.translate(-camX * zoom + sw/2, -camY * zoom + sh/2)
-    // This ensures world point (camX, camY) always maps to screen center (sw/2, sh/2)
     layer.pivot.set(0, 0);
     layer.scale.set(zoom, zoom);
     layer.x = sw / 2 - this.x * zoom + this.shakeOffsetX;

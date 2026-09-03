@@ -60,9 +60,10 @@ export function getVirtualCoords(clientX, clientY) {
 export function screenToWorld(clientX, clientY) {
   const v = getVirtualCoords(clientX, clientY);
   const cam = state.camera || { x: 960, y: 960, userZoom: 1, currentZoomFactor: 1, screenWidth: 1920, screenHeight: 1080 };
-  const zoom = (cam.userZoom || 1) * (cam.currentZoomFactor || 1);
   const sw = cam.screenWidth || 1920;
   const sh = cam.screenHeight || 1080;
+  const baseScale = sh / 1080;
+  const zoom = (cam.userZoom || 1) * (cam.currentZoomFactor || 1) * baseScale;
 
   // Inverse of: layer.x = sw/2 - camX * zoom, layer.y = sh/2 - camY * zoom
   // worldX = (screenX - sw/2) / zoom + camX
