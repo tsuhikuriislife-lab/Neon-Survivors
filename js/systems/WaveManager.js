@@ -150,7 +150,7 @@ export function startWave(duration = 60) {
 
   // 1. Camera pulse on wave trigger
   if (state.camera && typeof state.camera.shake === 'function') {
-    state.camera.shake({ strength: 5, duration: 5, rotation: 0.04, scale: 0.03 });
+    state.camera.shake({ strength: 3, duration: 10, rotation: 0.002, scale: 0.01 });
   }
 
   // 2. Alert Environment Effects (Pulsing Amber/Orange Wave Theme)

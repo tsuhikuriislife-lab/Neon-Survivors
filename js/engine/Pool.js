@@ -418,8 +418,40 @@ export class GemPool {
 // ----------------------------------------------------------------------------
 // 4. FLOATING TEXT POOL (300 items)
 // ----------------------------------------------------------------------------
+let fontsInitialized = false;
+function initBitmapFonts() {
+  if (fontsInitialized) return;
+  
+  try {
+    PIXI.BitmapFont.from("DamageFont", {
+      fontFamily: "'Segoe UI', sans-serif",
+      fontWeight: '900',
+      fontSize: 48,
+      fill: 0xffffff
+    }, { chars: PIXI.BitmapFont.ASCII });
+
+    PIXI.BitmapFont.from("DamageFontCrit", {
+      fontFamily: "'Segoe UI', sans-serif",
+      fontWeight: '900',
+      fontSize: 48,
+      fill: 0xffffff,
+      dropShadow: true,
+      dropShadowColor: 0xffffff,
+      dropShadowBlur: 10,
+      dropShadowDistance: 0,
+      dropShadowAlpha: 1
+    }, { chars: PIXI.BitmapFont.ASCII });
+  } catch (e) {
+    console.warn("BitmapFont initialization failed:", e);
+  }
+  
+  fontsInitialized = true;
+}
+
 class PooledFloatingText {
   constructor() {
+    initBitmapFonts();
+    
     this.x = 0;
     this.y = 0;
     this.text = "";
@@ -431,16 +463,14 @@ class PooledFloatingText {
     this.vy = -1.2;
     this.active = false;
 
-    this.sprite = new PIXI.Text("", {
-      fontFamily: "'Segoe UI', sans-serif",
-      fontWeight: '900',
+    // Default to DamageFont
+    this.sprite = new PIXI.BitmapText("", {
+      fontName: "DamageFont",
       fontSize: 14,
-      fill: 0xffffff,
       align: 'center'
     });
     this.sprite.anchor.set(0.5);
     this.sprite.visible = false;
-    // worldLayer.addChild(this.sprite);
   }
 
   reset(x, y, text, color = "#fff", size = 14, isCrit = false) {
@@ -455,20 +485,20 @@ class PooledFloatingText {
     this.vy = isCrit ? -1.6 : -1.2;
     this.active = true;
 
-    this.sprite.text = text;
-    this.sprite.style.fontSize = size;
-    this.sprite.style.fill = color;
+    // Set font based on crit status
+    this.sprite.fontName = isCrit ? "DamageFontCrit" : "DamageFont";
+    this.sprite.fontSize = size;
+    this.sprite.text = String(text);
 
-    if (isCrit) {
-      this.sprite.style.dropShadow = true;
-      this.sprite.style.dropShadowColor = color;
-      this.sprite.style.dropShadowBlur = 12;
-      this.sprite.style.dropShadowDistance = 0;
-      this.sprite.style.dropShadowAlpha = 1;
-    } else {
-      this.sprite.style.dropShadow = false;
+    // Convert hex string to number for tinting
+    let hexColor = 0xffffff;
+    if (typeof color === 'string' && color.startsWith('#')) {
+      const parsed = parseInt(color.replace('#', ''), 16);
+      if (!isNaN(parsed)) hexColor = parsed;
     }
-
+    
+    this.sprite.tint = hexColor;
+    
     this.sprite.x = this.x;
     this.sprite.y = this.y;
     this.sprite.rotation = this.rotation;

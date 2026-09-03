@@ -844,6 +844,14 @@ export class Player {
       missiles: { level: 0, count: 6, timer: 0, cooldown: 220, speed: 7, homing: 0.05, aoe: 70, damage: 23, countUpgrades: 0, speedUpgrades: 0, homingUpgrade: false, aoeUpgrades: 0 },
       laserCannon: { level: 0, chargeTimer: 0, maxCharge: 1140, fullyCharged: false, damage: 250, width: 25, duration: 24, chargeSpeedMult: 1, damageMult: 1, widthMult: 1, subLasers: false, dot: false, dotDamage: 20, dotDuration: 5, tickDamage: false, soundNode: null, chargeUpgrades: 0, dmgUpgrades: 0, widthUpgrades: 0, lifeUpgrades: 0, dotUpgrades: 0 }
     };
+    
+    if (this.orbitalSprites) {
+      while (this.orbitalSprites.length > 0) {
+        const sprite = this.orbitalSprites.pop();
+        if (sprite.parent) sprite.parent.removeChild(sprite);
+        sprite.destroy();
+      }
+    }
 
     updateAimJoystickUI();
   }

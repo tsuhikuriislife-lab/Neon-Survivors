@@ -11,7 +11,7 @@ import { worldLayer } from '../../main.js';
 export class DenzelBoss extends Boss {
   constructor(x, y, hp, maxHp) {
     super(x, y, "Denzel", maxHp, 75, "#ffffff", hp);
-    this.targetY = 160;
+    this.targetY = 300;
     this.radius = 75;
     this.color = "#ffffff";
     this.vx = 4.2;
@@ -42,9 +42,12 @@ export class DenzelBoss extends Boss {
 
     if (this.hp <= 0) {
       this.hp = 0;
-      this.dead = true;
-      audioManager.playSound('enemy_death_boss', { volume: 0.8, throttleMs: 200 });
-      spawnExplosion(this.x, this.y, "#ffffff", 25, 5);
+      if (!this.dead) {
+        this.dead = true;
+        this.die();
+        audioManager.playSound('enemy_death_boss', { volume: 0.8, throttleMs: 200 });
+        spawnExplosion(this.x, this.y, "#ffffff", 25, 5);
+      }
     }
   }
 

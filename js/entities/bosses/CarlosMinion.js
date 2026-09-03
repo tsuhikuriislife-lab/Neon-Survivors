@@ -108,9 +108,17 @@ export class CarlosMinion extends Boss {
 
     if (this.hp <= 0) {
       this.hp = 0;
-      this.dead = true;
-      audioManager.playSound('enemy_death_boss', { volume: 0.8, throttleMs: 200 });
-      spawnExplosion(this.x, this.y, "#00ff66", 20, 4);
+      if (!this.dead) {
+        this.dead = true;
+        this.die();
+        audioManager.playSound('enemy_death_boss', { volume: 0.8, throttleMs: 200 });
+        spawnExplosion(this.x, this.y, "#ffcc00", 25, 4);
+        for (let i = 0; i < 5; i++) {
+          if (state.gemPool) {
+            state.gemPool.acquire(this.x + (Math.random() * 20 - 10), this.y + (Math.random() * 20 - 10), 10);
+          }
+        }
+      }
     }
   }
 

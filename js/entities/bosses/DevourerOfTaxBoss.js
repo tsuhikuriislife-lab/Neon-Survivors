@@ -141,12 +141,15 @@ export class DevourerOfTaxBoss extends Boss {
 
     if (this.hp <= 0) {
       this.hp = 0;
-      this.dead = true;
-      audioManager.playSound('enemy_death_boss', { volume: 0.8, throttleMs: 200 });
-      spawnExplosion(this.x, this.y, "#00ff66", 45, 6);
-      for (let i = 0; i < 18; i++) {
-        if (state.gemPool) {
-          state.gemPool.acquire(this.x + (Math.random() * 40 - 20), this.y + (Math.random() * 40 - 20), 10);
+      if (!this.dead) {
+        this.dead = true;
+        this.die();
+        audioManager.playSound('enemy_death_boss', { volume: 0.8, throttleMs: 200 });
+        spawnExplosion(this.x, this.y, "#00ff66", 45, 6);
+        for (let i = 0; i < 18; i++) {
+          if (state.gemPool) {
+            state.gemPool.acquire(this.x + (Math.random() * 40 - 20), this.y + (Math.random() * 40 - 20), 10);
+          }
         }
       }
     }
@@ -436,7 +439,16 @@ export class DevourerOfTaxBoss extends Boss {
       });
       this.segmentSprites = [];
     }
-    if (this.carlos) this.carlos.die();
-    if (this.sebastian) this.sebastian.die();
+  }
+
+  destroy() {
+    if (this.carlos) {
+      if (typeof this.carlos.die === 'function') this.carlos.die();
+      if (typeof this.carlos.destroy === 'function') this.carlos.destroy();
+    }
+    if (this.sebastian) {
+      if (typeof this.sebastian.die === 'function') this.sebastian.die();
+      if (typeof this.sebastian.destroy === 'function') this.sebastian.destroy();
+    }
   }
 }

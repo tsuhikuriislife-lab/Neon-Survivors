@@ -403,6 +403,151 @@ export function updateBossSpawnBeacon() {
   bossBeaconGraphics.endFill();
 }
 
+function handleMenuEvacuation(dt) {
+  const margin = 300;
+  const cx = state.width / 2;
+  const cy = state.height / 2;
+  const mockPlayer = { x: 0, y: 0, radius: 0, takeDamage: () => {} };
+
+  const isOOB = (x, y) => x < -margin || x > state.width + margin || y < -margin || y > state.height + margin;
+  
+  const despawn = (e) => {
+    if (typeof e.destroy === 'function') {
+      e.destroy();
+    } else {
+      if (e.sprite && typeof e.sprite.destroy === 'function') {
+        if (e.sprite.parent) e.sprite.parent.removeChild(e.sprite);
+        e.sprite.destroy();
+      }
+      if (e.graphics && typeof e.graphics.destroy === 'function') {
+        if (e.graphics.parent) e.graphics.parent.removeChild(e.graphics);
+        e.graphics.destroy();
+      }
+    }
+  };
+
+  // Evacuate Bosses
+  if (state.bosses && state.bosses.length > 0) {
+    for (let i = state.bosses.length - 1; i >= 0; i--) {
+      let b = state.bosses[i];
+      let targets = (typeof b.getTargetables === 'function') ? b.getTargetables() : [b];
+      
+      if (targets.length === 0) {
+        if (typeof b.destroy === 'function') b.destroy();
+        state.bosses.splice(i, 1);
+        continue;
+      }
+      
+      // We still need a dx, dy for the main mockPlayer direction. 
+      // We can use the first target's position.
+      let firstT = targets[0];
+      let dx = firstT.x - cx; let dy = firstT.y - cy;
+      if (dx === 0 && dy === 0) dx = 1;
+      let dist = Math.sqrt(dx * dx + dy * dy);
+      mockPlayer.x = cx + (dx / dist) * 10000;
+      mockPlayer.y = cy + (dy / dist) * 10000;
+      
+      let origSpeeds = new Map();
+      targets.forEach(t => {
+         origSpeeds.set(t, { speed: t.speed, outsideSpeed: t.outsideSpeed });
+         if (t.speed !== undefined) t.speed = Math.max(t.speed, 25);
+         if (t.outsideSpeed !== undefined) t.outsideSpeed = Math.max(t.outsideSpeed, 35);
+      });
+      
+      if (b.update) b.update(mockPlayer);
+      
+      targets.forEach(t => {
+         let orig = origSpeeds.get(t);
+         if (orig.speed !== undefined) t.speed = orig.speed;
+         if (orig.outsideSpeed !== undefined) t.outsideSpeed = orig.outsideSpeed;
+      });
+      
+      let allOOB = true;
+      for (let target of targets) {
+         if (!isOOB(target.x, target.y)) {
+            allOOB = false;
+            break;
+         }
+      }
+      
+      if (allOOB) {
+        targets.forEach(t => {
+           t.dead = true;
+           despawn(t);
+           if (t.segmentSprites) t.segmentSprites.forEach(s => { if (s && s.destroy) s.destroy(); });
+        });
+        b.dead = true;
+        despawn(b);
+        if (b.segmentSprites) b.segmentSprites.forEach(s => { if (s && s.destroy) s.destroy(); });
+        state.bosses.splice(i, 1);
+      }
+    }
+  }
+
+  // Evacuate Enemies
+  if (state.enemies && state.enemies.length > 0) {
+    for (let i = state.enemies.length - 1; i >= 0; i--) {
+      let e = state.enemies[i];
+      let dx = e.x - cx; let dy = e.y - cy;
+      if (dx === 0 && dy === 0) dx = 1;
+      let dist = Math.sqrt(dx * dx + dy * dy);
+      mockPlayer.x = cx + (dx / dist) * 10000;
+      mockPlayer.y = cy + (dy / dist) * 10000;
+      
+      let origSpeed = e.speed;
+      e.speed = (e.speed || 3) * 6;
+      if (e.update) e.update(mockPlayer);
+      e.speed = origSpeed;
+
+      if (isOOB(e.x, e.y)) {
+        despawn(e);
+        state.enemies.splice(i, 1);
+      }
+    }
+  }
+
+  // Update projectiles (pooled)
+  if (state.projectilePool && state.projectilePool.pool) {
+    let pool = state.projectilePool.pool;
+    for (let i = 0; i < pool.length; i++) {
+      if (pool[i].active) pool[i].update(state.width, state.height);
+    }
+  }
+
+  // Update standard projectiles
+  const projLists = [state.projectiles, state.enemyProjectiles, state.acceleratingProjectiles, state.fallingProjectiles];
+  projLists.forEach(list => {
+    if (!list) return;
+    for (let i = list.length - 1; i >= 0; i--) {
+      let p = list[i];
+      if (p.update && !p.update(dt)) {
+        despawn(p);
+        list[i] = list[list.length - 1];
+        list.pop();
+      }
+    }
+  });
+
+  // Clear static items immediately
+  const clearStatic = (list) => {
+    if (!list) return;
+    for (let i = list.length - 1; i >= 0; i--) {
+      despawn(list[i]);
+    }
+    list.length = 0;
+  };
+  clearStatic(state.hazardAreas);
+  clearStatic(state.shockwaves);
+  clearStatic(state.laserBeams);
+  
+  if (state.gemPool && state.gemPool.pool) {
+    let pool = state.gemPool.pool;
+    for (let i = 0; i < pool.length; i++) {
+      if (pool[i].active) { pool[i].active = false; if(pool[i].sprite) pool[i].sprite.visible = false; }
+    }
+  }
+}
+
 export function loop(timestamp) {
   // Freezes all game updates and canvas rendering while an ad is active
   // releasing 100% of CPU and GPU resources to the video ad player
@@ -423,6 +568,8 @@ export function loop(timestamp) {
 
     menuShowcase.update(dt);
     vectorTitle.update(dt);
+
+    handleMenuEvacuation(dt);
 
     if (state.camera) {
       const time = menuShowcase.time;

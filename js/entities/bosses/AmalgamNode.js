@@ -127,15 +127,18 @@ export class AmalgamNode extends Boss {
 
     if (this.hp <= 0) {
       this.hp = 0;
-      this.dead = true;
-      if (this.stage < 4) {
-        this.subdivide();
-      } else {
-        audioManager.playSound('enemy_death_boss', { volume: 0.8, throttleMs: 200 });
-        spawnExplosion(this.x, this.y, this.color, 20, 4);
-        for (let i = 0; i < 4; i++) {
-          if (state.gemPool) {
-            state.gemPool.acquire(this.x + (Math.random() * 20 - 10), this.y + (Math.random() * 20 - 10), 6);
+      if (!this.dead) {
+        this.dead = true;
+        this.die();
+        if (this.stage < 4) {
+          this.subdivide();
+        } else {
+          audioManager.playSound('enemy_death_boss', { volume: 0.8, throttleMs: 200 });
+          spawnExplosion(this.x, this.y, this.color, 20, 4);
+          for (let i = 0; i < 4; i++) {
+            if (state.gemPool) {
+              state.gemPool.acquire(this.x + (Math.random() * 20 - 10), this.y + (Math.random() * 20 - 10), 6);
+            }
           }
         }
       }
@@ -169,10 +172,13 @@ export class AmalgamNode extends Boss {
         vx,
         vy
       );
+      child.root = this.root;
       children.push(child);
     }
     
-    if (state.currentAmalgamBoss) {
+    if (this.root) {
+      this.root.nodes.push(...children);
+    } else if (state.currentAmalgamBoss) {
       state.currentAmalgamBoss.nodes.push(...children);
     }
     spawnExplosion(this.x, this.y, "#ff0055", 25, 5);
