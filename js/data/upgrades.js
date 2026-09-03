@@ -26,7 +26,7 @@ export const upgradeDatabase = [
     id: 'hp_regen',
     rarity: 'legendary',
     name: 'Repairing Nanobots',
-    icon: '💉',
+    icon: '<img src="assets/upgrades/repairing-nanobots.png" alt="icon">',
     desc: '+1.0 HP/s regen.',
     isAvailable: (p) => p.regenUpgradesCount  === 0,
     apply: (p) => { 
@@ -38,7 +38,7 @@ export const upgradeDatabase = [
     id: 'iframe_extend',
     rarity: 'rare',
     name: 'Timewarping Shield',
-    icon: '🛡',
+    icon: '<img src="assets/upgrades/timewarping-shield2.png" alt="icon">',
     desc: '+0.25s Invulnerability duration.',
     isAvailable: (p) => p.iFrameUpgradesCount < 3,
     apply: (p) => { 
@@ -50,7 +50,7 @@ export const upgradeDatabase = [
     id: 'speed_boost',
     rarity: 'uncommon',
     name: 'Vector Thrusters',
-    icon: '👟',
+    icon: '<img src="assets/upgrades/vector-thrusters.png" alt="icon">',
     desc: '+20% Core movement speed (Max. 4).',
     isAvailable: (p) => (p.speedUpgradesCount || 0) < 4,
     apply: (p) => { 
@@ -62,7 +62,7 @@ export const upgradeDatabase = [
     id: 'magnet_boost',
     rarity: 'rare',
     name: 'Magnetic Attraction',
-    icon: '🧲',
+    icon: '<img src="assets/upgrades/magnetic-attraction.png" alt="icon">',
     desc: '+50% Pickup radius for XP energy (Max. 4).',
     isAvailable: (p) => (p.magnetUpgrades || 0) < 4,
     apply: (p) => { 
@@ -74,7 +74,7 @@ export const upgradeDatabase = [
     id: 'auto_magnet',
     rarity: 'legendary',
     name: 'Quantum Singularity',
-    icon: '🕳',
+    icon: '<img src="assets/upgrades/quantum-singularity.png" alt="icon">',
     desc: '10% chance for defeated enemies to drop an auto-magnetized XP gem (Max. 3).',
     isAvailable: (p) => (p.autoMagnetUpgrades || 0) < 3,
     apply: (p) => {
@@ -86,7 +86,7 @@ export const upgradeDatabase = [
     id: 'damage_boost',
     rarity: 'common',
     name: 'Quantum Amplifier',
-    icon: '⚔',
+    icon: '<img src="assets/upgrades/quantum-amplifier.png" alt="icon">',
     desc: '+25% General damage of all weapons (Max. 5).',
     isAvailable: (p) => (p.damageUpgradesCount || 0) < 5,
     apply: (p) => { 
@@ -98,7 +98,7 @@ export const upgradeDatabase = [
     id: 'repair_hull',
     rarity: 'uncommon',
     name: 'Hull Reinforcement',
-    icon: '❤',
+    icon: '<img src="assets/upgrades/hull-reinforcement.png" alt="icon">',
     desc: 'Restores 50 HP and increases maximum health by +25 (Max. 5).',
     isAvailable: (p) => (p.hullUpgradesCount || 0) < 5,
     apply: (p) => { 
