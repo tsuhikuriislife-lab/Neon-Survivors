@@ -87,6 +87,12 @@ export function resize() {
     state.camera.dpr = 1.0;
   }
 
+  // Scale uiLayer (PixiJS UI elements like the Title) to match the fixed-height logic
+  const baseScale = winH / 1080;
+  uiLayer.scale.set(baseScale, baseScale);
+  uiLayer.x = (winW - (1920 * baseScale)) / 2;
+  uiLayer.y = (winH - (1080 * baseScale)) / 2;
+
   // UI scale relative to 1920x1080 reference
   const scale = Math.min(winW / 1920, winH / 1080);
   const container = document.getElementById("game-container");

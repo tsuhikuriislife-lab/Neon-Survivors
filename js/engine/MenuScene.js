@@ -57,8 +57,8 @@ export class VectorTitleRenderer {
   }
 
   initLetters() {
-    const W = state.width || 1920;
-    const H = state.height || 1080;
+    const W = 1920;
+    const H = 1080;
 
     const lines = ["NEON", "SURVIVORS"];
     const maxLineLength = Math.max(...lines.map(l => l.length));
