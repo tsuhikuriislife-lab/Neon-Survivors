@@ -119,9 +119,21 @@ if (typeof window !== 'undefined' && window.visualViewport) {
   window.visualViewport.addEventListener("scroll", handleResizeAndOrientation);
 }
 
+import { SaveManager } from './engine/SaveManager.js';
+
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "visible") {
     handleResizeAndOrientation();
+  } else {
+    if (!state.isInMenu && !state.isGameOver) {
+      SaveManager.saveGame(state);
+    }
+  }
+});
+
+window.addEventListener("beforeunload", () => {
+  if (!state.isInMenu && !state.isGameOver) {
+    SaveManager.saveGame(state);
   }
 });
 

@@ -123,7 +123,8 @@ export class Enemy {
       }
 
       if (state.gemPool) {
-        state.gemPool.acquire(gx, gy, this.xpValue);
+        const isMagnetized = Math.random() < (state.player?.autoMagnetChance || 0);
+        state.gemPool.acquire(gx, gy, this.xpValue, isMagnetized);
       }
     };
     

@@ -70,12 +70,14 @@ export class Player {
     this.damageUpgradesCount = 0;
     this.cooldownMult = 1.0;
     this.blasterRateUpgrades = 0;
-    this.critChance = 0.0;
+    this.critChance = 0.05;
     this.critDamage = 1.5;
     this.xpMultiplier = 1.0;
     
     this.doubleGemChance = 0;
     this.doubleGemUpgradesCount = 0;
+    this.autoMagnetChance = 0;
+    this.autoMagnetUpgrades = 0;
     this.acquiredUpgrades = {};
 
     this.activeSkill = {
@@ -143,7 +145,7 @@ export class Player {
   getEffectiveDamageMult() {
     let mult = this.damageMult;
     if (this.hasActiveShield()) {
-      mult += (this.shield.damageBonusUpgrades || 0) * 0.05;
+      mult *= (1.0 + (this.shield.damageBonusUpgrades || 0) * 0.05);
     }
     return mult;
   }
@@ -373,6 +375,11 @@ export class Player {
         const curAng = (i * 2 * Math.PI) / w.count;
         sprite.x = Math.cos(curAng) * w.radius;
         sprite.y = Math.sin(curAng) * w.radius;
+        
+        // Scale the sprite dynamically based on its physical size (base texture is 12px)
+        const scaleFactor = w.size / 12;
+        sprite.scale.set(scaleFactor, scaleFactor);
+        
         // Counter-rotate if we want them facing outward or spinning independently
         sprite.rotation = curAng * 2;
     }
@@ -796,6 +803,8 @@ export class Player {
     this.xpMultiplier = 1.0;
     this.doubleGemChance = 0;
     this.doubleGemUpgradesCount = 0;
+    this.autoMagnetChance = 0;
+    this.autoMagnetUpgrades = 0;
     this.acquiredUpgrades = {};
     this.maxHp = 100;
     this.hp = Math.min(this.hp, 100);

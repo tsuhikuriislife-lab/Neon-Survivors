@@ -2,7 +2,8 @@ import { state } from '../engine/gameState.js';
 import { cancelAiming } from '../engine/Input.js';
 import { formatTime, drawPolygon } from '../engine/Utils.js';
 import { upgradeDatabase } from '../data/upgrades.js';
-import { initGame } from '../engine/Game.js';
+import { initGame, resumeGame } from '../engine/Game.js';
+import { SaveManager } from '../engine/SaveManager.js';
 import { Enemy } from '../entities/enemies/Enemy.js';
 import { audioManager } from '../engine/AudioManager.js';
 import { triggerBossSpawnSequence, startWave } from '../systems/WaveManager.js';
@@ -204,6 +205,13 @@ export function showUpgradeMenu() {
 }
 
 export function startGame() {
+  SaveManager.clearSaveGame();
+  const btnResumeGame = document.getElementById("btnResumeGame");
+  if (btnResumeGame) {
+    btnResumeGame.classList.add("disabled");
+    btnResumeGame.onclick = null;
+  }
+
   const startOverlay = document.getElementById("start-screen-overlay");
   const uiLayer = document.getElementById("ui-layer");
   if (startOverlay) startOverlay.style.display = "none";
@@ -250,6 +258,20 @@ export function initUIListeners() {
     btnStartGame.onclick = () => {
       startGame();
     };
+  }
+
+  const btnResumeGame = document.getElementById("btnResumeGame");
+  if (btnResumeGame) {
+    // ALWAYS display it. Just visually darken if no save exists.
+    if (SaveManager.hasSaveGame()) {
+      btnResumeGame.classList.remove("disabled");
+      btnResumeGame.onclick = () => {
+        resumeGame();
+      };
+    } else {
+      btnResumeGame.classList.add("disabled");
+      btnResumeGame.onclick = null;
+    }
   }
 
   const btnGameOverMenu = document.getElementById("btnGameOverMenu");
@@ -682,6 +704,13 @@ export function initUIListeners() {
 }
 
 export function triggerGameOver() {
+  SaveManager.clearSaveGame();
+  const btnResumeGame = document.getElementById("btnResumeGame");
+  if (btnResumeGame) {
+    btnResumeGame.classList.add("disabled");
+    btnResumeGame.onclick = null;
+  }
+  
   state.isGameOver = true;
   state.isPaused = true;
   cancelAiming();

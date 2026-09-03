@@ -71,6 +71,18 @@ export const upgradeDatabase = [
     }
   },
   {
+    id: 'auto_magnet',
+    rarity: 'legendary',
+    name: 'Quantum Singularity',
+    icon: '🕳',
+    desc: '10% chance for defeated enemies to drop an auto-magnetized XP gem (Max. 3).',
+    isAvailable: (p) => (p.autoMagnetUpgrades || 0) < 3,
+    apply: (p) => {
+      p.autoMagnetChance = (p.autoMagnetChance || 0) + 0.10;
+      p.autoMagnetUpgrades = (p.autoMagnetUpgrades || 0) + 1;
+    }
+  },
+  {
     id: 'damage_boost',
     rarity: 'common',
     name: 'Quantum Amplifier',
@@ -503,6 +515,7 @@ export const upgradeDatabase = [
     name: 'Lethal Precision',
     icon: '🎯',
     desc: '+5% Critical Hit Chance.',
+    isAvailable: (p) => (p.critChance || 0) < 0.99,
     apply: (p) => { p.critChance = (p.critChance || 0) + 0.05; }
   },
   {

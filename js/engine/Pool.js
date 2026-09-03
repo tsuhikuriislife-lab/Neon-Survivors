@@ -314,13 +314,14 @@ class PooledGem {
     // worldLayer.addChild(this.sprite);
   }
 
-  reset(x, y, value) {
+  reset(x, y, value, isMagnetized = false) {
     this.x = x;
     this.y = y;
     this.value = value;
     this.radius = 6;
     this.angle = 0;
     this.active = true;
+    this.isMagnetized = isMagnetized;
 
     if (value > 15) {
       this.color = "#ff0055";
@@ -350,12 +351,12 @@ class PooledGem {
     if (!this.active) return false;
     this.angle += 0.05;
     const d = dist(this.x, this.y, player.x, player.y);
-    if (d < player.pickupRadius) {
-      const speed = 7.5;
+    if (this.isMagnetized || d < player.pickupRadius) {
+      const speed = this.isMagnetized ? 15.0 : 7.5;
       const a = Math.atan2(player.y - this.y, player.x - this.x);
       this.x += Math.cos(a) * speed;
       this.y += Math.sin(a) * speed;
-      if (d < player.radius + 8) {
+      if (d < player.radius + 15) {
         player.gainXP(this.value);
         this.active = false;
         this.sprite.visible = false;
@@ -379,19 +380,19 @@ export class GemPool {
     this.searchIndex = 0;
   }
 
-  acquire(x, y, value) {
+  acquire(x, y, value, isMagnetized = false) {
     const len = this.pool.length;
     for (let i = 0; i < len; i++) {
       const idx = (this.searchIndex + i) % len;
       const g = this.pool[idx];
       if (!g.active) {
-        g.reset(x, y, value);
+        g.reset(x, y, value, isMagnetized);
         this.searchIndex = (idx + 1) % len;
         return g;
       }
     }
     const g = this.pool[this.searchIndex];
-    g.reset(x, y, value);
+    g.reset(x, y, value, isMagnetized);
     this.searchIndex = (this.searchIndex + 1) % len;
     return g;
   }

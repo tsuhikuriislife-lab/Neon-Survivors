@@ -25,6 +25,9 @@ This repository contains a browser-based arena survival game ("Neon Survivors").
 - **Modifying UI**: Update HTML in `index.html`, styles in `css/styles.css`, and logic in `js/ui/UIManager.js`.
 
 ### Recent Implementations & System Mechanics
+- **30-Minute Survival Scaling & Spawning Architecture (`WaveManager.js`, `Enemy.js`)**: 
+  - **Distributed Spawning**: Standard enemies in batch-spawns are instantiated without forced coordinate clustering, dynamically picking independent perimeter nodes. This naturally flanks the player from all directions rather than creating single directional hordes.
+  - **Progressive Stat Scaling**: Enemy HP, Speed, and Damage dynamically scale upwards across a 30-minute pacing threshold (1800s). HP scales up to `5.0x`, Speed and Damage up to `1.75x`. Scaling is updated seamlessly without UI banners on every wave trigger or boss spawn, keeping steady pressure in the late game.
 - **Audio Architecture (`AudioManager.js`)**: 
   - Centralized Web Audio API manager handling BGM and SFX.
   - Supports dynamic property modification (volume, pitch, speed), throttling for overlapped sounds (e.g. `throttleMs: 50`), and independent channels (`bgmVolume`, `sfxVolume`).
@@ -53,6 +56,7 @@ This repository contains a browser-based arena survival game ("Neon Survivors").
   - **DenzelBoss Trajectory Tuning**: `targetY` is kept high (`300`) to ensure parabolic `FallingProjectile` (gravity = 0.12) arcs stay safely within the arena's visible bounds and do not despawn prematurely by hitting the top margin.
   - **Amalgam Memory Leak & Cross-Spawn Protection**: `AmalgamBossRoot` properly cleans itself up by monitoring `nodes.length` and setting `dead = true`. `AmalgamNode` subdivisions append children to `this.root.nodes` (preventing array contamination when multiple Amalgams spawn simultaneously).
 - **Projectiles & Weapons (`Projectiles.js`, `LaserBeam.js` & `Player.js`)**:
+  - **Multiplicative Damage System**: Final damage computation strictly follows `Base Damage * Weapon Multiplier * Global Multiplier * Active Shield Bonus * Critical Hit`. Upgrades synergize multiplicatively (e.g. Shield Power damage bonuses multiply the entire stack, not just adding flat percentages).
   - **Laser Cannon Damage Falloff**: Piercing laser beam calculates enemies sorted by distance along the beam path. Applies a progressive -5% damage falloff per enemy struck (1st enemy: 100%, 2nd: 95%, 3rd: 90% down to a 10% floor).
   - Missiles use a queue system (`missilesQueue`, `missileFireTimer`) to fire sequentially with a 0.2s delay instead of all at once.
   - Enemy projectiles ignore time-to-live (`life`) checks and only despawn when leaving the screen bounds.
@@ -63,7 +67,9 @@ This repository contains a browser-based arena survival game ("Neon Survivors").
 - **Upgrade Rarities & Infinite Scaling**:
   - Upgrades are categorized by rarity (`common` 60%, `uncommon` 20%, `rare` 15%, `legendary` 5%).
   - Core upgrades have hard caps (`isAvailable` checks limit `damage_boost` to 5, `hp_regen` to 3, etc.).
+  - Added strict availability limits to preventing "dead draws" in the pool (e.g., `Lethal Precision` crit chance upgrade stops appearing once the player hits 100% crit chance).
   - Once capped, "Infinite Upgrades" become available (e.g. `damage_small`, `crit_chance`, `boss_hp_cut`) with `isInfinite: true` to prevent browser crashes during automated Quick Testing loops.
+  - **Quantum Singularity** (Legendary): Enemy loot drops evaluate a dynamic `isMagnetized` flag. When triggered, the spawned `PooledGem` ignores `pickupRadius` proximity checks and accelerates directly to the player at double standard speed (`15.0`).
 - **Boss Scaling & Reward Mechanics**:
   - Bosses cannot spawn twice in a row (`state.lastBossName` tracking).
   - Defeating a boss permanently scales its specific base HP by +70% for future spawns via `state.bossScaling`.

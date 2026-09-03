@@ -178,9 +178,23 @@ export class DevourerOfTaxBoss extends Boss {
       });
       this.segmentSprites = this.segmentSprites.slice(0, this.segmentCount);
     }
-
     spawnExplosion(this.x, this.y, "#39ff14", 30, 4);
   }
+
+  restoreState(saveData) {
+    this.x = saveData.x;
+    this.y = saveData.y;
+    this.hp = saveData.hp;
+    this.maxHp = saveData.maxHp;
+    this.dead = saveData.hp <= 0;
+    
+    if (saveData.isSplit || this.hp <= this.maxHp * 0.5) {
+      if (!this.isSplit) this.split();
+      if (this.carlos && saveData.carlosHp !== undefined) this.carlos.hp = saveData.carlosHp;
+      if (this.sebastian && saveData.sebastianHp !== undefined) this.sebastian.hp = saveData.sebastianHp;
+    }
+  }
+
 
   getNearbySnakes(passedSnakes) {
     if (passedSnakes && passedSnakes.length > 0) return passedSnakes;

@@ -1178,6 +1178,20 @@
   transform: scale(0.96);
 }
 
+.btn-start-game.disabled {
+  background: rgba(40, 40, 40, 0.4);
+  border-color: #555;
+  color: #777;
+  text-shadow: none;
+  box-shadow: none;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-start-game.disabled::before {
+  display: none;
+}
+
 .btn-menu {
   display: block;
   width: 100%;

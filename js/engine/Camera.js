@@ -55,11 +55,26 @@ export class CameraController {
       rotRad = rotation * (Math.PI / 180);
     }
 
-    this.shakeStrength = Math.max(this.shakeStrength, strength);
-    this.shakeDuration = Math.max(this.shakeDuration, duration);
-    this.shakeTimer = this.shakeDuration;
-    this.shakeRotation = Math.max(this.shakeRotation, rotRad);
-    this.shakeScale = Math.max(this.shakeScale, scale);
+    // Calculate current effective strength before applying a new one
+    const currentProgress = this.shakeDuration > 0 ? Math.max(0, this.shakeTimer / this.shakeDuration) : 0;
+    const currentEffectiveStrength = this.shakeStrength * (currentProgress * currentProgress);
+
+    // If the new shake is stronger than what we currently feel, override it.
+    if (strength >= currentEffectiveStrength) {
+      this.shakeStrength = strength;
+      this.shakeDuration = duration;
+      this.shakeTimer = duration;
+      this.shakeRotation = rotRad;
+      this.shakeScale = scale;
+    } else {
+      // If the new shake is weaker, we don't increase the maximum strength.
+      // But if it lasts longer than the remaining timer, we extend the timer to ensure the shake doesn't stop abruptly.
+      if (duration > this.shakeTimer) {
+        this.shakeTimer = duration;
+        // We also need to adjust duration so the decay math doesn't snap.
+        this.shakeDuration = Math.max(this.shakeDuration, duration); 
+      }
+    }
   }
 
   // --------------------------------------------------------------------------

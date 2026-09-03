@@ -54,7 +54,28 @@ export function hideWarningBanner(elementId) {
   banner.style.display = "none";
 }
 
+export function updateEnemyScaling() {
+  if (!state.enemyScaling) {
+    state.enemyScaling = { hp: 1.0, speed: 1.0, damage: 1.0 };
+  }
+  const progress = Math.min(1.0, state.gameTime / 1800);
+  state.enemyScaling.hp = 1.0 + (progress * 4.0);
+  state.enemyScaling.speed = 1.0 + (progress * 0.75);
+  state.enemyScaling.damage = 1.0 + (progress * 0.75);
+}
+
+function applyEnemyScaling(enemy) {
+  if (state.enemyScaling) {
+    enemy.maxHp *= state.enemyScaling.hp;
+    enemy.hp = enemy.maxHp;
+    enemy.speed *= state.enemyScaling.speed;
+    enemy.damage *= state.enemyScaling.damage;
+  }
+  return enemy;
+}
+
 export function triggerBossSpawnSequence(bossType, customX, customY) {
+  updateEnemyScaling();
   if (state.pendingBossSpawn) return;
 
   const bossDef = getBossById(bossType);
@@ -186,6 +207,7 @@ export function updatePendingBossSpawn(dt) {
 }
 
 export function startWave(duration = 60) {
+  updateEnemyScaling();
   state.isWaveActive = true;
   state.waveTimer = duration;
   state.waveDuration = duration;
@@ -252,15 +274,15 @@ export function handleSpawning() {
   const hasActiveBoss = state.bosses.some(b => b.getTargetables().length > 0);
 
   let baseInterval;
-  if (state.gameTime < 180) {
-    // Inicio equilibrado: de 42 frames (~0.7s) bajando a 26 frames (~0.43s)
-    baseInterval = Math.max(26, 42 - Math.floor((state.gameTime / 180) * 16));
-  } else if (state.gameTime < 480) {
-    // Fase media: de 26 frames a 16 frames (~0.26s)
-    baseInterval = Math.max(16, 26 - Math.floor(((state.gameTime - 180) / 300) * 10));
+  if (state.gameTime < 600) {
+    // 0 - 10 min: de 42 frames a 26 frames
+    baseInterval = Math.max(26, 42 - Math.floor((state.gameTime / 600) * 16));
+  } else if (state.gameTime < 1200) {
+    // 10 - 20 min: de 26 frames a 16 frames
+    baseInterval = Math.max(16, 26 - Math.floor(((state.gameTime - 600) / 600) * 10));
   } else {
-    // Fase tardia: de 16 frames a 9 frames (~0.15s)
-    baseInterval = Math.max(9, 16 - Math.floor(((state.gameTime - 480) / 300) * 7));
+    // 20 - 30+ min: de 16 frames a 9 frames
+    baseInterval = Math.max(9, 16 - Math.floor(((state.gameTime - 1200) / 600) * 7));
   }
 
   const mult = state.spawnRateMultiplier || 1.0;
@@ -291,65 +313,54 @@ export function handleSpawning() {
            ny = Math.max(20, Math.min(state.height - 20, sy + (Math.random() * 120 - 60)));
          }
          const sw = new SwarmerEnemy(nx, ny);
-         state.enemies.push(sw);
+         state.enemies.push(applyEnemyScaling(sw));
        }
        return;
     }
 
     // 2. Enemigos especiales por progresion
     if (state.bossDefeatTimes.kyren && Math.random() < 0.22) {
-       state.enemies.push(new RangerEnemy());
+       state.enemies.push(applyEnemyScaling(new RangerEnemy()));
        return;
     }
     if (state.bossDefeatTimes.amalgam && Math.random() < 0.08) {
-       state.enemies.push(new MotherEnemy());
+       state.enemies.push(applyEnemyScaling(new MotherEnemy()));
        return;
     }
 
     // 3. Cantidad de enemigos por lote (Batch Spawning)
     let batchCount = 1;
-    if (state.gameTime < 60) {
+    if (state.gameTime < 300) { // 0 - 5 min
       batchCount = Math.random() < 0.25 ? 2 : 1;
-    } else if (state.gameTime < 180) {
+    } else if (state.gameTime < 900) { // 5 - 15 min
       batchCount = Math.random() < 0.40 ? 2 : 1;
-    } else if (state.gameTime < 480) {
+    } else if (state.gameTime < 1500) { // 15 - 25 min
       const r = Math.random();
       batchCount = r < 0.30 ? 3 : (r < 0.70 ? 2 : 1);
-    } else {
+    } else { // 25 - 30+ min
       batchCount = Math.random() < 0.35 ? 3 : 2;
     }
 
-    // 4. Tipo de enemigo estandar
-    let enemyType;
-    if (state.gameTime < 180) {
-      enemyType = 'small';
-    } else if (state.gameTime < 480) {
-      enemyType = Math.random() < 0.50 ? 'medium' : 'small';
-    } else {
-      const roll = Math.random();
-      if (roll < 0.35) {
-        enemyType = 'large';
-      } else if (roll < 0.70) {
-        enemyType = 'medium';
-      } else {
+    // 4. Tipo de enemigo estandar y spawneo distribuido
+    for (let i = 0; i < batchCount; i++) {
+      let enemyType;
+      if (state.gameTime < 600) { // 0 - 10 min
         enemyType = 'small';
+      } else if (state.gameTime < 1200) { // 10 - 20 min
+        enemyType = Math.random() < 0.50 ? 'medium' : 'small';
+      } else { // 20 - 30+ min
+        const roll = Math.random();
+        if (roll < 0.35) {
+          enemyType = 'large';
+        } else if (roll < 0.70) {
+          enemyType = 'medium';
+        } else {
+          enemyType = 'small';
+        }
       }
-    }
-
-    const firstEnemy = new StandardEnemy(enemyType);
-    state.enemies.push(firstEnemy);
-
-    const isHoriz = firstEnemy.y < 0 || firstEnemy.y > state.height;
-    for (let i = 1; i < batchCount; i++) {
-      let ox, oy;
-      if (isHoriz) {
-        ox = Math.max(20, Math.min(state.width - 20, firstEnemy.x + (Math.random() * 80 - 40)));
-        oy = firstEnemy.y < 0 ? -(90 + Math.random() * 40) : (state.height + 90 + Math.random() * 40);
-      } else {
-        ox = firstEnemy.x < 0 ? -(90 + Math.random() * 40) : (state.width + 90 + Math.random() * 40);
-        oy = Math.max(20, Math.min(state.height - 20, firstEnemy.y + (Math.random() * 80 - 40)));
-      }
-      state.enemies.push(new StandardEnemy(enemyType, ox, oy));
+      
+      // Al no pasar x, y, el constructor usa sus propios nodos aleatorios en el perímetro
+      state.enemies.push(applyEnemyScaling(new StandardEnemy(enemyType)));
     }
   }
 }

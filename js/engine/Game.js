@@ -9,6 +9,8 @@ import { spawnExplosion } from '../entities/effects/spawnExplosion.js';
 import { MenuBackgroundShowcase, VectorTitleRenderer } from './MenuScene.js';
 import { audioManager } from './AudioManager.js';
 import { worldLayer } from '../main.js';
+import { SaveManager } from './SaveManager.js';
+import { bossRegistry } from '../data/bossRegistry.js';
 
 export let menuShowcase = null;
 export let vectorTitle = null;
@@ -293,7 +295,6 @@ export function updateBackgroundLayer() {
 
   // 4. Arena Boundary
   const borderProps = state.environment.borders.getComputedProps(state.gameTime);
-  const glow = 15 + Math.sin(state.gameTime * 2) * 5;
   
   arenaBoundaryGraphics.clear();
 
@@ -317,7 +318,7 @@ export function updateBackgroundLayer() {
     return null;
   };
 
-  const parsedOuter = parseBorderColor(borderProps.outerColor);
+  const parsedOuter = parseBorderColor(borderProps.color);
   if (parsedOuter !== null) outerHex = parsedOuter;
 
   const parsedInner = parseBorderColor(borderProps.innerColor);
@@ -326,17 +327,21 @@ export function updateBackgroundLayer() {
   const parsedCorner = parseBorderColor(borderProps.cornerColor);
   if (parsedCorner !== null) cornerHex = parsedCorner;
 
+  // Base brightness with pulse applied
+  const brightness = borderProps.computedBrightness || 1.0;
+  const currentGlow = borderProps.glow || 15;
+
   // Outer glow (simulated with thick low-alpha line)
-  arenaBoundaryGraphics.lineStyle(10, outerHex, 0.3);
+  arenaBoundaryGraphics.lineStyle(currentGlow, outerHex, 0.3 * brightness);
   arenaBoundaryGraphics.drawRect(0, 0, state.width, state.height);
 
   // Inner line
-  arenaBoundaryGraphics.lineStyle(1.5, innerHex, 0.7);
+  arenaBoundaryGraphics.lineStyle(1.5, innerHex, 0.7 * brightness);
   arenaBoundaryGraphics.drawRect(0, 0, state.width, state.height);
 
   // Corners
   const cornerLen = 50;
-  arenaBoundaryGraphics.lineStyle(3, cornerHex, 1.0);
+  arenaBoundaryGraphics.lineStyle(3, cornerHex, 1.0 * brightness);
   
   // Top-Left
   arenaBoundaryGraphics.moveTo(0, cornerLen);
@@ -955,4 +960,116 @@ export function loop(timestamp) {
     state.camera.applyToLayer(worldLayer);
   }
 
+}
+export function resumeGame() {
+  const saveData = SaveManager.loadGame();
+  if (!saveData) return;
+
+  const startOverlay = document.getElementById("start-screen-overlay");
+  const uiLayer = document.getElementById("ui-layer");
+  if (startOverlay) startOverlay.style.display = "none";
+  if (uiLayer) uiLayer.style.display = "block";
+  
+  audioManager.resumeAudioContext();
+  audioManager.playSound('main_gun_fire', { volume: 0.7 });
+  
+  state.isInMenu = false;
+  state.reset();
+  
+  // Rebuild State
+  state.gameTime = saveData.gameTime;
+  state.killCount = saveData.killCount;
+  state.nextBossTime = saveData.nextBossTime;
+  state.nextWaveTime = saveData.nextWaveTime;
+  state.isWaveActive = saveData.isWaveActive;
+  state.waveTimer = saveData.waveTimer;
+  state.spawnTimer = saveData.spawnTimer;
+  state.hasRerolledCurrentLevel = saveData.hasRerolledCurrentLevel;
+  state.bossScaling = saveData.bossScaling;
+  state.lastBossName = saveData.lastBossName;
+  state.bossDefeatTimes = saveData.bossDefeatTimes;
+  state.damageStats = saveData.damageStats;
+  
+  hideWarningBanner("boss-warning-banner");
+  hideWarningBanner("wave-warning-banner");
+  
+  if (menuShowcase) {
+    menuShowcase.destroy();
+    menuShowcase = null;
+  }
+  if (vectorTitle) {
+    vectorTitle.destroy();
+    vectorTitle = null;
+  }
+
+  if (state.player && typeof state.player.destroy === 'function') {
+    state.player.destroy();
+  }
+  
+  // Rebuild Player
+  const p = new Player();
+  const pd = saveData.player;
+  p.x = pd.x;
+  p.y = pd.y;
+  p.hp = pd.hp;
+  p.maxHp = pd.maxHp;
+  p.level = pd.level;
+  p.xp = pd.xp;
+  p.nextXp = pd.nextXp;
+  p.hasRevivedOnce = pd.hasRevivedOnce;
+  p.acquiredUpgrades = pd.acquiredUpgrades;
+  p.damageMult = pd.damageMult;
+  p.damageUpgradesCount = pd.damageUpgradesCount;
+  p.cooldownMult = pd.cooldownMult;
+  p.blasterRateUpgrades = pd.blasterRateUpgrades;
+  p.critChance = pd.critChance;
+  p.critDamage = pd.critDamage;
+  p.xpMultiplier = pd.xpMultiplier;
+  p.doubleGemChance = pd.doubleGemChance;
+  p.doubleGemUpgradesCount = pd.doubleGemUpgradesCount;
+  p.pickupRadius = pd.pickupRadius;
+  p.magnetUpgrades = pd.magnetUpgrades;
+  p.invulnerabilityMaxTime = pd.invulnerabilityMaxTime;
+  p.iFrameUpgradesCount = pd.iFrameUpgradesCount;
+  p.speed = pd.speed;
+  p.shield = pd.shield;
+  p.weapons = pd.weapons;
+  p.activeSkill = pd.activeSkill;
+  state.player = p;
+
+  if (state.camera) {
+    state.camera.reset();
+    state.camera.x = state.player.x;
+    state.camera.y = state.player.y;
+    state.camera.targetX = state.player.x;
+    state.camera.targetY = state.player.y;
+  }
+  
+  // Rebuild Bosses
+  for (let bd of saveData.bosses) {
+    const bossDef = bossRegistry.find(b => b.id === bd.className);
+    if (bossDef) {
+      // bossDef.instantiate pushes to state.bosses automatically
+      const bInst = bossDef.instantiate(bd.x, bd.y);
+      if (typeof bInst.restoreState === 'function') {
+        bInst.restoreState(bd);
+      } else {
+        bInst.hp = bd.hp;
+        bInst.maxHp = bd.maxHp;
+        if (bd.phase !== null && bInst.phase !== undefined) bInst.phase = bd.phase;
+      }
+    }
+  }
+
+  let desiredMusic = 'music_main';
+  if (state.bosses.length > 0) {
+    const bossName = state.bosses[0].constructor.name;
+    if (bossName === 'AmalgamBossRoot') desiredMusic = 'music_boss_amalgam';
+    else if (bossName === 'DevourerOfTaxBoss') desiredMusic = 'music_boss_devourer';
+    else if (bossName === 'KyrenBoss') desiredMusic = 'music_boss_kyren';
+  }
+  audioManager.playMusic(desiredMusic);
+
+  startUILoop();
+  triggerHUDUpdate();
 }

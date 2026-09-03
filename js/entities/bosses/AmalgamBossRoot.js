@@ -53,4 +53,21 @@ export class AmalgamBossRoot {
       if (typeof n.destroy === 'function') n.destroy();
     });
   }
+
+  restoreState(saveData) {
+    if (saveData.nodes && saveData.nodes.length > 0) {
+      // Clear initial node
+      this.nodes.forEach(n => {
+        if (typeof n.destroy === 'function') n.destroy();
+      });
+      this.nodes = [];
+      
+      saveData.nodes.forEach(nd => {
+        const node = new AmalgamNode("Amalgam", nd.x, nd.y, nd.maxHp, nd.maxHp, nd.stage || 1);
+        node.hp = nd.hp;
+        node.root = this;
+        this.nodes.push(node);
+      });
+    }
+  }
 }
