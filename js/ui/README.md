@@ -24,8 +24,8 @@ Actualiza dinámicamente la barra de experiencia, la barra de vida del jugador y
 
 
 **Modificaciones Recientes:**
-- El **Panel de Opciones** (`⚙️ OPCIONES`) reemplaza el botón principal de Admin, agregando controles interactivos de volumen BGM y SFX que se conectan con el `AudioManager.js`.
-- El **Panel de Administrador** ahora está alojado de manera interna dentro del panel de opciones (Opciones de Desarrollador).
+- El **Botón de Pausa / Opciones** (`#pause-btn`) abre el panel con controles interactivos de volumen BGM y SFX conectados con el `AudioManager.js`, además de controles de zoom de cámara y acceso al panel de administración (`#optionsBtnDev`).
+- El **Panel de Administrador** (`ADMIN PANEL`) aloja switches de testeo, botones rápidos (`QUICK TEST`, dummy, kill all) y sub-menús de spawn en inglés (`SPAWN ENEMY`, `SPAWN BOSS`, `RECEIVE UPGRADE`, `RESET UPGRADES`).
 - Cada vez que se abre cualquier menú superpuesto (Opciones, Mejoras o Game Over), el BGM actual del juego se atenúa.
 - Al interactuar o pasar el mouse sobre cartas de mejoras, casillas y botones, se ejecutan sonidos de IU globales gestionados automáticamente a través de escuchas genéricas de eventos (click, mouseover).
 

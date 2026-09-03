@@ -30,7 +30,7 @@ This repository contains a browser-based arena survival game ("Neon Survivors").
   - Supports dynamic property modification (volume, pitch, speed), throttling for overlapped sounds (e.g. `throttleMs: 50`), and independent channels (`bgmVolume`, `sfxVolume`).
   - Music dynamically switches per boss. Menus opening automatically muffle BGM (fades to 20%).
 - **Options & Admin Panel & Developer Tools**: 
-  - The HUD contains an `⚙️ OPCIONES` button (sound sliders, camera zoom, developer tools access) and a `🚀 TESTEO RÁPIDO` button.
+  - The HUD contains a `⏸️ Pause / Options` button (`#pause-btn`, sound sliders, camera zoom, developer tools access) and a `🚀 QUICK TEST` button (`#quick-test-btn`).
   - The Admin Menu allows toggling God Mode, enemy/boss spawns, a live real-time DPS/damage breakdown HUD overlay (`#testing-panel`), clearing all enemies, spawning dummy targets, and spawning individual enemies/bosses/upgrades via visual card grids.
 - **Boss Mechanics & Snake Movement Architecture (`DevourerOfTaxBoss`, `CarlosMinion`, `SebastianMinion`)**: 
   - **Eater of Worlds Kinematics, Speed Zones & Low-Speed Exit State Machine**: 
@@ -88,6 +88,11 @@ This repository contains a browser-based arena survival game ("Neon Survivors").
   - Players have `critChance` (base 0) and `critDamage` (base 1.5).
   - Computed on impact inside `Enemy.js` and `Boss.js` `takeDamage` methods. Crits trigger larger, punchier floating damage text matching the hitting weapon's color with higher brightness (neon glow and luminous white core) and subtle randomized rotation tilt ($\pm 10^\circ$).
 - **60 FPS Performance Optimization Architecture**:
+  - **Zero-Repaint Warning Banners & GPU Tiling Sprite Tinting**:
+    - Eliminated continuous CPU text-shadow rasterization and layer recomposition by keeping `text-shadow` and `box-shadow` static, promoting warning banners (`#boss-warning-banner`, `#wave-warning-banner`) to isolated GPU compositor layers (`will-change: transform, opacity;`, `contain: layout paint;`, `transform: translate3d(-50%, 0, 0) scale3d(...)`).
+    - Implemented auto-fadeout timeout (3.5s for waves, 4.0s for boss spawn) via `showWarningBanner()` / `hideWarningBanner()` preventing permanent DOM animation loops.
+    - Eliminated `gridTilingSprite.texture.update()` / `gl.texImage2D` memory transfers during wave/boss gridline pulses by baking a single white grid tile at startup and driving pulse hues and alpha directly via `gridTilingSprite.tint` and `gridTilingSprite.alpha` in WebGL shader uniforms.
+    - Optimized `updateBossSpawnBeacon` from 10 concentric circle tessellations per frame to 2 dual-layer fills.
   - **Procedural Batching & Instanced Geometry (`ProceduralBatchRenderer.js`)**: Zero-GC procedural polygon pipeline for enemies and snake bosses. Precomputes unit polygon vertices (`GeometryBank`), flattens instance data into a single `Float32Array`, performs CPU AABB Frustum Culling against camera viewport bounds, and flushes grouped polygon batches with direct affine transformations and minimal draw calls.
   - **UI Dirty Checking & DOM Throttling (`UIManager.js`)**: Cached DOM element references (`getDom()`) and reactive signature cache (`_uiCache`) eliminating 100% of redundant DOM writes (`textContent`, `style.width`, `innerHTML`) per frame. Throttles secondary panels (Testing Panel) to 10 FPS. Employs keyed dirty signatures on multi-boss health bars (`renderBossBars()`) to avoid DOM layout recalculation when HP values remain unchanged.
   - **Hit-Testing & Pointer-Events Optimization**: Applied `pointer-events: none;` across all non-interactive HUD overlays (`.hp-container`, `.level-badge`, `.stats-hud`, `#boss-hud-container`, `#testing-panel`), eliminating `mouseover` bubble traversals during mouse motion over the canvas.
@@ -112,7 +117,7 @@ This repository contains a browser-based arena survival game ("Neon Survivors").
   - **Canonical Resolution**: Fixed internal canvas coordinate space of `1920 x 1080` (16:9). `canvas.width = 1920` and `canvas.height = 1080` remain constant on all devices.
   - **Responsive Letterboxing**: `#game-container` is strictly aspect-ratio 16:9, centered on `body` with black background (`#000000`).
   - **Uniform Scaling**: Scale factor `Math.min(viewport.width / 1920, viewport.height / 1080)` sets `#game-container` pixel dimensions and `--ui-scale`.
-  - **Coordinate Mapping (`Input.js`)**: `getVirtualCoords(clientX, clientY)` converts raw viewport events to canonical virtual coordinates `(0-1920, 0-1080)` and `screenToWorld()` projects into world coordinates with perfect accuracy across letterboxed screens.
+  - **Coordinate Mapping & Mobile Joysticks (`Input.js`)**: `getVirtualCoords(clientX, clientY)` provides accurate CSS canvas-relative coordinates without DPR distortion. `screenToWorld()` projects into world coordinates with perfect accuracy across letterboxed screens. Dynamic floating joysticks (`virtual-joystick-base`, `virtual-aim-joystick-base`) anchor their centers directly under the touch contact point in true CSS pixels.
 - **Safari iOS Mobile Viewport Lifecycle & Rotation Compatibility**:
   - **Visual Viewport Prioritization**: `getViewportSize()` queries `window.visualViewport.width/height` before fallback to `innerWidth/innerHeight`, accurately tracking Safari's dynamic navigation bars and landscape rotation.
   - **Multi-Stage Event Handlers**: Listens to `'resize'`, `'orientationchange'`, `visualViewport.onresize`, `visualViewport.onscroll`, and `'visibilitychange'`. Schedules multi-stage execution passes (immediate, 100ms, 200ms, 350ms) to ensure full synchronization with Safari's orientation animations.
@@ -134,8 +139,8 @@ This repository contains a browser-based arena survival game ("Neon Survivors").
   - **Charge Preservation Deflexion**: 5% per level (max 2 = 10%) chance to deflect without consuming charge. When deflected, the explosion still occurs and the charge remains intact.
   - **Active Stat Buffs**: +5% weapon damage (max 5) and +5% weapon fire speed (max 5) while shield charges are active; bonuses turn off if charges drop to 0 until regenerated.
   - **Under-Ship Shield Cooldown Indicator**: Renders directly under the Laser Cannon cooldown bar (or under the ship if no laser), colored dynamically with the hue of the specific charge currently being regenerated.
-
-
-
-
-
+- **Full English Localization Architecture**:
+  - **100% English Visual Standard**: All user-facing visual text, HTML elements (`<html lang="en">`), HUD warning banners (`#boss-warning-banner`, `#wave-warning-banner`), mobile tooltips (`#laser-cancel-zone`), floating combat feedback (`+1 SHIELD`, `REVIVED!`, `HP HALVED!`, `DEFLECTED!`), testing panel headers (`📊 TEST DPS & DAMAGE`), and modal dialogs are completely in English.
+  - **Upgrade Database Integrity**: All cards in `upgrades.js` have clear English names and descriptions (e.g. `Vector Thrusters`, `Magnetic Attraction`, `Nova Discharge`, `Orbital Plasma Shield`, `Force Field`, `Core Hack`, etc.) while strictly retaining internal `id` strings to ensure full backward compatibility.
+  - **Developer & Admin Modals**: Spawn sub-menus (`SPAWN ENEMY`, `RECEIVE UPGRADE`), reset cards (`RESET UPGRADES`), and game over actions (`REVIVE (1 PER GAME)`) are standardized in English.
+  - **Enemy & Boss Registries**: Central registries supply English names and tactical category identifiers (`Small`, `Medium`, `Large`, `Swarmer`, `Ranger`, `Mother`, `Mother Larva`; `Standard`, `Special`, `Ranged`, `Tank`).

@@ -74,7 +74,7 @@
       position: absolute;
       top: clamp(32px, 4.8cqh, 48px);
       left: 50%;
-      transform: translateX(-50%);
+      transform: translate3d(-50%, 0, 0);
       background: linear-gradient(90deg, transparent, rgba(255, 0, 85, 0.4) 20%, rgba(255, 0, 85, 0.85) 50%, rgba(255, 0, 85, 0.4) 80%, transparent);
       color: #fff;
       font-size: clamp(11px, 1.3cqw, 15px);
@@ -83,22 +83,32 @@
       padding: clamp(3px, 0.5cqh, 6px) clamp(14px, 2cqw, 30px);
       border-top: 1px solid #ff0055;
       border-bottom: 1px solid #ff0055;
-      text-shadow: 0 0 10px #ff0055, 0 0 20px #ff0055;
-      box-shadow: 0 0 25px rgba(255, 0, 85, 0.5);
-      animation: pulseBossWarning 0.4s infinite alternate;
+      text-shadow: 0 0 10px #ff0055, 0 0 18px rgba(255, 0, 85, 0.7);
+      box-shadow: 0 0 18px rgba(255, 0, 85, 0.45);
+      animation: pulseBossWarning 0.5s infinite alternate ease-in-out;
       z-index: 40;
       pointer-events: none;
       white-space: nowrap;
+      will-change: transform, opacity;
+      contain: layout paint;
+      backface-visibility: hidden;
+      transition: opacity 0.4s ease-out;
     }
     @keyframes pulseBossWarning {
-      from { opacity: 0.7; transform: translateX(-50%) scale(0.97); }
-      to { opacity: 1; transform: translateX(-50%) scale(1.03); text-shadow: 0 0 15px #ff0055, 0 0 30px #ff3366, 0 0 45px #ff0055; }
+      from {
+        opacity: 0.82;
+        transform: translate3d(-50%, 0, 0) scale3d(0.97, 0.97, 1);
+      }
+      to {
+        opacity: 1;
+        transform: translate3d(-50%, 0, 0) scale3d(1.03, 1.03, 1);
+      }
     }
     .wave-warning-banner {
       position: absolute;
       top: clamp(32px, 4.8cqh, 48px);
       left: 50%;
-      transform: translateX(-50%);
+      transform: translate3d(-50%, 0, 0);
       background: linear-gradient(90deg, transparent, rgba(255, 140, 0, 0.4) 20%, rgba(255, 140, 0, 0.88) 50%, rgba(255, 140, 0, 0.4) 80%, transparent);
       color: #fff;
       font-size: clamp(11px, 1.3cqw, 15px);
@@ -107,16 +117,26 @@
       padding: clamp(3px, 0.5cqh, 6px) clamp(14px, 2cqw, 30px);
       border-top: 1px solid #ff9900;
       border-bottom: 1px solid #ff9900;
-      text-shadow: 0 0 10px #ff9900, 0 0 20px #ff6600;
-      box-shadow: 0 0 25px rgba(255, 140, 0, 0.55);
-      animation: pulseWaveWarning 0.45s infinite alternate;
+      text-shadow: 0 0 10px #ff9900, 0 0 18px rgba(255, 140, 0, 0.7);
+      box-shadow: 0 0 18px rgba(255, 140, 0, 0.45);
+      animation: pulseWaveWarning 0.5s infinite alternate ease-in-out;
       z-index: 40;
       pointer-events: none;
       white-space: nowrap;
+      will-change: transform, opacity;
+      contain: layout paint;
+      backface-visibility: hidden;
+      transition: opacity 0.4s ease-out;
     }
     @keyframes pulseWaveWarning {
-      from { opacity: 0.75; transform: translateX(-50%) scale(0.97); }
-      to { opacity: 1; transform: translateX(-50%) scale(1.03); text-shadow: 0 0 15px #ff9900, 0 0 30px #ffaa00, 0 0 45px #ff6600; }
+      from {
+        opacity: 0.82;
+        transform: translate3d(-50%, 0, 0) scale3d(0.97, 0.97, 1);
+      }
+      to {
+        opacity: 1;
+        transform: translate3d(-50%, 0, 0) scale3d(1.03, 1.03, 1);
+      }
     }
     .level-badge {
       position: absolute;

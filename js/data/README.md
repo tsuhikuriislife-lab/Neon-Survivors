@@ -14,7 +14,7 @@ Este archivo contiene la base de datos de todas las mejoras (upgrades) que el ju
 **Estructura de una mejora (Cosas que se pueden cambiar):**
 Cada mejora tiene la siguiente estructura que puedes modificar fácilmente:
 - `id`: Identificador único de la mejora.
-- `name`: Nombre que se muestra en la interfaz (ej. 'Cadencia Multi-Láser').
+- `name`: Nombre en inglés que se muestra en la interfaz (ej. 'Vector Thrusters', 'Multi-Laser Fire Rate').
 - `icon`: Emoji o ícono representativo.
 - `desc`: Descripción de lo que hace la mejora.
 - `isAvailable(p)`: Función opcional que determina si la mejora puede aparecer en las opciones de subida de nivel. Se usa para establecer límites (ej. máximo 4 niveles). **Aquí puedes cambiar los topes máximos modificando el número en la condición.**

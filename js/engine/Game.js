@@ -3,7 +3,7 @@ import { resetInputState } from './Input.js';
 import { Player } from '../entities/player/Player.js';
 import { startUILoop, triggerHUDUpdate, showBossRewardMenu } from '../ui/UIManager.js';
 import { bitmapFont } from "./BitmapFont.js";
-import { handleSpawning, spawnRandomBoss, updatePendingBossSpawn, updateWave } from '../systems/WaveManager.js';
+import { handleSpawning, spawnRandomBoss, updatePendingBossSpawn, updateWave, hideWarningBanner } from '../systems/WaveManager.js';
 import { dist } from './Utils.js';
 import { spawnExplosion } from '../entities/effects/spawnExplosion.js';
 import { MenuBackgroundShowcase, VectorTitleRenderer } from './MenuScene.js';
@@ -16,6 +16,8 @@ export let vectorTitle = null;
 export function initGame() {
   state.isInMenu = false;
   state.reset();
+  hideWarningBanner("boss-warning-banner");
+  hideWarningBanner("wave-warning-banner");
   if (menuShowcase) {
     menuShowcase.destroy();
     menuShowcase = null;
@@ -47,9 +49,18 @@ if (tileCanvas) {
   tileCanvas.width = 40;
   tileCanvas.height = 40;
   tileCtx = tileCanvas.getContext('2d', { alpha: true });
+  // Generate a clean white grid tile pattern once at startup for zero-overhead GPU tinting
+  tileCtx.clearRect(0, 0, 40, 40);
+  tileCtx.strokeStyle = "#ffffff";
+  tileCtx.lineWidth = 1.5;
+  tileCtx.beginPath();
+  tileCtx.moveTo(20, 0);
+  tileCtx.lineTo(20, 40);
+  tileCtx.moveTo(0, 20);
+  tileCtx.lineTo(40, 20);
+  tileCtx.stroke();
 }
-let cachedLinesProps = null;
-let gridPattern = null;
+let cachedBgColorHex = null;
 
 // --- PIXI Environment Setup ---
 export const backgroundGraphics = new PIXI.Graphics();
@@ -195,13 +206,30 @@ function initEnvironmentLayers() {
   environmentInitialized = true;
 }
 
+function parseRgbaString(str) {
+  if (!str) return { hex: 0x00ffff, alpha: 0.08 };
+  if (str.startsWith('#')) {
+    const hexVal = parseInt(str.replace('#', ''), 16);
+    return { hex: isNaN(hexVal) ? 0x00ffff : hexVal, alpha: 0.08 };
+  }
+  const match = str.match(/rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)(?:\s*,\s*([\d.]+))?\s*\)/i);
+  if (match) {
+    const r = Math.min(255, Math.max(0, parseInt(match[1])));
+    const g = Math.min(255, Math.max(0, parseInt(match[2])));
+    const b = Math.min(255, Math.max(0, parseInt(match[3])));
+    const a = match[4] !== undefined ? parseFloat(match[4]) : 0.08;
+    return { hex: (r << 16) | (g << 8) | b, alpha: a };
+  }
+  return { hex: 0x00ffff, alpha: 0.08 };
+}
+
 export function updateBackgroundLayer() {
   initEnvironmentLayers();
 
   const bgProps = state.environment.background.getComputedProps(state.gameTime);
   const linesProps = state.environment.gridLines.getComputedProps(state.gameTime);
   
-  // 1. Base background
+  // 1. Base background (cached to avoid redundant CPU clears & fills)
   let bgColorHex = 0x04030a;
   const parseBgColor = (c) => {
     if (!c) return null;
@@ -220,33 +248,22 @@ export function updateBackgroundLayer() {
   const parsedBg = parseBgColor(bgProps.color);
   if (parsedBg !== null) bgColorHex = parsedBg;
 
-  backgroundGraphics.clear();
-  backgroundGraphics.beginFill(bgColorHex);
-  backgroundGraphics.drawRect(0, 0, state.width, state.height);
-  backgroundGraphics.endFill();
-
-  // 2. Grid (update tileCanvas if changed)
-  const linesColorStr = linesProps.color || "rgba(0, 255, 255, 0.04)";
-  const linesWidth = Math.max(1, (linesProps.computedBrightness || 1.0));
-  const linesKey = linesColorStr + '_' + linesWidth.toFixed(2);
-
-  if (tileCanvas && cachedLinesProps !== linesKey) {
-    tileCtx.clearRect(0, 0, 40, 40);
-    tileCtx.strokeStyle = linesColorStr;
-    tileCtx.lineWidth = linesWidth;
-    tileCtx.beginPath();
-    tileCtx.moveTo(20, 0);
-    tileCtx.lineTo(20, 40);
-    tileCtx.moveTo(0, 20);
-    tileCtx.lineTo(40, 20);
-    tileCtx.stroke();
-    cachedLinesProps = linesKey;
-    if (gridTilingSprite) {
-      gridTilingSprite.texture.update();
-    }
+  if (cachedBgColorHex !== bgColorHex) {
+    backgroundGraphics.clear();
+    backgroundGraphics.beginFill(bgColorHex);
+    backgroundGraphics.drawRect(0, 0, state.width, state.height);
+    backgroundGraphics.endFill();
+    cachedBgColorHex = bgColorHex;
   }
 
+  // 2. Grid (100% GPU accelerated via sprite tint and alpha, 0 canvas redraws, 0 texture updates)
   if (gridTilingSprite) {
+    const parsedLine = parseRgbaString(linesProps.color);
+    const brightness = linesProps.computedBrightness || 1.0;
+
+    gridTilingSprite.tint = parsedLine.hex;
+    gridTilingSprite.alpha = Math.max(0.02, Math.min(0.85, parsedLine.alpha * brightness * 1.5));
+
     gridOffset = (gridOffset + 0.5) % 40;
     gridTilingSprite.tilePosition.y = gridOffset;
   }
@@ -368,16 +385,14 @@ export function updateBossSpawnBeacon() {
 
   const maxRadius = 130 + progress * 30;
   
-  // Since PIXI gradients are tough, we can draw a series of circles to simulate a gradient
-  const steps = 10;
-  for (let i = 0; i < steps; i++) {
-    const r = maxRadius * (1 - i/steps);
-    // alpha decreases as radius increases
-    const alpha = (0.15 + pulse * 0.2) * (i/steps);
-    bossBeaconGraphics.beginFill(0xff0032, alpha);
-    bossBeaconGraphics.drawCircle(bx, by, r);
-    bossBeaconGraphics.endFill();
-  }
+  // Optimized dual-layer glow circle (replaces 10 concentric circle tessellations per frame)
+  bossBeaconGraphics.beginFill(0xff0032, 0.10 + pulse * 0.12);
+  bossBeaconGraphics.drawCircle(bx, by, maxRadius);
+  bossBeaconGraphics.endFill();
+
+  bossBeaconGraphics.beginFill(0xff0032, 0.22 + pulse * 0.18);
+  bossBeaconGraphics.drawCircle(bx, by, maxRadius * 0.55);
+  bossBeaconGraphics.endFill();
 
   // Concentric rotating beacon rings
   const rot = performance.now() * 0.002;

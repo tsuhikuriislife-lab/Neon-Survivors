@@ -7,6 +7,53 @@ import { MotherEnemy } from '../entities/enemies/MotherEnemy.js';
 import { getBossById, getMainBosses } from '../data/bossRegistry.js';
 import { audioManager } from '../engine/AudioManager.js';
 
+let bossBannerTimeout = null;
+let waveBannerTimeout = null;
+
+export function showWarningBanner(elementId, durationSec = 3.5) {
+  const banner = document.getElementById(elementId);
+  if (!banner) return;
+
+  if (elementId === 'boss-warning-banner' && bossBannerTimeout) {
+    clearTimeout(bossBannerTimeout);
+    bossBannerTimeout = null;
+  }
+  if (elementId === 'wave-warning-banner' && waveBannerTimeout) {
+    clearTimeout(waveBannerTimeout);
+    waveBannerTimeout = null;
+  }
+
+  banner.style.display = "block";
+  banner.style.opacity = "1";
+
+  const timer = setTimeout(() => {
+    banner.style.opacity = "0";
+    setTimeout(() => {
+      if (banner.style.opacity === "0") {
+        banner.style.display = "none";
+      }
+    }, 400);
+  }, durationSec * 1000);
+
+  if (elementId === 'boss-warning-banner') bossBannerTimeout = timer;
+  if (elementId === 'wave-warning-banner') waveBannerTimeout = timer;
+}
+
+export function hideWarningBanner(elementId) {
+  const banner = document.getElementById(elementId);
+  if (!banner) return;
+  if (elementId === 'boss-warning-banner' && bossBannerTimeout) {
+    clearTimeout(bossBannerTimeout);
+    bossBannerTimeout = null;
+  }
+  if (elementId === 'wave-warning-banner' && waveBannerTimeout) {
+    clearTimeout(waveBannerTimeout);
+    waveBannerTimeout = null;
+  }
+  banner.style.opacity = "0";
+  banner.style.display = "none";
+}
+
 export function triggerBossSpawnSequence(bossType, customX, customY) {
   if (state.pendingBossSpawn) return;
 
@@ -32,8 +79,7 @@ export function triggerBossSpawnSequence(bossType, customX, customY) {
     duration: 5.0
   };
 
-  const banner = document.getElementById("boss-warning-banner");
-  if (banner) banner.style.display = "block";
+  showWarningBanner("boss-warning-banner", 4.0);
 
   // 1. Cinematic Camera Focus on Boss Spawn Beacon
   if (state.camera && typeof state.camera.focusOn === 'function') {
@@ -96,8 +142,7 @@ export function updatePendingBossSpawn(dt) {
     const pending = state.pendingBossSpawn;
     state.pendingBossSpawn = null;
 
-    const banner = document.getElementById("boss-warning-banner");
-    if (banner) banner.style.display = "none";
+    hideWarningBanner("boss-warning-banner");
 
     // 1. Heavy Screenshake on Boss Detonation
     if (state.camera && typeof state.camera.shake === 'function') {
@@ -145,12 +190,11 @@ export function startWave(duration = 60) {
   state.waveTimer = duration;
   state.waveDuration = duration;
 
-  const banner = document.getElementById("wave-warning-banner");
-  if (banner) banner.style.display = "block";
+  showWarningBanner("wave-warning-banner", 3.5);
 
-  // 1. Camera pulse on wave trigger
+  // 1. Camera pulse on wave trigger (punchy 1.2s pulse instead of 10s heavy shake)
   if (state.camera && typeof state.camera.shake === 'function') {
-    state.camera.shake({ strength: 3, duration: 10, rotation: 0.002, scale: 0.01 });
+    state.camera.shake({ strength: 3.5, duration: 1.2, rotation: 0.002, scale: 0.012 });
   }
 
   // 2. Alert Environment Effects (Pulsing Amber/Orange Wave Theme)
@@ -182,8 +226,7 @@ export function endWave() {
   state.isWaveActive = false;
   state.waveTimer = 0;
 
-  const banner = document.getElementById("wave-warning-banner");
-  if (banner) banner.style.display = "none";
+  hideWarningBanner("wave-warning-banner");
 }
 
 export function updateWave(dt) {

@@ -43,17 +43,12 @@ export const aimInput = {
 };
 
 export function getVirtualCoords(clientX, clientY) {
-  const canvas = document.querySelector("#game-container canvas");
+  const canvas = document.querySelector("#game-container canvas") || document.querySelector("canvas");
   if (!canvas) return { x: clientX, y: clientY };
   const rect = canvas.getBoundingClientRect();
-  if (rect.width === 0 || rect.height === 0) return { x: clientX, y: clientY };
-
-  const curWidth = canvas.width || 1920;
-  const curHeight = canvas.height || 1080;
-
   return {
-    x: (clientX - rect.left) * (curWidth / rect.width),
-    y: (clientY - rect.top) * (curHeight / rect.height)
+    x: clientX - (rect.left || 0),
+    y: clientY - (rect.top || 0)
   };
 }
 
@@ -107,14 +102,10 @@ export function updateJoystickUI() {
   const knob = document.getElementById('virtual-joystick-knob');
   if (!base || !knob) return;
 
-  const cam = state.camera || { screenWidth: 1920, screenHeight: 1080 };
-  const sw = cam.screenWidth || 1920;
-  const sh = cam.screenHeight || 1080;
-
   if (joystick.active) {
     base.style.display = 'block';
-    base.style.left = `${(joystick.startX / sw) * 100}%`;
-    base.style.top = `${(joystick.startY / sh) * 100}%`;
+    base.style.left = `${joystick.startX}px`;
+    base.style.top = `${joystick.startY}px`;
     knob.style.display = 'block';
     knob.style.left = `calc(50% + ${joystick.dx * 35}%)`;
     knob.style.top = `calc(50% + ${joystick.dy * 35}%)`;
@@ -129,10 +120,6 @@ export function updateAimJoystickUI() {
   const knob = document.getElementById('virtual-aim-joystick-knob');
   const cancelZone = document.getElementById('laser-cancel-zone');
   if (!base || !knob) return;
-
-  const cam = state.camera || { screenWidth: 1920, screenHeight: 1080 };
-  const sw = cam.screenWidth || 1920;
-  const sh = cam.screenHeight || 1080;
 
   const hasLaser = state.player && state.player.weapons && state.player.weapons.laserCannon && state.player.weapons.laserCannon.level > 0;
   const isTouchDevice = ('ontouchstart' in window) || (navigator && navigator.maxTouchPoints > 0);
@@ -152,8 +139,8 @@ export function updateAimJoystickUI() {
   if (aimInput.id !== null && aimInput.hasDragged) {
     base.style.display = 'block';
     base.classList.remove('guide-prompt');
-    base.style.left = `${(aimInput.startX / sw) * 100}%`;
-    base.style.top = `${(aimInput.startY / sh) * 100}%`;
+    base.style.left = `${aimInput.startX}px`;
+    base.style.top = `${aimInput.startY}px`;
     knob.style.display = 'block';
     const offsetX = Math.cos(aimInput.angle) * (aimInput.norm || 1) * 35;
     const offsetY = Math.sin(aimInput.angle) * (aimInput.norm || 1) * 35;
