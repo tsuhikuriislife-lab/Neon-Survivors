@@ -5,7 +5,7 @@ export const upgradeDatabase = [
     id: 'blaster_count',
     rarity: 'uncommon',
     name: 'Multi-Laser Fire Rate',
-    icon: '🔫',
+    icon: '<img src="assets/upgrades/neon-cannon-projectile.png" alt="icon">',
     desc: '+1 Neon cannon projectile per shot.',
     isAvailable: (p) => p.weapons.blaster.projectileCount < 5,
     apply: (p) => { p.weapons.blaster.projectileCount += 1; }
@@ -14,7 +14,7 @@ export const upgradeDatabase = [
     id: 'blaster_rate',
     rarity: 'common',
     name: 'Fire Overload',
-    icon: '⚡',
+    icon: '<img src="assets/upgrades/neon-cannon-cooldown.png" alt="icon">',
     desc: '+25% Neon Cannon reload speed.',
     isAvailable: (p) => (p.blasterRateUpgrades || 0) < 4,
     apply: (p) => { 
