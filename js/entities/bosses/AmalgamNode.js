@@ -20,19 +20,19 @@ export class AmalgamNode extends Boss {
     if (stage === 1) {
       radius = baseRadius * 1.0;
       speed = baseSpeed * 1.0;
-      sprayCount = 20;
+      sprayCount = 21;
     } else if (stage === 2) {
       radius = baseRadius * 0.5;
       speed = baseSpeed * 2.0;
-      sprayCount = 15;
+      sprayCount = 14;
     } else if (stage === 3) {
       radius = baseRadius * 0.25;
       speed = baseSpeed * 3.0;
-      sprayCount = 10;
+      sprayCount = 7;
     } else {
       radius = baseRadius * 0.125;
       speed = baseSpeed * 4.0;
-      sprayCount = 5;
+      sprayCount = 0;
     }
 
     super(x, y, name, maxHp, radius, "#ff0033", hp);

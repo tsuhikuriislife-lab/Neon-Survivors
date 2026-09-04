@@ -162,6 +162,10 @@ export class Player {
   update(dt) {
     if (this.invulnerabilityTimer > 0) {
       this.invulnerabilityTimer -= dt;
+      const flicker = Math.sin(this.invulnerabilityTimer * 28) > 0;
+      if (this.sprite) this.sprite.alpha = flicker ? 0.35 : 0.95;
+    } else if (this.sprite && this.sprite.alpha !== 1.0) {
+      this.sprite.alpha = 1.0;
     }
 
     if (this.hpRegen > 0 && this.hp < this.maxHp) {
@@ -974,6 +978,34 @@ export class Player {
         this.uiGraphics.drawRoundedRect(barX, barY, fillW, barHeight, radius);
         this.uiGraphics.endFill();
       }
+    }
+  }
+
+  destroy() {
+    if (this.weapons && this.weapons.laserCannon && this.weapons.laserCannon.soundNode) {
+      try {
+        this.weapons.laserCannon.soundNode.stop();
+        this.weapons.laserCannon.soundNode.disconnect();
+      } catch (e) {}
+      this.weapons.laserCannon.soundNode = null;
+    }
+    if (this.orbitalSprites) {
+      while (this.orbitalSprites.length > 0) {
+        const s = this.orbitalSprites.pop();
+        if (s && s.parent) s.parent.removeChild(s);
+        if (s && s.destroy) s.destroy();
+      }
+    }
+    if (this.container) {
+      if (this.container.parent) {
+        this.container.parent.removeChild(this.container);
+      }
+      this.container.destroy({ children: true });
+      this.container = null;
+      this.sprite = null;
+      this.orbitalContainer = null;
+      this.shieldGraphics = null;
+      this.uiGraphics = null;
     }
   }
 }

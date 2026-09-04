@@ -211,11 +211,20 @@ export function resetInputState() {
   joystick.dx = 0;
   joystick.dy = 0;
 
+  for (const k in keys) {
+    keys[k] = false;
+  }
+
   updateJoystickUI();
   updateAimJoystickUI();
 }
 
 export function initInput() {
+  // --- WINDOW BLUR ---
+  window.addEventListener("blur", () => {
+    resetInputState();
+  });
+
   // --- KEYBOARD ---
   window.addEventListener("keydown", (e) => { 
     keys[e.key.toLowerCase()] = true; 

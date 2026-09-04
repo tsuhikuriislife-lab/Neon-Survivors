@@ -1,5 +1,5 @@
 import { state } from '../engine/gameState.js';
-import { cancelAiming } from '../engine/Input.js';
+import { cancelAiming, resetInputState } from '../engine/Input.js';
 import { formatTime, drawPolygon } from '../engine/Utils.js';
 import { upgradeDatabase } from '../data/upgrades.js';
 import { initGame, resumeGame } from '../engine/Game.js';
@@ -228,6 +228,7 @@ export function returnToMainMenu() {
   state.isInMenu = true;
   state.isPaused = false;
   state.isGameOver = false;
+  state.reset();
   
   const gameOverModal = document.getElementById("gameOverModal");
   const levelModal = document.getElementById("levelModal");
@@ -400,32 +401,76 @@ export function initUIListeners() {
     };
   }
 
-  if (pauseBtn) {
-    pauseBtn.onclick = () => {
-      state.isPaused = true;
-      cancelAiming();
-      optionsModal.style.display = "flex";
-      audioManager.setMusicMuffled(true);
-      
-      bgmVol.value = audioManager.bgmVolume;
-      sfxVol.value = audioManager.sfxVolume;
-      bgmMute.checked = audioManager.bgmMuted;
-      sfxMute.checked = audioManager.sfxMuted;
+  const openPauseMenu = () => {
+    if (state.isInMenu || state.isGameOver) return;
+    const levelModal = document.getElementById("levelModal");
+    const bossRewardModal = document.getElementById("bossRewardModal");
+    const gameOverModal = document.getElementById("gameOverModal");
+    if (levelModal && levelModal.style.display === "flex") return;
+    if (bossRewardModal && bossRewardModal.style.display === "flex") return;
+    if (gameOverModal && gameOverModal.style.display === "flex") return;
 
-      if (cameraZoomSlider && state.camera) {
-        cameraZoomSlider.value = state.camera.userZoom || 1.0;
-        if (cameraZoomValue) {
-          cameraZoomValue.innerText = `${(state.camera.userZoom || 1.0).toFixed(2)}x`;
-        }
+    state.isPaused = true;
+    cancelAiming();
+    resetInputState();
+    optionsModal.style.display = "flex";
+    audioManager.setMusicMuffled(true);
+    
+    bgmVol.value = audioManager.bgmVolume;
+    sfxVol.value = audioManager.sfxVolume;
+    bgmMute.checked = audioManager.bgmMuted;
+    sfxMute.checked = audioManager.sfxMuted;
+
+    if (cameraZoomSlider && state.camera) {
+      cameraZoomSlider.value = state.camera.userZoom || 1.0;
+      if (cameraZoomValue) {
+        cameraZoomValue.innerText = `${(state.camera.userZoom || 1.0).toFixed(2)}x`;
       }
-    };
-  }
+    }
+  };
 
-  document.getElementById("optionsBtnClose").onclick = () => {
+  const closePauseMenu = () => {
+    if (adminSubModal && adminSubModal.style.display === "flex") {
+      adminSubModal.style.display = "none";
+      return;
+    }
+    if (adminModal && adminModal.style.display === "flex") {
+      adminModal.style.display = "none";
+      optionsModal.style.display = "flex";
+      return;
+    }
     optionsModal.style.display = "none";
     audioManager.setMusicMuffled(false);
+    resetInputState();
     state.isPaused = false;
   };
+
+  const togglePauseMenu = () => {
+    const isOptionsOpen = optionsModal && optionsModal.style.display === "flex";
+    const isAdminOpen = adminModal && adminModal.style.display === "flex";
+    const isAdminSubOpen = adminSubModal && adminSubModal.style.display === "flex";
+    if (isOptionsOpen || isAdminOpen || isAdminSubOpen) {
+      closePauseMenu();
+    } else {
+      openPauseMenu();
+    }
+  };
+
+  if (pauseBtn) {
+    pauseBtn.onclick = togglePauseMenu;
+  }
+
+  const optionsBtnClose = document.getElementById("optionsBtnClose");
+  if (optionsBtnClose) {
+    optionsBtnClose.onclick = closePauseMenu;
+  }
+
+  window.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" || e.key === "Esc") {
+      e.preventDefault();
+      togglePauseMenu();
+    }
+  });
 
   const optionsBtnDev = document.getElementById("optionsBtnDev");
   if (optionsBtnDev) {
@@ -738,42 +783,106 @@ export function revivePlayer() {
   // 1. Marcar resurreccion unica por partida
   state.player.hasRevivedOnce = true;
 
-  // 2. Restoresr 50% de la salud maxima
+  // 2. Restaurar 50% de la salud maxima
   state.player.hp = state.player.maxHp * 0.5;
 
   // 3. Otorgar 3.0s de inmunidad total con parpadeo
   state.player.invulnerabilityTimer = 3.0;
 
-  // 4. Limpiar proyectiles enemigos en pantalla
-  state.enemyProjectiles = [];
-  state.acceleratingProjectiles = [];
-  state.fallingProjectiles = [];
-  if (state.projectilePool) {
-    state.projectilePool.pool.forEach(p => {
-      if (p.active && p.isEnemy) {
-        p.active = false;
+  // 4. Cancelar apuntado y recargas de armas activas
+  cancelAiming();
+  if (state.player.weapons && state.player.weapons.laserCannon) {
+    const lc = state.player.weapons.laserCannon;
+    lc.charging = false;
+    lc.chargeTimer = 0;
+    lc.fullyCharged = false;
+    if (lc.soundNode) {
+      try { lc.soundNode.stop(); lc.soundNode.disconnect(); } catch(e){}
+      lc.soundNode = null;
+    }
+  }
+  if (state.player.uiGraphics) {
+    state.player.uiGraphics.clear();
+  }
+
+  // 5. Destruir y limpiar 100% de proyectiles enemigos en pantalla
+  const destroyEntity = (e) => {
+    if (!e) return;
+    if (typeof e.destroy === 'function') {
+      e.destroy();
+    } else {
+      if (e.sprite && e.sprite.destroy) {
+        if (e.sprite.parent) e.sprite.parent.removeChild(e.sprite);
+        e.sprite.destroy();
       }
+      if (e.graphics && e.graphics.destroy) {
+        if (e.graphics.parent) e.graphics.parent.removeChild(e.graphics);
+        e.graphics.destroy();
+      }
+      if (e.container && e.container.destroy) {
+        if (e.container.parent) e.container.parent.removeChild(e.container);
+        e.container.destroy({ children: true });
+      }
+    }
+  };
+
+  if (state.enemyProjectiles) {
+    state.enemyProjectiles.forEach(destroyEntity);
+    state.enemyProjectiles = [];
+  }
+  if (state.acceleratingProjectiles) {
+    state.acceleratingProjectiles.forEach(destroyEntity);
+    state.acceleratingProjectiles = [];
+  }
+  if (state.fallingProjectiles) {
+    state.fallingProjectiles.forEach(destroyEntity);
+    state.fallingProjectiles = [];
+  }
+  if (state.projectilePool && typeof state.projectilePool.clearEnemyProjectiles === 'function') {
+    state.projectilePool.clearEnemyProjectiles();
+  }
+  if (state.hazardAreas) {
+    state.hazardAreas.forEach(destroyEntity);
+    state.hazardAreas = [];
+  }
+  if (state.laserBeams) {
+    state.laserBeams.forEach(destroyEntity);
+    state.laserBeams = [];
+  }
+
+  // 6. Empuje repulsor a enemigos cercanos para espacio de maniobra
+  if (state.spatialGrid) {
+    state.spatialGrid.queryRadius(state.player.x, state.player.y, 260, (e) => {
+      if (e.hp <= 0) return;
+      const angle = Math.atan2(e.y - state.player.y, e.x - state.player.x);
+      e.x += Math.cos(angle) * 140;
+      e.y += Math.sin(angle) * 140;
     });
   }
 
-  // Efectos visuales y sonoros
-  spawnExplosion(state.player.x, state.player.y, "#00ffff", 30, 4);
+  // 7. Efectos visuales y sonoros de resurrección
+  spawnExplosion(state.player.x, state.player.y, "#00ffff", 35, 4.5);
+  spawnExplosion(state.player.x, state.player.y, "#ffffff", 15, 3.0);
+  if (state.camera && typeof state.camera.shake === 'function') {
+    state.camera.shake({ strength: 12, duration: 0.35, rotation: 0.04, scale: 0.02 });
+  }
   if (state.floatingTextPool) {
     state.floatingTextPool.acquire(state.player.x, state.player.y - 30, "REVIVED!", "#00ffcc", 20);
   }
   audioManager.playSound('level_up', { volume: 0.9, throttleMs: 50 });
 
-  // 5. Ocultar modal de Game Over y reanudar el juego
+  // 8. Ocultar modal de Game Over y reanudar el juego
   const gameOverModal = document.getElementById("gameOverModal");
   if (gameOverModal) gameOverModal.style.display = "none";
   const btnRevive = document.getElementById("btnRevive");
   if (btnRevive) btnRevive.disabled = false;
 
+  resetInputState();
   state.isGameOver = false;
   state.isPaused = false;
   audioManager.setMusicMuffled(false);
 
-  // 6. Actualizar HUD
+  // 9. Actualizar HUD
   updateHUD();
 }
 

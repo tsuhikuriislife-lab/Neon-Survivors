@@ -93,16 +93,22 @@ export class Enemy {
     return true;
   }
 
+  destroy() {
+    if (this.sprite) {
+      if (this.sprite.parent) {
+        this.sprite.parent.removeChild(this.sprite);
+      }
+      this.sprite.destroy();
+      this.sprite = null;
+    }
+  }
+
   die() {
     state.killCount++;
     spawnExplosion(this.x, this.y, this.color, 14, 3);
     this.dropLoot();
     this.playDeathSound();
-    if (this.sprite) {
-      worldLayer.removeChild(this.sprite);
-      this.sprite.destroy();
-      this.sprite = null;
-    }
+    this.destroy();
   }
 
   dropLoot() {

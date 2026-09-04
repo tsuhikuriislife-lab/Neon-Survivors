@@ -28,13 +28,29 @@ This repository contains a browser-based arena survival game ("Neon Survivors").
 - **30-Minute Survival Scaling & Spawning Architecture (`WaveManager.js`, `Enemy.js`)**: 
   - **Distributed Spawning**: Standard enemies in batch-spawns are instantiated without forced coordinate clustering, dynamically picking independent perimeter nodes. This naturally flanks the player from all directions rather than creating single directional hordes.
   - **Progressive Stat Scaling**: Enemy HP, Speed, and Damage dynamically scale upwards across a 30-minute pacing threshold (1800s). HP scales up to `5.0x`, Speed and Damage up to `1.75x`. Scaling is updated seamlessly without UI banners on every wave trigger or boss spawn, keeping steady pressure in the late game.
+- **Swarmer Enemy Lifecycle & Boundary Cleanup (`SwarmerEnemy.js`, `Enemy.js`, `WaveManager.js`)**:
+  - Swarmers track arena entry via `hasEnteredArena`. Once they dive into and then across the arena (`x, y < -80` or `> 1920 + 80`), they silently despawn with immediate PIXI sprite destruction (`this.destroy()`), eliminating the WebGL scene-graph leak where unkilled swarmers had their `hp = 0` set without removing `this.sprite` from `worldLayer`.
+  - Added formal `Enemy.prototype.destroy()` method to cleanly remove and destroy WebGL sprites, hooked into `Enemy.prototype.die()` and both `Game.js` swap-and-pop cleanup loops.
+  - Eliminated the `dummy = new StandardEnemy('small')` coordinate generation leak in `WaveManager.js` which previously orphaned a static enemy sprite at the perimeter on every swarmer wave.
 - **Audio Architecture (`AudioManager.js`)**: 
   - Centralized Web Audio API manager handling BGM and SFX.
   - Supports dynamic property modification (volume, pitch, speed), throttling for overlapped sounds (e.g. `throttleMs: 50`), and independent channels (`bgmVolume`, `sfxVolume`).
   - Music dynamically switches per boss. Menus opening automatically muffle BGM (fades to 20%).
 - **Options & Admin Panel & Developer Tools**: 
   - The HUD contains a `⏸️ Pause / Options` button (`#pause-btn`, sound sliders, camera zoom, developer tools access) and a `🚀 QUICK TEST` button (`#quick-test-btn`).
+  - **Desktop Esc Pause Toggle**: Pressing the `Escape` key (`Esc`) toggles pausing the game, cancels active weapon aiming, and opens `#optionsModal` with muffled BGM; pressing `Esc` again unpauses and unmuffles audio. Supports nested back-navigation through `#adminSubModal` and `#adminModal`. Calling `resetInputState()` on pause/unpause and window blur clears held movement keys.
   - The Admin Menu allows toggling God Mode, enemy/boss spawns, a live real-time DPS/damage breakdown HUD overlay (`#testing-panel`), clearing all enemies, spawning dummy targets, and spawning individual enemies/bosses/upgrades via visual card grids.
+- **Revive & Game Restart Lifecycle Integrity (`Player.js`, `gameState.js`, `UIManager.js`, `Pool.js`)**:
+  - **Player Sprite Destruction (`Player.prototype.destroy()`)**: Formally removes `this.container` from `worldLayer` and calls `this.container.destroy({ children: true })`, destroying all nested ship, orbital, shield, and UI sprites/graphics and disconnecting active audio nodes. Eliminated the ghost player graphic leak where previous player instances remained frozen on screen after game restart (`btnRestart` / `initGame()`).
+  - **Comprehensive State Reset (`state.reset()`)**: Explicitly invokes `destroyEntity(this.player)` and sets `this.player = null`. Updated `destroyEntity` to recursively remove and destroy `e.container` in addition to sprites and graphics. Added `returnToMainMenu()` state reset to prevent background entity persistence.
+  - **Revive Cleanup & Enemy Projectile Despawning (`revivePlayer()`, `Pool.js`)**:
+    - Calls `.destroy()` on 100% of active unpooled enemy projectiles (`state.enemyProjectiles`, `state.acceleratingProjectiles`, `state.fallingProjectiles`), removing their PIXI sprites and containers from `worldLayer`.
+    - Added `projectilePool.clearEnemyProjectiles()`, setting both `p.active = false` and `p.sprite.visible = false` on pooled enemy projectiles.
+    - Cleans hostile `hazardAreas` and active `laserBeams`.
+    - Cancels active aiming, clears `this.uiGraphics`, and stops/resets weapon charging audio.
+    - Pushes back nearby swarming enemies within 260px by 140px to grant breathing room upon revival.
+    - Implemented invulnerability visual blinking in `Player.prototype.update` (flickering ship sprite alpha at ~14 Hz while `invulnerabilityTimer > 0`).
+    - Calls `resetInputState()` to eliminate stuck movement keys.
 - **Boss Mechanics & Snake Movement Architecture (`DevourerOfTaxBoss`, `CarlosMinion`, `SebastianMinion`)**: 
   - **Eater of Worlds Kinematics, Speed Zones & Low-Speed Exit State Machine**: 
     - **Inside Arena (`ATTACK`)**: Enters at maximum high speed (`outsideSpeed: 14.0` for Devourer, `13.0 - 13.2` for Minions) in a high-momentum dive towards the player. Applies progressive friction (`friction: 0.045 / frame`) down towards `minSpeed: 2.8`.
@@ -119,6 +135,7 @@ This repository contains a browser-based arena survival game ("Neon Survivors").
     - **Grid Lines**: `environment.setGridLines(...)`
     - **Perimeter Borders & Corners**: `environment.setBorders(...)`
   - Supports permanent changes (`duration: 0`) or temporary alerts with smooth fade transitions.
+  - **Low HP Danger Grid & Borders Pulse (< 30% HP)**: When `player.hp / player.maxHp < 0.30`, the arena floor background remains its dark space shade (`0x04030a`), while the map grid lines (`gridTilingSprite`) and perimeter borders (`arenaBoundaryGraphics`) smoothly transition into a slow sinusoidal breathing red alarm pulse (period $\approx 1.8\text{s}$, frequency $\approx 0.55\text{Hz}$) with neon danger red (`0xff0033`). Grid lines and border lines/glow/corners interpolate color, alpha, and glow synchronously based on danger severity and `Math.sin(state.gameTime * 3.5)`, fading smoothly back to normal environment colors when healed or revived with zero CPU redraw overhead.
 - **Fixed Virtual Resolution & Aspect Ratio Scaling (Letterboxing/Pillarboxing)**:
   - **Canonical Resolution**: Fixed internal canvas coordinate space of `1920 x 1080` (16:9). `canvas.width = 1920` and `canvas.height = 1080` remain constant on all devices.
   - **Responsive Letterboxing**: `#game-container` is strictly aspect-ratio 16:9, centered on `body` with black background (`#000000`).

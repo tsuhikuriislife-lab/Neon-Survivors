@@ -18,6 +18,8 @@ export let vectorTitle = null;
 export function initGame() {
   state.isInMenu = false;
   state.reset();
+  lowHpWarningTransition = 0;
+  bossBeaconGraphics.clear();
   hideWarningBanner("boss-warning-banner");
   hideWarningBanner("wave-warning-banner");
   if (menuShowcase) {
@@ -31,6 +33,7 @@ export function initGame() {
 
   if (state.player && typeof state.player.destroy === 'function') {
     state.player.destroy();
+    state.player = null;
   }
   state.player = new Player();
   if (state.camera) {
@@ -70,6 +73,17 @@ export let gridTilingSprite = null;
 export const arenaBoundaryGraphics = new PIXI.Graphics();
 export let floorControlsSprite = null;
 let environmentInitialized = false;
+
+let lowHpWarningTransition = 0;
+
+function lerpColor(c1, c2, t) {
+  const r1 = (c1 >> 16) & 0xff, g1 = (c1 >> 8) & 0xff, b1 = c1 & 0xff;
+  const r2 = (c2 >> 16) & 0xff, g2 = (c2 >> 8) & 0xff, b2 = c2 & 0xff;
+  const r = Math.round(r1 + (r2 - r1) * t);
+  const g = Math.round(g1 + (g2 - g1) * t);
+  const b = Math.round(b1 + (b2 - b1) * t);
+  return (r << 16) | (g << 8) | b;
+}
 
 export let floorControlsCanvas = null;
 
@@ -258,13 +272,37 @@ export function updateBackgroundLayer() {
     cachedBgColorHex = bgColorHex;
   }
 
+  // 1b. Low HP Warning State (< 30% HP) - Smooth transition for blinking lines & borders
+  const player = state.player;
+  const isLowHp = !state.isInMenu && !state.isGameOver && player && player.hp > 0 && (player.hp / player.maxHp) < 0.30;
+  if (isLowHp) {
+    lowHpWarningTransition = Math.min(1.0, lowHpWarningTransition + 0.05);
+  } else {
+    lowHpWarningTransition = Math.max(0.0, lowHpWarningTransition - 0.04);
+  }
+
+  // Slow, ominous breathing/heartbeat pulse: period ~ 1.8s (frequency ~ 0.55 Hz)
+  const pulse = (Math.sin(state.gameTime * 3.5) + 1) / 2;
+  const hpRatio = player && player.maxHp > 0 ? Math.max(0, player.hp / player.maxHp) : 0.30;
+  const dangerIntensity = Math.max(0, Math.min(1, (0.30 - hpRatio) / 0.30));
+  // Blends smoothly to neon danger red with the slow pulse
+  const redBlend = lowHpWarningTransition * (0.2 + 0.8 * pulse);
+  const dangerRed = 0xff0033;
+
   // 2. Grid (100% GPU accelerated via sprite tint and alpha, 0 canvas redraws, 0 texture updates)
   if (gridTilingSprite) {
     const parsedLine = parseRgbaString(linesProps.color);
     const brightness = linesProps.computedBrightness || 1.0;
 
-    gridTilingSprite.tint = parsedLine.hex;
-    gridTilingSprite.alpha = Math.max(0.02, Math.min(0.85, parsedLine.alpha * brightness * 1.5));
+    if (lowHpWarningTransition > 0.001) {
+      gridTilingSprite.tint = lerpColor(parsedLine.hex, dangerRed, redBlend);
+      const normalAlpha = Math.max(0.02, Math.min(0.85, parsedLine.alpha * brightness * 1.5));
+      const dangerAlpha = 0.06 + pulse * (0.18 + 0.16 * dangerIntensity);
+      gridTilingSprite.alpha = normalAlpha + (dangerAlpha - normalAlpha) * lowHpWarningTransition;
+    } else {
+      gridTilingSprite.tint = parsedLine.hex;
+      gridTilingSprite.alpha = Math.max(0.02, Math.min(0.85, parsedLine.alpha * brightness * 1.5));
+    }
 
     gridOffset = (gridOffset + 0.5) % 40;
     gridTilingSprite.tilePosition.y = gridOffset;
@@ -327,9 +365,20 @@ export function updateBackgroundLayer() {
   const parsedCorner = parseBorderColor(borderProps.cornerColor);
   if (parsedCorner !== null) cornerHex = parsedCorner;
 
+  if (lowHpWarningTransition > 0.001) {
+    outerHex = lerpColor(outerHex, dangerRed, redBlend);
+    innerHex = lerpColor(innerHex, 0xff6677, redBlend);
+    cornerHex = lerpColor(cornerHex, dangerRed, redBlend);
+  }
+
   // Base brightness with pulse applied
-  const brightness = borderProps.computedBrightness || 1.0;
-  const currentGlow = borderProps.glow || 15;
+  let brightness = borderProps.computedBrightness || 1.0;
+  let currentGlow = borderProps.glow || 15;
+
+  if (lowHpWarningTransition > 0.001) {
+    brightness = brightness * (1.0 + (0.7 * pulse - 0.2) * lowHpWarningTransition);
+    currentGlow = currentGlow + pulse * 14 * lowHpWarningTransition;
+  }
 
   // Outer glow (simulated with thick low-alpha line)
   arenaBoundaryGraphics.lineStyle(currentGlow, outerHex, 0.3 * brightness);
@@ -639,6 +688,7 @@ export function loop(timestamp) {
       const e = state.enemies[i];
       e.update(state.player);
       if (e.hp <= 0) {
+        if (typeof e.destroy === 'function') e.destroy();
         state.enemies[i] = state.enemies[state.enemies.length - 1];
         state.enemies.pop();
       }
@@ -862,7 +912,9 @@ export function loop(timestamp) {
 
     // Cleanup any dead enemies from projectile hits
     for (let i = state.enemies.length - 1; i >= 0; i--) {
-      if (state.enemies[i].hp <= 0) {
+      const e = state.enemies[i];
+      if (e.hp <= 0) {
+        if (typeof e.destroy === 'function') e.destroy();
         state.enemies[i] = state.enemies[state.enemies.length - 1];
         state.enemies.pop();
       }
@@ -975,6 +1027,7 @@ export function resumeGame() {
   
   state.isInMenu = false;
   state.reset();
+  lowHpWarningTransition = 0;
   
   // Rebuild State
   state.gameTime = saveData.gameTime;
@@ -1004,6 +1057,7 @@ export function resumeGame() {
 
   if (state.player && typeof state.player.destroy === 'function') {
     state.player.destroy();
+    state.player = null;
   }
   
   // Rebuild Player

@@ -282,6 +282,17 @@ export class ProjectilePool {
       this.pool[i].sprite.visible = false;
     }
   }
+
+  clearEnemyProjectiles() {
+    const len = this.pool.length;
+    for (let i = 0; i < len; i++) {
+      const p = this.pool[i];
+      if (p.active && p.isEnemy) {
+        p.active = false;
+        p.sprite.visible = false;
+      }
+    }
+  }
   
   update() {
     const len = this.pool.length;

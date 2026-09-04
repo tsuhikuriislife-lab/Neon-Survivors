@@ -299,17 +299,34 @@ export function handleSpawning() {
     // 1. Oleada de Enjambradores (Swarmers)
     if (state.bossDefeatTimes.first && Math.random() < 0.16) {
        const count = 6 + Math.floor(Math.random() * 5);
-       const dummy = new StandardEnemy('small');
-       const sx = dummy.x; 
-       const sy = dummy.y;
-       const isHoriz = dummy.y < 0 || dummy.y > state.height;
+       const margin = 100;
+       const edge = Math.floor(Math.random() * 4);
+       let sx, sy, isHoriz;
+       if (edge === 0) {
+         sx = Math.random() * state.width;
+         sy = -margin;
+         isHoriz = true;
+       } else if (edge === 1) {
+         sx = state.width + margin;
+         sy = Math.random() * state.height;
+         isHoriz = false;
+       } else if (edge === 2) {
+         sx = Math.random() * state.width;
+         sy = state.height + margin;
+         isHoriz = true;
+       } else {
+         sx = -margin;
+         sy = Math.random() * state.height;
+         isHoriz = false;
+       }
+
        for (let i = 0; i < count; i++) {
          let nx, ny;
          if (isHoriz) {
            nx = Math.max(20, Math.min(state.width - 20, sx + (Math.random() * 120 - 60)));
-           ny = dummy.y < 0 ? -(90 + Math.random() * 50) : (state.height + 90 + Math.random() * 50);
+           ny = sy < 0 ? -(90 + Math.random() * 50) : (state.height + 90 + Math.random() * 50);
          } else {
-           nx = dummy.x < 0 ? -(90 + Math.random() * 50) : (state.width + 90 + Math.random() * 50);
+           nx = sx < 0 ? -(90 + Math.random() * 50) : (state.width + 90 + Math.random() * 50);
            ny = Math.max(20, Math.min(state.height - 20, sy + (Math.random() * 120 - 60)));
          }
          const sw = new SwarmerEnemy(nx, ny);

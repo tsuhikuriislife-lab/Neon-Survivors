@@ -448,14 +448,15 @@ export class DevourerOfTaxBoss extends Boss {
     super.die();
     if (this.segmentSprites) {
       this.segmentSprites.forEach(spr => {
-        if (spr.parent) spr.parent.removeChild(spr);
-        spr.destroy();
+        if (spr && spr.parent) spr.parent.removeChild(spr);
+        if (spr && spr.destroy) spr.destroy();
       });
       this.segmentSprites = [];
     }
   }
 
   destroy() {
+    this.die();
     if (this.carlos) {
       if (typeof this.carlos.die === 'function') this.carlos.die();
       if (typeof this.carlos.destroy === 'function') this.carlos.destroy();
@@ -464,5 +465,6 @@ export class DevourerOfTaxBoss extends Boss {
       if (typeof this.sebastian.die === 'function') this.sebastian.die();
       if (typeof this.sebastian.destroy === 'function') this.sebastian.destroy();
     }
+    super.destroy();
   }
 }

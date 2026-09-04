@@ -59,9 +59,13 @@ export class Boss {
 
   die() {
     if (this.sprite) {
-      worldLayer.removeChild(this.sprite);
+      if (this.sprite.parent) this.sprite.parent.removeChild(this.sprite);
       this.sprite.destroy();
       this.sprite = null;
     }
+  }
+
+  destroy() {
+    this.die();
   }
 }

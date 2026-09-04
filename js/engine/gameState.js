@@ -95,9 +95,17 @@ export const state = {
           if (e.graphics.parent) e.graphics.parent.removeChild(e.graphics);
           e.graphics.destroy();
         }
+        if (e.container && e.container.destroy) {
+          if (e.container.parent) e.container.parent.removeChild(e.container);
+          e.container.destroy({ children: true });
+        }
       }
     };
 
+    if (this.player) {
+      destroyEntity(this.player);
+      this.player = null;
+    }
     if (this.enemies) this.enemies.forEach(destroyEntity);
     if (this.bosses) this.bosses.forEach(destroyEntity);
     if (this.projectiles) this.projectiles.forEach(destroyEntity);

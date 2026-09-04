@@ -111,7 +111,7 @@ export const upgradeDatabase = [
     id: 'nova_unlock',
     rarity: 'common',
     name: 'Nova Discharge',
-    icon: '🌀',
+    icon: '<img src="assets/upgrades/nova-discharge.png" alt="icon">',
     desc: 'Periodically fires a radial volley of 8 projectiles.',
     isAvailable: (p) => p.weapons.nova.level === 0,
     apply: (p) => {
@@ -123,7 +123,7 @@ export const upgradeDatabase = [
     id: 'nova_up',
     rarity: 'uncommon',
     name: '+ Nova Projectiles',
-    icon: '✨',
+    icon: '<img src="assets/upgrades/nova-discharg-projectiles.png" alt="icon">',
     desc: '+2 Projectiles per Nova volley (Max. 3).',
     isAvailable: (p) => p.weapons.nova.level > 0 && p.weapons.nova.level <= 3,
     apply: (p) => {
@@ -135,7 +135,7 @@ export const upgradeDatabase = [
     id: 'nova_spiral',
     rarity: 'legendary',
     name: 'Angular Vortex',
-    icon: '🌪',
+    icon: '<img src="assets/upgrades/nova-discharge-spiral.png" alt="icon">',
     desc: 'Nova projectiles retain their expansion while spinning continuously in a spiral.',
     isAvailable: (p) => p.weapons.nova.level > 0 && !p.weapons.nova.spiral,
     apply: (p) => {
@@ -146,7 +146,7 @@ export const upgradeDatabase = [
     id: 'orbital_unlock',
     rarity: 'common',
     name: 'Orbital Plasma Shield',
-    icon: '🔮',
+    icon: '<img src="assets/upgrades/orbital-plasma-shield.png" alt="icon">',
     desc: 'Unlocks 2 rotating orbs that deal contact damage.',
     isAvailable: (p) => p.weapons.orbitals.level === 0,
     apply: (p) => { 
@@ -158,7 +158,7 @@ export const upgradeDatabase = [
     id: 'orbital_count',
     rarity: 'uncommon',
     name: '+ Satellites',
-    icon: '🪐',
+    icon: '<img src="assets/upgrades/orbital-plasma-shield-ammount.png" alt="icon">',
     desc: 'Adds +2 satellites to the orbital shield (Max. 2).',
     isAvailable: (p) => p.weapons.orbitals.level > 0 && (p.weapons.orbitals.countUpgrades || 0) < 2,
     apply: (p) => {
@@ -170,7 +170,7 @@ export const upgradeDatabase = [
     id: 'orbital_size',
     rarity: 'rare',
     name: 'Orbital Expansion',
-    icon: '🌌',
+    icon: '<img src="assets/upgrades/orbital-plasma-shield-size.png" alt="icon">',
     desc: '+20% Satellite size (Max. 3).',
     isAvailable: (p) => p.weapons.orbitals.level > 0 && (p.weapons.orbitals.sizeUpgrades || 0) < 3,
     apply: (p) => {

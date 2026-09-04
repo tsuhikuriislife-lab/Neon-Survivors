@@ -201,10 +201,12 @@ export class KyrenBoss extends Boss {
   }
 
   destroy() {
+    this.die();
     if (this.denzel) {
       if (typeof this.denzel.die === 'function') this.denzel.die();
       if (typeof this.denzel.destroy === 'function') this.denzel.destroy();
     }
+    super.destroy();
   }
 }
 
