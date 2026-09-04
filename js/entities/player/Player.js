@@ -540,7 +540,7 @@ export class Player {
          const distP = 50 + Math.random() * 50;
          const px = this.x + Math.cos(angle) * distP;
          const py = this.y + Math.sin(angle) * distP;
-         const p = state.particlePool.acquire(px, py, "#00ff00", 2 + chargeRatio * 3, 0.05, 3);
+         const p = state.particlePool.acquire(px, py, w.tickDamage ? "#ffff00" : "#00ff00", 2 + chargeRatio * 3, 0.05, 3);
          if (p) {
            p.vx = -Math.cos(angle) * (2 + chargeRatio * 2);
            p.vy = -Math.sin(angle) * (2 + chargeRatio * 2);
@@ -561,7 +561,7 @@ export class Player {
         if (state.particlePool) {
           for (let i = 0; i < 20; i++) {
             const a = Math.random() * Math.PI * 2;
-            const p = state.particlePool.acquire(this.x, this.y, "#00ff00", 4, 0.03, 3);
+            const p = state.particlePool.acquire(this.x, this.y, w.tickDamage ? "#ffff00" : "#00ff00", 4, 0.03, 3);
             if (p) {
               p.vx = Math.cos(a) * Math.random() * 5;
               p.vy = Math.sin(a) * Math.random() * 5;
@@ -647,7 +647,7 @@ export class Player {
          if (state.particlePool) {
             for (let i = 0; i < 15; i++) {
                const a = angle + (Math.random() - 0.5) * 0.5;
-               const p = state.particlePool.acquire(this.x, this.y, "#00ff00", 3, 0.04, 3);
+               const p = state.particlePool.acquire(this.x, this.y, w.tickDamage ? "#ffff00" : "#00ff00", 3, 0.04, 3);
                const s = Math.random() * 6 + 2;
                if (p) {
                  p.vx = Math.cos(a) * s;
@@ -915,12 +915,13 @@ export class Player {
       const endX = Math.cos(aimAngle) * maxLen;
       const endY = Math.sin(aimAngle) * maxLen;
       
-      this.uiGraphics.lineStyle(1.2, 0xb4ffb4, 0.85);
+      const isYellow = (this.weapons.laserCannon.level > 0 && this.weapons.laserCannon.tickDamage);
+      this.uiGraphics.lineStyle(1.2, isYellow ? 0xffffaa : 0xb4ffb4, 0.85);
       this.uiGraphics.moveTo(0, 0);
       this.uiGraphics.lineTo(endX, endY);
       
       if (this.weapons.laserCannon.level > 0 && this.weapons.laserCannon.subLasers) {
-        this.uiGraphics.lineStyle(1.5, 0x00ff00, 0.25);
+        this.uiGraphics.lineStyle(1.5, isYellow ? 0xffff00 : 0x00ff00, 0.25);
         for (let offset of [-Math.PI / 6, Math.PI / 6]) {
           const subEndX = Math.cos(aimAngle + offset) * maxLen;
           const subEndY = Math.sin(aimAngle + offset) * maxLen;
@@ -940,14 +941,14 @@ export class Player {
       const radius = 2;
       const chargeRatio = w.fullyCharged ? 1.0 : Math.min(1.0, Math.max(0.0, w.chargeTimer / w.maxCharge));
 
-      this.uiGraphics.lineStyle(1, 0x00ff64, 0.4);
+      this.uiGraphics.lineStyle(1, w.tickDamage ? 0xffff00 : 0x00ff64, 0.4);
       this.uiGraphics.beginFill(0x0a140f, 0.7);
       this.uiGraphics.drawRoundedRect(barX, barY, barWidth, barHeight, radius);
       this.uiGraphics.endFill();
 
       const fillW = Math.max(0.01, barWidth * chargeRatio);
       if (fillW > 0) {
-        this.uiGraphics.beginFill(w.fullyCharged ? 0x00ff88 : 0x00ff66, w.fullyCharged ? 0.9 : 1.0);
+        this.uiGraphics.beginFill(w.fullyCharged ? (w.tickDamage ? 0xffdd00 : 0x00ff88) : (w.tickDamage ? 0xffff00 : 0x00ff66), w.fullyCharged ? 0.9 : 1.0);
         this.uiGraphics.drawRoundedRect(barX, barY, fillW, barHeight, radius);
         this.uiGraphics.endFill();
       }

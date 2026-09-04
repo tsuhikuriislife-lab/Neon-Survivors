@@ -17,6 +17,8 @@ export class LaserBeam {
     this.dotDamage = dotDamage;
     this.dotDuration = dotDuration;
     this.tickDamage = tickDamage;
+    this.colorStr = this.tickDamage ? "#ffff00" : "#00ff00";
+    this.colorHex = this.tickDamage ? 0xffff00 : 0x00ff00;
     
     this.hitEnemies = new Set();
     this.tickTimer = 0;
@@ -93,11 +95,11 @@ export class LaserBeam {
         const falloffMult = Math.max(0.1, 1.0 - index * 0.05);
         const actualDamage = this.damage * falloffMult;
 
-        t.takeDamage(actualDamage, "#00ff00");
+        t.takeDamage(actualDamage, this.colorStr);
         state.recordDamage('laserCannon', actualDamage);
         
         if (this.dotDuration > 0) {
-          t.laserDot = { damage: this.dotDamage * falloffMult, duration: this.dotDuration, timer: 60 };
+          t.laserDot = { damage: this.dotDamage * falloffMult, duration: this.dotDuration, timer: 60, color: this.colorStr };
         }
         
         audioManager.playSound('hit_laser_cannon', { volume: 0.5, throttleMs: 30 });
@@ -109,7 +111,7 @@ export class LaserBeam {
        const px = this.startX + Math.cos(this.angle) * d;
        const py = this.startY + Math.sin(this.angle) * d;
        const transAng = this.angle + (Math.random() > 0.5 ? Math.PI/2 : -Math.PI/2);
-       const p = state.particlePool.acquire(px, py, "#00ff00", 2 + Math.random()*2, 0.05, 3);
+       const p = state.particlePool.acquire(px, py, this.colorStr, 2 + Math.random()*2, 0.05, 3);
        if (p) {
          p.vx = Math.cos(transAng) * (Math.random() * 4 + 1);
          p.vy = Math.sin(transAng) * (Math.random() * 4 + 1);
@@ -127,7 +129,7 @@ export class LaserBeam {
       this.graphics.lineTo(endX, endY);
       
       // outer glow
-      this.graphics.lineStyle(this.width, 0x00ff00, 0.6); // Wait, blend mode doesn't work on lines as easily in standard PIXI, we just use a thicker line with alpha
+      this.graphics.lineStyle(this.width, this.colorHex, 0.6); // Wait, blend mode doesn't work on lines as easily in standard PIXI, we just use a thicker line with alpha
       // Wait, PIXI supports blendMode on Graphics? No, we can just draw lines
       this.graphics.moveTo(this.startX, this.startY);
       this.graphics.lineTo(endX, endY);

@@ -926,10 +926,10 @@ export function loop(timestamp) {
         if (t.laserDot.timer <= 0) {
           t.laserDot.timer = 60;
           t.laserDot.duration--;
-          t.takeDamage(t.laserDot.damage, "#00ff00");
+          t.takeDamage(t.laserDot.damage, t.laserDot.color || "#00ff00");
         }
         if (Math.random() < 0.1 && state.particlePool) {
-          state.particlePool.acquire(t.x, t.y, "#00ff00", 2, 0.05, 2);
+          state.particlePool.acquire(t.x, t.y, t.laserDot.color || "#00ff00", 2, 0.05, 2);
         }
       }
     };
