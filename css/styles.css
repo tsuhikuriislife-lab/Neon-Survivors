@@ -1232,8 +1232,8 @@
 
 
 .card-icon img, .current-upgrade-icon img {
-  width: 1em;
-  height: 1em;
+  width: calc(1em + 15px);
+  height: calc(1em + 15px);
   object-fit: contain;
   vertical-align: middle;
 }
