@@ -182,7 +182,7 @@ export const upgradeDatabase = [
     id: 'orbital_speed',
     rarity: 'rare',
     name: 'Accelerated Spin',
-    icon: '🔄',
+    icon: '<img src="assets/upgrades/orbital-plasma-shied-rotation.png" alt="icon">',
     desc: '+15% Orbital rotation speed (Max. 3).',
     isAvailable: (p) => p.weapons.orbitals.level > 0 && (p.weapons.orbitals.speedUpgrades || 0) < 3,
     apply: (p) => {
