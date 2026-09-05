@@ -25,6 +25,17 @@ This repository contains a browser-based arena survival game ("Neon Survivors").
 - **Modifying UI**: Update HTML in `index.html`, styles in `css/styles.css`, and logic in `js/ui/UIManager.js`.
 
 ### Recent Implementations & System Mechanics
+- **Upgrade Asset Preloading & Mobile Offline Cache Integrity (`TextureCache.js`, `main.js`)**:
+  - `preloadUpgradeIcons(upgradeDatabase)` scans all upgrade definitions and preloads all 41 PNG sprites asynchronously into a `preloadedUpgradeImages` Map at initial module load time (`main.js`).
+  - Guarantees that on mobile devices over local Wi-Fi/LAN, all sprites are cached in browser memory upon initial page launch, preventing missing asset placeholders (`alt="icon"`) if connectivity fluctuates or drops during gameplay.
+- **Enemy Scaling Reset & Pacing Architecture (`gameState.js`, `WaveManager.js`, `Game.js`, `UIManager.js`)**:
+  - `state.enemyScaling` holds active multipliers `{ hp, speed, damage }`, cleanly initialized and reset in `state.reset()`.
+  - `WaveManager.js` dynamically scales HP (up to 5.0x) and Speed/Damage (up to 1.75x) over a 30-minute pacing threshold (`gameTime / 1800`), clamped safely between 0.0 and 1.0.
+  - `initGame()` explicitly calls `updateEnemyScaling()` at match launch, ensuring that starting a new run or restarting after game over immediately resets enemy multipliers to baseline 1.0x.
+  - `returnToMainMenu()` and `btnRestart.onclick` invoke `SaveManager.clearSaveGame()` to prevent stale runs from bleeding scaled stats into new games.
+- **Active Upgrades Panel Layout & Sprites (`styles.css`, `upgrades.js`, `UIManager.js`)**:
+  - Updated `.current-upgrades-panel` and `.current-upgrade-icon` with `inline-flex`, fixed clamp dimensions, and `overflow-y: hidden` to prevent layout jumps and vertical scrollbars.
+  - Added dedicated pixelated sprite for `Extra Field Battery` (`assets/upgrades/forcefield-battery.png`) replacing the fallback emoji, ensuring unified asset handling across all capped upgrades.
 - **30-Minute Survival Scaling & Spawning Architecture (`WaveManager.js`, `Enemy.js`)**: 
   - **Distributed Spawning**: Standard enemies in batch-spawns are instantiated without forced coordinate clustering, dynamically picking independent perimeter nodes. This naturally flanks the player from all directions rather than creating single directional hordes.
   - **Progressive Stat Scaling**: Enemy HP, Speed, and Damage dynamically scale upwards across a 30-minute pacing threshold (1800s). HP scales up to `5.0x`, Speed and Damage up to `1.75x`. Scaling is updated seamlessly without UI banners on every wave trigger or boss spawn, keeping steady pressure in the late game.

@@ -28,6 +28,7 @@ export const state = {
   
   bossScaling: {},
   lastBossName: null,
+  enemyScaling: { hp: 1.0, speed: 1.0, damage: 1.0 },
   
   bossDefeatTimes: {
     first: null,
@@ -153,6 +154,7 @@ export const state = {
     this.hasRerolledCurrentLevel = false;
     this.bossScaling = {};
     this.lastBossName = null;
+    this.enemyScaling = { hp: 1.0, speed: 1.0, damage: 1.0 };
     this.bossDefeatTimes = {
       first: null,
       kyren: null,

@@ -183,3 +183,23 @@ export function drawCachedTexture(ctx, texture, x, y, angle = 0) {
   }
 }
 
+export const preloadedUpgradeImages = new Map();
+
+export function preloadUpgradeIcons(upgradesList) {
+  if (typeof Image === 'undefined') return;
+  const list = upgradesList || [];
+  list.forEach(u => {
+    if (!u.icon) return;
+    const match = u.icon.match(/src=["']([^"']+)["']/);
+    if (match && match[1]) {
+      const src = match[1];
+      if (!preloadedUpgradeImages.has(src)) {
+        const img = new Image();
+        img.src = src;
+        preloadedUpgradeImages.set(src, img);
+      }
+    }
+  });
+}
+
+

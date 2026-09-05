@@ -58,7 +58,7 @@ export function updateEnemyScaling() {
   if (!state.enemyScaling) {
     state.enemyScaling = { hp: 1.0, speed: 1.0, damage: 1.0 };
   }
-  const progress = Math.min(1.0, state.gameTime / 1800);
+  const progress = Math.min(1.0, Math.max(0, (state.gameTime || 0) / 1800));
   state.enemyScaling.hp = 1.0 + (progress * 4.0);
   state.enemyScaling.speed = 1.0 + (progress * 0.75);
   state.enemyScaling.damage = 1.0 + (progress * 0.75);
@@ -206,17 +206,17 @@ export function updatePendingBossSpawn(dt) {
   }
 }
 
-export function startWave(duration = 60) {
+export function startWave(duration = 30) {
   updateEnemyScaling();
   state.isWaveActive = true;
   state.waveTimer = duration;
   state.waveDuration = duration;
 
-  showWarningBanner("wave-warning-banner", 3.5);
+  showWarningBanner("wave-warning-banner", 2.5);
 
   // 1. Camera pulse on wave trigger (punchy 1.2s pulse instead of 10s heavy shake)
   if (state.camera && typeof state.camera.shake === 'function') {
-    state.camera.shake({ strength: 3.5, duration: 1.2, rotation: 0.002, scale: 0.012 });
+    state.camera.shake({ strength: 5.0, duration: 1.2, rotation: 0.002, scale: 0.012 });
   }
 
   // 2. Alert Environment Effects (Pulsing Amber/Orange Wave Theme)
@@ -269,6 +269,7 @@ export function updateWave(dt) {
 
 export function handleSpawning() {
   if (state.disableSpawns) return;
+  updateEnemyScaling();
   
   state.spawnTimer++;
   const hasActiveBoss = state.bosses.some(b => b.getTargetables().length > 0);

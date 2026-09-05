@@ -477,7 +477,7 @@ export const upgradeDatabase = [
     id: 'shield_extra_charge',
     rarity: 'legendary',
     name: 'Extra Field Battery',
-    icon: '💠',
+    icon: '<img src="assets/upgrades/forcefield-battery.png" alt="icon">',
     desc: 'Increases maximum shield charges by +1 (Max. 2).',
     isAvailable: (p) => p.shield && p.shield.unlocked && (p.shield.extraChargesUpgrades || 0) < 2,
     apply: (p) => {

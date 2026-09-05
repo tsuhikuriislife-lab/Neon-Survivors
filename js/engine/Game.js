@@ -3,7 +3,7 @@ import { resetInputState } from './Input.js';
 import { Player } from '../entities/player/Player.js';
 import { startUILoop, triggerHUDUpdate, showBossRewardMenu } from '../ui/UIManager.js';
 import { bitmapFont } from "./BitmapFont.js";
-import { handleSpawning, spawnRandomBoss, updatePendingBossSpawn, updateWave, hideWarningBanner } from '../systems/WaveManager.js';
+import { handleSpawning, spawnRandomBoss, updatePendingBossSpawn, updateWave, hideWarningBanner, updateEnemyScaling } from '../systems/WaveManager.js';
 import { dist } from './Utils.js';
 import { spawnExplosion } from '../entities/effects/spawnExplosion.js';
 import { MenuBackgroundShowcase, VectorTitleRenderer } from './MenuScene.js';
@@ -18,6 +18,7 @@ export let vectorTitle = null;
 export function initGame() {
   state.isInMenu = false;
   state.reset();
+  updateEnemyScaling();
   lowHpWarningTransition = 0;
   bossBeaconGraphics.clear();
   hideWarningBanner("boss-warning-banner");

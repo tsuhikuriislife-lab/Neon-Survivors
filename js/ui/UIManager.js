@@ -225,6 +225,7 @@ export function startGame() {
 }
 
 export function returnToMainMenu() {
+  SaveManager.clearSaveGame();
   state.isInMenu = true;
   state.isPaused = false;
   state.isGameOver = false;
@@ -290,6 +291,7 @@ export function initUIListeners() {
   };
 
   document.getElementById("btnRestart").onclick = () => {
+    SaveManager.clearSaveGame();
     document.getElementById("gameOverModal").style.display = "none";
     document.getElementById("ui-layer").style.display = "block";
     audioManager.setMusicMuffled(false);

@@ -4,7 +4,8 @@ import { initInput } from './engine/Input.js';
 import { initUIListeners } from './ui/UIManager.js';
 import { initGame, loop } from './engine/Game.js';
 import { audioManager } from './engine/AudioManager.js';
-import { initTextureCache } from './engine/TextureCache.js';
+import { initTextureCache, preloadUpgradeIcons } from './engine/TextureCache.js';
+import { upgradeDatabase } from './data/upgrades.js';
 
 export const VIRTUAL_WIDTH = 1920;
 export const VIRTUAL_HEIGHT = 1080;
@@ -142,9 +143,12 @@ resize();
 
 
 
+// Preload all upgrade icons immediately so mobile devices cache them before entering game
+preloadUpgradeIcons(upgradeDatabase);
+
 bitmapFont.load().then(() => {
   initTextureCache();
-audioManager.init();
+  audioManager.init();
 
 const startAudio = () => {
     audioManager.resumeAudioContext();
