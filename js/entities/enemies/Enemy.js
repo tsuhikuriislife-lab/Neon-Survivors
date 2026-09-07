@@ -43,6 +43,7 @@ export class Enemy {
     this.xpValue = 1;
     this.damage = 10;
     this.deathSoundKey = 'enemy_death_small';
+    this.hitCooldowns = new Map();
     this.sprite = new PIXI.Sprite();
     this.sprite.anchor.set(0.5);
     worldLayer.addChild(this.sprite);
@@ -53,6 +54,16 @@ export class Enemy {
     });
     this._spatialStamp = 0;
   }
+
+  canBeHitBy(source, cooldownSeconds) {
+    const lastHit = this.hitCooldowns.get(source) || -9999;
+    if (state.gameTime - lastHit >= cooldownSeconds) {
+      this.hitCooldowns.set(source, state.gameTime);
+      return true;
+    }
+    return false;
+  }
+
 
   update(player) {
     this.angle += 0.02;

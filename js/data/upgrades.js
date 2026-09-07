@@ -12,19 +12,19 @@ export const upgradeDatabase = [
   },
   {
     id: 'blaster_rate',
-    rarity: 'common',
+    rarity: 'uncommon',
     name: 'Fire Overload',
     icon: '<img src="assets/upgrades/neon-cannon-cooldown.png" alt="icon">',
     desc: '+25% Neon Cannon reload speed.',
     isAvailable: (p) => (p.blasterRateUpgrades || 0) < 4,
     apply: (p) => { 
-      p.weapons.blaster.cooldown = Math.max(8, p.weapons.blaster.cooldown * 0.75); 
+      p.weapons.blaster.cooldownMult += 0.25; 
       p.blasterRateUpgrades = (p.blasterRateUpgrades || 0) + 1;
     }
   },
   {
     id: 'hp_regen',
-    rarity: 'legendary',
+    rarity: 'rare',
     name: 'Repairing Nanobots',
     icon: '<img src="assets/upgrades/repairing-nanobots.png" alt="icon">',
     desc: '+1.0 HP/s regen.',
@@ -54,19 +54,19 @@ export const upgradeDatabase = [
     desc: '+20% Core movement speed (Max. 4).',
     isAvailable: (p) => (p.speedUpgradesCount || 0) < 4,
     apply: (p) => { 
-        p.baseSpeed *= 1.20; 
+        p.speedMult += 0.20; 
         p.speedUpgradesCount = (p.speedUpgradesCount || 0) + 1;
     }
   },
   {
     id: 'magnet_boost',
-    rarity: 'rare',
+    rarity: 'uncommon',
     name: 'Magnetic Attraction',
     icon: '<img src="assets/upgrades/magnetic-attraction.png" alt="icon">',
     desc: '+50% Pickup radius for XP energy (Max. 4).',
     isAvailable: (p) => (p.magnetUpgrades || 0) < 4,
     apply: (p) => { 
-      p.pickupRadius *= 1.5; 
+      p.pickupRadiusMult += 0.50; 
       p.magnetUpgrades = (p.magnetUpgrades || 0) + 1;
     }
   },
@@ -168,25 +168,25 @@ export const upgradeDatabase = [
   },
   {
     id: 'orbital_size',
-    rarity: 'rare',
+    rarity: 'uncommon',
     name: 'Orbital Expansion',
     icon: '<img src="assets/upgrades/orbital-plasma-shield-size.png" alt="icon">',
     desc: '+20% Satellite size (Max. 3).',
     isAvailable: (p) => p.weapons.orbitals.level > 0 && (p.weapons.orbitals.sizeUpgrades || 0) < 3,
     apply: (p) => {
-      p.weapons.orbitals.size = (p.weapons.orbitals.size || 8) * 1.2;
+      p.weapons.orbitals.sizeMult += 0.20;
       p.weapons.orbitals.sizeUpgrades = (p.weapons.orbitals.sizeUpgrades || 0) + 1;
     }
   },
   {
     id: 'orbital_speed',
-    rarity: 'rare',
+    rarity: 'uncommon',
     name: 'Accelerated Spin',
     icon: '<img src="assets/upgrades/orbital-plasma-shied-rotation.png" alt="icon">',
     desc: '+15% Orbital rotation speed (Max. 3).',
     isAvailable: (p) => p.weapons.orbitals.level > 0 && (p.weapons.orbitals.speedUpgrades || 0) < 3,
     apply: (p) => {
-      p.weapons.orbitals.speed *= 1.15;
+      p.weapons.orbitals.speedMult += 0.15;
       p.weapons.orbitals.speedUpgrades = (p.weapons.orbitals.speedUpgrades || 0) + 1;
     }
   },
@@ -209,19 +209,19 @@ export const upgradeDatabase = [
     desc: '+30% Shockwave range (Max. 3).',
     isAvailable: (p) => p.weapons.shockwave.level > 0 && (p.weapons.shockwave.rangeUpgrades || 0) < 3,
     apply: (p) => {
-      p.weapons.shockwave.radius *= 1.30;
+      p.weapons.shockwave.radiusMult += 0.30;
       p.weapons.shockwave.rangeUpgrades = (p.weapons.shockwave.rangeUpgrades || 0) + 1;
     }
   },
   {
     id: 'shockwave_rate',
-    rarity: 'rare',
+    rarity: 'uncommon',
     name: 'Seismic Frequency',
     icon: '<img src="assets/upgrades/seismic-radial-pulse-cooldown.png" alt="icon">',
     desc: '+25% Shockwave fire rate (Max. 4).',
     isAvailable: (p) => p.weapons.shockwave.level > 0 && (p.weapons.shockwave.rateUpgrades || 0) < 4,
     apply: (p) => {
-      p.weapons.shockwave.cooldown = Math.max(30, p.weapons.shockwave.cooldown * 0.75); 
+      p.weapons.shockwave.cooldownMult += 0.25; 
       p.weapons.shockwave.rateUpgrades = (p.weapons.shockwave.rateUpgrades || 0) + 1;
     }
   },
@@ -250,19 +250,19 @@ export const upgradeDatabase = [
   },
   {
     id: 'missiles_speed',
-    rarity: 'rare',
+    rarity: 'uncommon',
     name: 'Missile Propulsion',
     icon: '<img src="assets/upgrades/missile-battery-speed.png" alt="icon">',
     desc: '+20% Missile speed (Max. 4).',
     isAvailable: (p) => p.weapons.missiles.level > 0 && (p.weapons.missiles.speedUpgrades || 0) < 4,
     apply: (p) => {
-      p.weapons.missiles.speed *= 1.20;
+      p.weapons.missiles.speedMult += 0.20;
       p.weapons.missiles.speedUpgrades = (p.weapons.missiles.speedUpgrades || 0) + 1;
     }
   },
   {
     id: 'missiles_homing',
-    rarity: 'legendary',
+    rarity: 'rare',
     name: 'Advanced Tracking',
     icon: '<img src="assets/upgrades/missile-battery-homing.png" alt="icon">',
     desc: 'Drastically improves missile tracking (Unique).',
@@ -280,7 +280,7 @@ export const upgradeDatabase = [
     desc: '+30% Missile damage radius (Max. 3).',
     isAvailable: (p) => p.weapons.missiles.level > 0 && (p.weapons.missiles.aoeUpgrades || 0) < 3,
     apply: (p) => {
-      p.weapons.missiles.aoe *= 1.30;
+      p.weapons.missiles.aoeMult += 0.30;
       p.weapons.missiles.aoeUpgrades = (p.weapons.missiles.aoeUpgrades || 0) + 1;
     }
   },
@@ -317,7 +317,7 @@ export const upgradeDatabase = [
     desc: '+15% Laser Cannon charge speed (Max. 4).',
     isAvailable: (p) => p.weapons.laserCannon.level > 0 && (p.weapons.laserCannon.chargeUpgrades || 0) < 4,
     apply: (p) => {
-      p.weapons.laserCannon.chargeSpeedMult *= 1.15;
+      p.weapons.laserCannon.chargeSpeedMult += 0.15;
       p.weapons.laserCannon.chargeUpgrades = (p.weapons.laserCannon.chargeUpgrades || 0) + 1;
     }
   },
@@ -381,7 +381,7 @@ export const upgradeDatabase = [
   },
   {
     id: 'laser_dot_up',
-    rarity: 'rare',
+    rarity: 'uncommon',
     name: 'Deep Corrosion',
     icon: '<img src="assets/upgrades/laser-cannon-deep-corrosion.png" alt="icon">',
     desc: '+5 Corrosion damage, +0.5s duration (Max. 4).',
@@ -446,7 +446,7 @@ export const upgradeDatabase = [
     desc: '+15% Shield recharge speed (Max. 2).',
     isAvailable: (p) => p.shield && p.shield.unlocked && (p.shield.rechargeUpgrades || 0) < 2,
     apply: (p) => {
-      p.shield.rechargeSpeedMult *= 1.15;
+      p.shield.rechargeSpeedMult += 0.15;
       p.shield.rechargeUpgrades = (p.shield.rechargeUpgrades || 0) + 1;
     }
   },
@@ -600,12 +600,16 @@ export const upgradeDatabase = [
     isAvailable: (p) => state.bosses.length > 0,
     apply: (p) => {
         if (state.bosses.length > 0) {
+            const processed = new Set();
             state.bosses.forEach(b => {
                 b.getTargetables().forEach(t => {
                     const target = t.parent || t;
-                    target.hp = Math.floor(target.hp / 2);
-                    if (state.floatingTextPool) {
-                        state.floatingTextPool.acquire(target.x, target.y - 40, "HP HALVED!", "#ffaa00", 20);
+                    if (!processed.has(target)) {
+                        processed.add(target);
+                        target.hp = Math.floor(target.hp / 2);
+                        if (state.floatingTextPool) {
+                            state.floatingTextPool.acquire(target.x, target.y - 40, "HP HALVED!", "#ffaa00", 20);
+                        }
                     }
                 });
             });

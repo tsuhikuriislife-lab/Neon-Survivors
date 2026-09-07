@@ -45,6 +45,7 @@ export class LaserBeam {
           this.tickTimer = 5;
           this.hitEnemies.clear();
        }
+       canDamageThisFrame = true;
     } else {
        if (this.life === this.maxLife - 1) { 
           canDamageThisFrame = true;
@@ -62,23 +63,34 @@ export class LaserBeam {
       // Query enemies via spatial grid
       state.spatialGrid.queryLine(this.startX, this.startY, endX, endY, this.width, (enemy) => {
         if (enemy.hp <= 0) return;
-        if (!this.hitEnemies.has(enemy)) {
-          const distAlong = (enemy.x - this.startX) * cosA + (enemy.y - this.startY) * sinA;
-          targetsToHit.push({ target: enemy, distAlong });
+        const actualTarget = enemy.parent || enemy;
+        if (this.tickDamage) {
+           if (!actualTarget.canBeHitBy || !actualTarget.canBeHitBy(this, 5 / 60)) return;
+        } else {
+           if (this.hitEnemies.has(actualTarget)) return;
         }
+        
+        const distAlong = (enemy.x - this.startX) * cosA + (enemy.y - this.startY) * sinA;
+        targetsToHit.push({ target: enemy, distAlong, actualTarget });
       });
 
       // Also check boss targets
       for (let b of state.bosses) {
         for (let t of b.getTargetables()) {
-          if (this.hitEnemies.has(t)) continue;
+          const actualTarget = t.parent || t;
+          if (this.tickDamage) {
+             if (!actualTarget.canBeHitBy || !actualTarget.canBeHitBy(this, 5 / 60)) continue;
+          } else {
+             if (this.hitEnemies.has(actualTarget)) continue;
+          }
+
           const l2 = this.length * this.length;
           let tParam = Math.max(0, Math.min(1, ((t.x - this.startX) * (endX - this.startX) + (t.y - this.startY) * (endY - this.startY)) / l2));
           const projX = this.startX + tParam * (endX - this.startX);
           const projY = this.startY + tParam * (endY - this.startY);
           if (dist(t.x, t.y, projX, projY) < this.width / 2 + t.radius) {
             const distAlong = (t.x - this.startX) * cosA + (t.y - this.startY) * sinA;
-            targetsToHit.push({ target: t, distAlong });
+            targetsToHit.push({ target: t, distAlong, actualTarget });
           }
         }
       }
@@ -90,6 +102,12 @@ export class LaserBeam {
         const t = item.target;
         if (this.hitEnemies.has(t)) return;
         this.hitEnemies.add(t);
+        const actualTarget = item.actualTarget;
+        
+        if (!this.tickDamage) {
+           if (this.hitEnemies.has(actualTarget)) return;
+           this.hitEnemies.add(actualTarget);
+        }
 
         // Reduccion de 5% de dano por cada enemigo atravesado (100%, 95%, 90%...)
         const falloffMult = Math.max(0.1, 1.0 - index * 0.05);

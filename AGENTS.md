@@ -178,3 +178,15 @@ This repository contains a browser-based arena survival game ("Neon Survivors").
   - **Upgrade Database Integrity**: All cards in `upgrades.js` have clear English names and descriptions (e.g. `Vector Thrusters`, `Magnetic Attraction`, `Nova Discharge`, `Orbital Plasma Shield`, `Force Field`, `Core Hack`, etc.) while strictly retaining internal `id` strings to ensure full backward compatibility.
   - **Developer & Admin Modals**: Spawn sub-menus (`SPAWN ENEMY`, `RECEIVE UPGRADE`), reset cards (`RESET UPGRADES`), and game over actions (`REVIVE (1 PER GAME)`) are standardized in English.
   - **Enemy & Boss Registries**: Central registries supply English names and tactical category identifiers (`Small`, `Medium`, `Large`, `Swarmer`, `Ranger`, `Mother`, `Mother Larva`; `Standard`, `Special`, `Ranged`, `Tank`).
+
+- **Additive Stat Multipliers & Math Refactor (`Player.js`, `upgrades.js`)**:
+  - Replaced legacy "compound interest" logic (`*= 1.15`) on percentage upgrades with a stable additive multiplier system (`+= 0.15`).
+  - Added dedicated `*Mult` variables (`speedMult`, `pickupRadiusMult`, `cooldownMult`, `damageMult`) to `Player.js` constructor, weapon objects, and `resetUpgrades()`.
+  - Cooldowns are now dynamically calculated using division by their respective rate multipliers (`w.cooldown / (w.cooldownMult || 1.0) * this.getEffectiveCooldownMult()`), capping their acceleration safely and linearly.
+- **Weapon Hit Cooldown Inversion (`Enemy.js`, `Bosses.js`, Piercing Weapons)**:
+  - Migrated hit cooldown memory (`this.hitCooldowns = new Map()`) from individual piercing projectiles (Orbitals, Nova, Laser) directly into the hit targets (`Enemy.js`, `Bosses.js`).
+  - Enables piercing weapons to damage multiple overlapping enemies simultaneously without arbitrary cooldown delays. 
+  - Satellite orbitals dynamically scale their hit cooldown inversely with their `speedRatio` so faster satellites tick damage more frequently instead of passing harmlessly through hitboxes.
+- **Automated Headless Smoke Testing (`test.js`, Puppeteer)**:
+  - Implemented a headless Node.js Puppeteer test script (`npm test`) that automatically launches the game, starts a match, triggers the Quick Test panel to max out all upgrades, and verifies runtime stability over 10 seconds.
+  - Hard-fails on unhandled `TypeError`s, `SyntaxError`s, or any browser console errors, guaranteeing robust refactors without manual QA verification.

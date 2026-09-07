@@ -6,6 +6,7 @@ import { environment } from './EnvironmentManager.js';
 export const state = {
   isInMenu: true,
   isPaused: false,
+  isCinematic: false,
   wasPaused: false,
   isGameOver: false,
   isAdPlaying: false,
@@ -149,6 +150,7 @@ export const state = {
     this.waveTimer = 0;
     this.spawnTimer = 0;
     this.isPaused = false;
+    this.isCinematic = false;
     this.isGameOver = false;
     this.isAdPlaying = false;
     this.hasRerolledCurrentLevel = false;

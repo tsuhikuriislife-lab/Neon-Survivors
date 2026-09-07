@@ -18,6 +18,7 @@ export class Player {
     this.y = state.height / 2;
     this.radius = 16;
     this.baseSpeed = 3.8;
+    this.speedMult = 1.0;
     this.speed = 3.8;
     this.speedUpgradesCount = 0;
     this.maxHp = 100;
@@ -29,6 +30,7 @@ export class Player {
     this.xp = 0;
     this.nextXp = 10;
     this.pickupRadius = 130;
+    this.pickupRadiusMult = 1.0;
     this.orbitalsRadius = 80;
     this.orbitalsAngle = 0;
 
@@ -111,11 +113,12 @@ export class Player {
     };
 
     this.weapons = {
-      blaster: { level: 1, timer: 0, cooldown: 60, projectileCount: 1, damage: 22, range: 500, speed: 12, homing: 0, homingUpgrades: 0 },
-      orbitals: { level: 0, count: 2, radius: 120, angle: 0, speed: 0.05, damage: 35, tickTimer: 0, tickInterval: 10, size: 12, countUpgrades: 0, sizeUpgrades: 0, speedUpgrades: 0 },
-      nova: { level: 0, count: 6, timer: 0, cooldown: 400, speed: 6, spiral: false },
-      shockwave: { level: 0, timer: 0, cooldown: 230, radius: 175, damage: 150, rangeUpgrades: 0, rateUpgrades: 0 },
-      missiles: { level: 0, count: 6, timer: 0, cooldown: 220, speed: 7, homing: 0.05, aoe: 70, damage: 23, countUpgrades: 0, speedUpgrades: 0, homingUpgrade: false, aoeUpgrades: 0 },
+
+      blaster: { level: 1, timer: 0, cooldown: 60, cooldownMult: 1.0, projectileCount: 1, damage: 22, range: 500, speed: 12, homing: 0, homingUpgrades: 0 },
+      orbitals: { level: 0, count: 2, radius: 120, angle: 0, speed: 0.05, speedMult: 1.0, damage: 35, tickTimer: 0, tickInterval: 10, size: 12, sizeMult: 1.0, countUpgrades: 0, sizeUpgrades: 0, speedUpgrades: 0 },
+      nova: { level: 0, count: 6, timer: 0, cooldown: 400, speed: 6, speedMult: 1.0, spiral: false },
+      shockwave: { level: 0, timer: 0, cooldown: 230, cooldownMult: 1.0, radius: 175, radiusMult: 1.0, damage: 150, rangeUpgrades: 0, rateUpgrades: 0 },
+      missiles: { level: 0, count: 6, timer: 0, cooldown: 220, speed: 7, speedMult: 1.0, homing: 0.05, aoe: 70, aoeMult: 1.0, damage: 23, countUpgrades: 0, speedUpgrades: 0, homingUpgrade: false, aoeUpgrades: 0 },
       laserCannon: { level: 0, chargeTimer: 0, maxCharge: 1140, fullyCharged: false, damage: 250, width: 25, duration: 24, chargeSpeedMult: 1, damageMult: 1, widthMult: 1, subLasers: false, dot: false, dotDamage: 20, dotDuration: 5, tickDamage: false, soundNode: null, chargeUpgrades: 0, dmgUpgrades: 0, widthUpgrades: 0, lifeUpgrades: 0, dotUpgrades: 0 }
     };
   }
@@ -195,8 +198,10 @@ export class Player {
     if (this.slowTimer > 0) {
       this.slowTimer--;
       this.speed = this.baseSpeed * 0.75;
+      this.speed = this.baseSpeed * this.speedMult * 0.75;
     } else {
       this.speed = this.baseSpeed;
+      this.speed = this.baseSpeed * this.speedMult;
     }
 
     if (this.activeSkill && this.activeSkill.isActive && this.activeSkill.id === 'dash') {
@@ -304,7 +309,7 @@ export class Player {
     const w = this.weapons.blaster;
     if (w.level <= 0) return;
     w.timer++;
-    if (w.timer >= w.cooldown * this.getEffectiveCooldownMult()) {
+    if (w.timer >= (w.cooldown / (w.cooldownMult || 1.0)) * this.getEffectiveCooldownMult()) {
       w.timer = 0;
       this.fireBlaster();
     }
@@ -354,13 +359,14 @@ export class Player {
   updateOrbitals() {
     const w = this.weapons.orbitals;
     if (w.level <= 0) return;
-    this.orbitalsAngle += w.speed;
+    this.orbitalsAngle += w.speed * w.speedMult;
     w.angle = this.orbitalsAngle;
 
     if (!w.timers) w.timers = [];
 
     // Sync PIXI Sprites for orbitals
-    const texName = w.size > 10 ? 'player_orbital_12' : 'player_orbital_8';
+    const effSize = w.size * w.sizeMult;
+    const texName = effSize > 10 ? 'player_orbital_12' : 'player_orbital_8';
     while (this.orbitalSprites.length < w.count) {
         const sprite = new PIXI.Sprite(textures[texName]);
         sprite.anchor.set(0.5);
@@ -381,7 +387,7 @@ export class Player {
         sprite.y = Math.sin(curAng) * w.radius;
         
         // Scale the sprite dynamically based on its physical size (base texture is 12px)
-        const scaleFactor = w.size / 12;
+        const scaleFactor = effSize / 12;
         sprite.scale.set(scaleFactor, scaleFactor);
         
         // Counter-rotate if we want them facing outward or spinning independently
@@ -399,8 +405,14 @@ export class Player {
         const curAng = w.angle + (i * 2 * Math.PI) / w.count;
         const ox = this.x + Math.cos(curAng) * w.radius;
         const oy = this.y + Math.sin(curAng) * w.radius;
-        const orbRadius = w.size;
+        const orbRadius = effSize;
         const orbDmg = w.damage * this.getEffectiveDamageMult();
+        const sourceSprite = this.orbitalSprites[i];
+        
+        // Base speed is 0.05. Scale cooldown inversely with speed so faster satellites hit more frequently
+        // matching their reduced dwell time inside enemy hitboxes.
+        const speedRatio = (w.speed * w.speedMult) / 0.05; 
+        const cooldownSeconds = (w.tickInterval / 60.0) / speedRatio;
 
         // Query spatial grid for nearby enemies
         state.spatialGrid.queryRadius(ox, oy, orbRadius, (e) => {
@@ -409,6 +421,13 @@ export class Player {
           state.recordDamage('orbitals', orbDmg);
           spawnExplosion(ox, oy, "#ff00ff", 3, 1.5);
           audioManager.playSound('hit_satellite', { volume: 0.5, throttleMs: 50 });
+          const actualTarget = e.parent || e;
+          if (actualTarget.canBeHitBy && actualTarget.canBeHitBy(sourceSprite, cooldownSeconds)) {
+            e.takeDamage(orbDmg, "#ff00ff");
+            state.recordDamage('orbitals', orbDmg);
+            spawnExplosion(ox, oy, "#ff00ff", 3, 1.5);
+            audioManager.playSound('hit_satellite', { volume: 0.5, throttleMs: 50 });
+          }
         });
 
         // Check bosses
@@ -424,6 +443,12 @@ export class Player {
               spawnExplosion(ox, oy, "#ff00ff", 3, 1.5);
               damagedParents.add(actualTarget);
               audioManager.playSound('hit_satellite', { volume: 0.5, throttleMs: 50 });
+              if (actualTarget.canBeHitBy && actualTarget.canBeHitBy(sourceSprite, cooldownSeconds)) {
+                t.takeDamage(orbDmg, "#ff00ff");
+                state.recordDamage('orbitals', orbDmg);
+                spawnExplosion(ox, oy, "#ff00ff", 3, 1.5);
+                audioManager.playSound('hit_satellite', { volume: 0.5, throttleMs: 50 });
+              }
             }
           }
         }
@@ -435,9 +460,9 @@ export class Player {
     const w = this.weapons.shockwave;
     if (w.level <= 0) return;
     w.timer++;
-    if (w.timer >= w.cooldown * this.getEffectiveCooldownMult()) {
+    if (w.timer >= (w.cooldown / (w.cooldownMult || 1.0)) * this.getEffectiveCooldownMult()) {
       w.timer = 0;
-      state.shockwaves.push(new Shockwave(this.x, this.y, w.radius, w.damage * this.getEffectiveDamageMult()));
+      state.shockwaves.push(new Shockwave(this.x, this.y, w.radius * w.radiusMult, w.damage * this.getEffectiveDamageMult()));
       audioManager.playSound('fire_shockwave', { volume: 0.7, throttleMs: 100 });
     }
   }
@@ -446,7 +471,7 @@ export class Player {
     const w = this.weapons.nova;
     if (w.level <= 0) return;
     w.timer++;
-    if (w.timer >= w.cooldown * this.getEffectiveCooldownMult()) {
+    if (w.timer >= (w.cooldown / (w.cooldownMult || 1.0)) * this.getEffectiveCooldownMult()) {
       w.timer = 0;
       this.fireNova();
     }
@@ -455,13 +480,14 @@ export class Player {
   fireNova() {
     const w = this.weapons.nova;
     const damage = this.weapons.blaster.damage * 1.5 * this.getEffectiveDamageMult();
+    const effSpeed = w.speed * w.speedMult;
     for (let i = 0; i < w.count; i++) {
       const a = (i * 2 * Math.PI) / w.count;
       state.projectiles.push(new NovaProjectile(
         this.x, 
         this.y, 
-        Math.cos(a) * w.speed, 
-        Math.sin(a) * w.speed, 
+        Math.cos(a) * effSpeed, 
+        Math.sin(a) * effSpeed, 
         damage,
         w.spiral
       ));
@@ -474,7 +500,7 @@ export class Player {
     if (w.level <= 0) return;
     
     w.timer++;
-    if (w.timer >= w.cooldown * this.getEffectiveCooldownMult()) {
+    if (w.timer >= (w.cooldown / (w.cooldownMult || 1.0)) * this.getEffectiveCooldownMult()) {
       w.timer = 0;
       this.missilesQueue = w.count;
     }
@@ -493,14 +519,15 @@ export class Player {
   fireSingleMissile() {
     const w = this.weapons.missiles;
     const angle = Math.random() * Math.PI * 2;
+    const effSpeed = w.speed * w.speedMult;
     state.projectiles.push(new MissileProjectile(
       this.x,
       this.y,
-      Math.cos(angle) * w.speed,
-      Math.sin(angle) * w.speed,
+      Math.cos(angle) * effSpeed,
+      Math.sin(angle) * effSpeed,
       w.damage * this.getEffectiveDamageMult(),
       w.homing,
-      w.aoe
+      w.aoe * w.aoeMult
     ));
     audioManager.playSound('fire_missile', { volume: 0.5, throttleMs: 50 });
   }
@@ -790,11 +817,13 @@ export class Player {
 
   resetUpgrades() {
     this.baseSpeed = 3.8;
+    this.speedMult = 1.0;
     this.speed = 3.8;
     this.speedUpgradesCount = 0;
     this.hpRegen = 0;
     this.regenUpgradesCount = 0;
     this.pickupRadius = 130;
+    this.pickupRadiusMult = 1.0;
     this.magnetUpgrades = 0;
     this.invulnerabilityMaxTime = 1.5;
     this.iFrameUpgradesCount = 0;
@@ -850,11 +879,12 @@ export class Player {
     };
 
     this.weapons = {
-      blaster: { level: 1, timer: 0, cooldown: 60, projectileCount: 1, damage: 22, range: 500, speed: 12, homing: 0, homingUpgrades: 0 },
-      orbitals: { level: 0, count: 2, radius: 120, angle: 0, speed: 0.05, damage: 35, tickTimer: 0, tickInterval: 10, size: 12, countUpgrades: 0, sizeUpgrades: 0, speedUpgrades: 0 },
-      nova: { level: 0, count: 6, timer: 0, cooldown: 400, speed: 6, spiral: false },
-      shockwave: { level: 0, timer: 0, cooldown: 230, radius: 175, damage: 150, rangeUpgrades: 0, rateUpgrades: 0 },
-      missiles: { level: 0, count: 6, timer: 0, cooldown: 220, speed: 7, homing: 0.05, aoe: 70, damage: 23, countUpgrades: 0, speedUpgrades: 0, homingUpgrade: false, aoeUpgrades: 0 },
+
+      blaster: { level: 1, timer: 0, cooldown: 60, cooldownMult: 1.0, projectileCount: 1, damage: 22, range: 500, speed: 12, homing: 0, homingUpgrades: 0 },
+      orbitals: { level: 0, count: 2, radius: 120, angle: 0, speed: 0.05, speedMult: 1.0, damage: 35, tickTimer: 0, tickInterval: 10, size: 12, sizeMult: 1.0, countUpgrades: 0, sizeUpgrades: 0, speedUpgrades: 0 },
+      nova: { level: 0, count: 6, timer: 0, cooldown: 400, speed: 6, speedMult: 1.0, spiral: false },
+      shockwave: { level: 0, timer: 0, cooldown: 230, cooldownMult: 1.0, radius: 175, radiusMult: 1.0, damage: 150, rangeUpgrades: 0, rateUpgrades: 0 },
+      missiles: { level: 0, count: 6, timer: 0, cooldown: 220, speed: 7, speedMult: 1.0, homing: 0.05, aoe: 70, aoeMult: 1.0, damage: 23, countUpgrades: 0, speedUpgrades: 0, homingUpgrade: false, aoeUpgrades: 0 },
       laserCannon: { level: 0, chargeTimer: 0, maxCharge: 1140, fullyCharged: false, damage: 250, width: 25, duration: 24, chargeSpeedMult: 1, damageMult: 1, widthMult: 1, subLasers: false, dot: false, dotDamage: 20, dotDuration: 5, tickDamage: false, soundNode: null, chargeUpgrades: 0, dmgUpgrades: 0, widthUpgrades: 0, lifeUpgrades: 0, dotUpgrades: 0 }
     };
     

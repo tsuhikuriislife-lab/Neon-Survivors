@@ -22,7 +22,18 @@ export class Boss {
       set(val) { this._texture = val; if(this.sprite) this.sprite.texture = val; }
     });
     this._spatialStamp = 0;
+    this.hitCooldowns = new Map();
   }
+
+  canBeHitBy(source, cooldownSeconds) {
+    const lastHit = this.hitCooldowns.get(source) || -9999;
+    if (state.gameTime - lastHit >= cooldownSeconds) {
+      this.hitCooldowns.set(source, state.gameTime);
+      return true;
+    }
+    return false;
+  }
+
 
   getTargetables() {
     return this.dead ? [] : [this];

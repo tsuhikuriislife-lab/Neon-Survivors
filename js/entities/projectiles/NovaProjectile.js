@@ -49,6 +49,8 @@ export class NovaProjectile extends Projectile {
     const lastHit = this.hitCooldowns.get(actualTarget) || 0;
     if (state.gameTime - lastHit >= 0.1) {
       this.hitCooldowns.set(actualTarget, state.gameTime);
+    }
+    if (actualTarget.canBeHitBy && actualTarget.canBeHitBy(this, 0.1)) {
       return true;
     }
     return false;

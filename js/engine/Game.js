@@ -667,6 +667,48 @@ export function loop(timestamp) {
   }
 
   if (!state.isPaused) {
+    // === 1. CINEMATIC & SYSTEM UPDATES ===
+    updatePendingBossSpawn(dt);
+    updateBossSpawnBeacon();
+    state.environment.update(dt, performance.now() / 1000);
+    
+    if (state.camera) {
+      state.camera.update(dt, state.player);
+    }
+
+    if (state.particlePool) state.particlePool.update();
+    if (state.floatingTextPool) state.floatingTextPool.update();
+
+    for (let i = state.particles.length - 1; i >= 0; i--) {
+      state.particles[i].update();
+      if (state.particles[i].alpha <= 0) {
+        state.particles[i] = state.particles[state.particles.length - 1];
+        state.particles.pop();
+      }
+    }
+
+    for (let i = state.floatingTexts.length - 1; i >= 0; i--) {
+      state.floatingTexts[i].update();
+      if (state.floatingTexts[i].alpha <= 0) {
+        state.floatingTexts[i] = state.floatingTexts[state.floatingTexts.length - 1];
+        state.floatingTexts.pop();
+      }
+    }
+
+    if (state.isCinematic && state.camera && !state.camera.focusData) {
+      state.isCinematic = false;
+    }
+
+    // === 2. CINEMATIC PAUSE GATE ===
+    if (state.isCinematic) {
+      updateBackgroundLayer();
+      if (state.camera) {
+        state.camera.applyToLayer(worldLayer);
+      }
+      return; // Skip gameplay updates
+    }
+
+    // === 3. GAMEPLAY UPDATES ===
     state.gameTime += dt;
 
     if (state.gameTime >= state.nextBossTime) {
@@ -676,13 +718,8 @@ export function loop(timestamp) {
       state.nextBossTime += 300;
     }
 
-    updatePendingBossSpawn(dt);
     updateWave(dt);
-    updateBossSpawnBeacon();
     handleSpawning();
-
-    // Update Environment Transitions (Background, Lines, Borders)
-    state.environment.update(dt, state.gameTime);
 
     // 1. Update Enemies & Cleanup Dead Enemies via Swap-and-Pop
     for (let i = state.enemies.length - 1; i >= 0; i--) {
@@ -711,9 +748,6 @@ export function loop(timestamp) {
     if (state.player) {
       state.player.update(dt);
     }
-
-    // Update Camera (Player tracking, cinematic focus, screenshake, zoom)
-    state.camera.update(dt, state.player);
 
     // Update Hazard Areas
     for (let i = state.hazardAreas.length - 1; i >= 0; i--) {
@@ -964,9 +998,6 @@ export function loop(timestamp) {
 
     // Update Object Pools (Zero GC Churn)
     if (state.gemPool) state.gemPool.update(state.player);
-    if (state.particlePool) state.particlePool.update();
-    if (state.floatingTextPool) state.floatingTextPool.update();
-
     // Legacy arrays update if any
     for (let i = state.gems.length - 1; i >= 0; i--) {
       if (!state.gems[i].update(state.player)) {
@@ -974,24 +1005,6 @@ export function loop(timestamp) {
         state.gems.pop();
       }
     }
-
-    for (let i = state.particles.length - 1; i >= 0; i--) {
-      state.particles[i].update();
-      if (state.particles[i].alpha <= 0) {
-        state.particles[i] = state.particles[state.particles.length - 1];
-        state.particles.pop();
-      }
-    }
-
-    for (let i = state.floatingTexts.length - 1; i >= 0; i--) {
-      state.floatingTexts[i].update();
-      if (state.floatingTexts[i].alpha <= 0) {
-        state.floatingTexts[i] = state.floatingTexts[state.floatingTexts.length - 1];
-        state.floatingTexts.pop();
-      }
-    }
-    
-    
 
     let desiredMusic = 'music_main';
     if (state.bosses.length > 0) {

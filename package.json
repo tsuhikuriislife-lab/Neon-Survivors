@@ -1,0 +1,16 @@
+{
+  "name": "juego",
+  "version": "1.0.0",
+  "description": "A browser-based arena survival shooter with a layered ES6 module architecture.",
+  "main": "index.js",
+  "scripts": {
+    "test": "node test.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "express": "^5.2.1",
+    "puppeteer": "^24.43.1"
+  }
+}

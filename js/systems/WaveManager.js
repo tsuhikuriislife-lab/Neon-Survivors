@@ -99,6 +99,8 @@ export function triggerBossSpawnSequence(bossType, customX, customY) {
     timer: 5.0,
     duration: 5.0
   };
+  
+  state.isCinematic = true;
 
   showWarningBanner("boss-warning-banner", 4.0);
 

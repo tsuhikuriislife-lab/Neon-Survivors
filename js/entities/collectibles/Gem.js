@@ -35,7 +35,7 @@ export class Gem {
   update(player) {
     this.angle += 0.05;
     const d = dist(this.x, this.y, player.x, player.y);
-    if (d < player.pickupRadius) {
+    if (d < player.pickupRadius * player.pickupRadiusMult) {
       const speed = 7.5;
       const a = Math.atan2(player.y - this.y, player.x - this.x);
       this.x += Math.cos(a) * speed;
