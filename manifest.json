@@ -1,7 +1,7 @@
 {
   "name": "Neon Survivors",
   "short_name": "Neon Survivors",
-  "start_url": "/index.html",
+  "start_url": "./index.html",
   "display": "fullscreen",
   "background_color": "#000000",
   "theme_color": "#000000",
