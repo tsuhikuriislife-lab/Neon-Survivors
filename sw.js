@@ -1,4 +1,6 @@
-const CACHE_NAME = 'neon-survivors-cache-v1';
+const CACHE_VERSION = '1.0.2';
+const CACHE_NAME = `neon-survivors-cache-v${CACHE_VERSION}`;
+
 const urlsToCache = [
   './',
   './index.html',
@@ -11,6 +13,7 @@ const urlsToCache = [
 ];
 
 self.addEventListener('install', event => {
+  self.skipWaiting(); // Force the waiting service worker to become the active service worker
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => {
@@ -48,22 +51,26 @@ self.addEventListener('fetch', event => {
 
             return response;
           }
-        );
+        ).catch(() => {
+          // Fallback if offline and not in cache
+        });
       })
   );
 });
 
 self.addEventListener('activate', event => {
-  const cacheWhitelist = [CACHE_NAME];
   event.waitUntil(
     caches.keys().then(cacheNames => {
       return Promise.all(
         cacheNames.map(cacheName => {
-          if (cacheWhitelist.indexOf(cacheName) === -1) {
+          if (cacheName !== CACHE_NAME) {
+            console.log('Service Worker: Clearing Old Cache', cacheName);
             return caches.delete(cacheName);
           }
         })
       );
+    }).then(() => {
+      return self.clients.claim(); // Force all clients to use the new service worker immediately
     })
   );
 });
