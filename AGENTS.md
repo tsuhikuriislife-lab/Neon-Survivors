@@ -197,3 +197,8 @@ This repository contains a browser-based arena survival game ("Neon Survivors").
 - **Dynamic Asset Integration (`TextureCache.js`, `upgrades.js`)**:
   - Replaced legacy emoji upgrade icons with standard HTML image tags `<img src="assets/upgrades/...png" alt="icon">`.
   - `preloadUpgradeIcons` dynamically parses `src` attributes, extracting paths to preload new PNG assets directly into `preloadedUpgradeImages` at startup without hardcoded lists.
+- **PWA & TWA (Bubblewrap) Architecture**:
+  - Implemented `manifest.json` and `sw.js` (Service Worker) to cache all vital assets, fulfilling the technical requirements for a Progressive Web App (PWA) with offline support.
+  - Adapted routing paths (`start_url: "/Neon-Survivors/index.html"`) for compatibility with GitHub Pages subdirectory hosting.
+  - Configured `@bubblewrap/cli` (`twa-manifest.json`) to generate an installable Android APK, effectively wrapping the web game in a Trusted Web Activity.
+  - Implemented strict Git hygiene via `.gitignore` to prevent sensitive certificates (`android.keystore`) and heavy Gradle build artifacts (`.gradle/`, `app/build/`) from leaking into public repositories while maintaining the compiled `.apk` for direct downloads.
