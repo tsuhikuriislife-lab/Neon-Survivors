@@ -2,6 +2,14 @@
 
 A browser-based arena survival shooter with a layered ES6 module architecture.
 
+## 📥 Download for Android
+You can play the game natively on your Android device by downloading the APK:
+
+[**📦 Download Neon Survivors APK**](https://github.com/tsuhikuriislife-lab/Neon-Survivors/raw/main/app-release-signed.apk)
+
+*(Make sure to enable "Install from unknown sources" on your device to install the APK)*
+
+
 ## How to Play
 1. Serve the project using a local web server (e.g., `python3 -m http.server`).
 2. Open `index.html` in your web browser.

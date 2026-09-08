@@ -29,3 +29,11 @@ node_modules/
 .DS_Store
 Thumbs.db
 
+# Android / Bubblewrap / TWA
+android.keystore
+local.properties
+.gradle/
+build/
+app/build/
+.idea/
+*.iml
