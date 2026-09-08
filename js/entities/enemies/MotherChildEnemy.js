@@ -48,9 +48,9 @@ export class MotherChildEnemy extends Enemy {
       const vy = Math.sin(pa) * 4;
 
       if (state.projectilePool) {
-        state.projectilePool.acquire(this.x, this.y, vx, vy, 15, this.color, 4, true);
+        state.projectilePool.acquire(this.x, this.y, vx, vy, 15, "#ff0000", 4, true);
       } else {
-        state.enemyProjectiles.push(new Projectile(this.x, this.y, vx, vy, 15, this.color, 4, true));
+        state.enemyProjectiles.push(new Projectile(this.x, this.y, vx, vy, 15, "#ff0000", 4, true));
       }
     }
     super.update(player);

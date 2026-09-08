@@ -251,18 +251,20 @@ export class AmalgamNode extends Boss {
         const targetY = originY + Math.sin(a) * 100;
         const initialSpeed = 1.2 + Math.random() * 0.8;
         const accel = 0.06 + Math.random() * 0.04;
-        state.acceleratingProjectiles.push(
-          new AcceleratingProjectile(originX, originY, targetX, targetY, 12, this.color, initialSpeed, accel)
-        );
+        if (state.acceleratingProjectiles) {
+          state.acceleratingProjectiles.push(
+            new AcceleratingProjectile(originX, originY, targetX, targetY, 12, "#ff0000", initialSpeed, accel)
+          );
+        }
       } else {
         const spd = 3.5 + Math.random() * 1.8;
         const vx = Math.cos(a) * spd;
         const vy = Math.sin(a) * spd;
 
         if (state.projectilePool) {
-          state.projectilePool.acquire(originX, originY, vx, vy, 12, this.color, 4, true);
+          state.projectilePool.acquire(originX, originY, vx, vy, 12, "#ff0000", 4, true);
         } else {
-          state.enemyProjectiles.push(new Projectile(originX, originY, vx, vy, 12, this.color, 4, true));
+          state.enemyProjectiles.push(new Projectile(originX, originY, vx, vy, 12, "#ff0000", 4, true));
         }
       }
     }

@@ -187,9 +187,9 @@ export class KyrenBoss extends Boss {
       const vx = Math.cos(a) * 4;
       const vy = Math.sin(a) * 4;
       if (state.projectilePool) {
-        state.projectilePool.acquire(this.x, this.y, vx, vy, 15, "#00ffcc", 5, true);
+        state.projectilePool.acquire(this.x, this.y, vx, vy, 15, "#ff0000", 5, true);
       } else {
-        state.enemyProjectiles.push(new Projectile(this.x, this.y, vx, vy, 15, "#00ffcc", 5, true));
+        state.enemyProjectiles.push(new Projectile(this.x, this.y, vx, vy, 15, "#ff0000", 5, true));
       }
     }
     audioManager.playSound('enemy_projectile', { volume: 0.6, throttleMs: 100 });

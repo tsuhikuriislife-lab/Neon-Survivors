@@ -50,9 +50,9 @@ export class RangerEnemy extends Enemy {
         const vy = Math.sin(pa) * this.projectileSpeed;
 
         if (state.projectilePool) {
-          state.projectilePool.acquire(this.x, this.y, vx, vy, this.projectileDamage, this.color, 5, true);
+          state.projectilePool.acquire(this.x, this.y, vx, vy, this.projectileDamage, "#ff0000", 5, true);
         } else {
-          state.enemyProjectiles.push(new Projectile(this.x, this.y, vx, vy, this.projectileDamage, this.color, 5, true));
+          state.enemyProjectiles.push(new Projectile(this.x, this.y, vx, vy, this.projectileDamage, "#ff0000", 5, true));
         }
 
         audioManager.playSound('enemy_projectile', { volume: 0.3, throttleMs: 50 });

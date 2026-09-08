@@ -299,7 +299,7 @@ export class SebastianMinion extends Boss {
       this.smokeTimer = 0;
       const tail = this.segments[this.segmentCount - 1];
       if (tail.x >= 0 && tail.x <= state.width && tail.y >= 0 && tail.y <= state.height) {
-        state.hazardAreas.push(new HazardArea(tail.x, tail.y, 45, 300, "rgb(168, 85, 247)", 0.2, false));
+        state.hazardAreas.push(new HazardArea(tail.x, tail.y, 45, 300, "#ff0000", 0.2, false));
       }
     }
 

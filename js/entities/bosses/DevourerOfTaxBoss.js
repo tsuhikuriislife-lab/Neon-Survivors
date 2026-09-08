@@ -403,7 +403,7 @@ export class DevourerOfTaxBoss extends Boss {
     this.acidTimer++;
     if (!isOutside && this.acidTimer >= 180) {
       this.acidTimer = 0;
-      state.hazardAreas.push(new HazardArea(this.x, this.y, 65, 400, "rgb(57, 255, 20)", 0.2, true));
+      state.hazardAreas.push(new HazardArea(this.x, this.y, 65, 400, "#ff0000", 0.2, true));
     }
 
     // 6. Balance de colisiones y cooldown de dano corporal

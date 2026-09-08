@@ -319,8 +319,8 @@ export class CarlosMinion extends Boss {
             const targetX2 = seg.x + Math.cos(perpA2) * 100;
             const targetY2 = seg.y + Math.sin(perpA2) * 100;
 
-            state.acceleratingProjectiles.push(new AcceleratingProjectile(seg.x, seg.y, targetX1, targetY1, 12, "#00ff88"));
-            state.acceleratingProjectiles.push(new AcceleratingProjectile(seg.x, seg.y, targetX2, targetY2, 12, "#00ff88"));
+            state.acceleratingProjectiles.push(new AcceleratingProjectile(seg.x, seg.y, targetX1, targetY1, 12, "#ff0000"));
+            state.acceleratingProjectiles.push(new AcceleratingProjectile(seg.x, seg.y, targetX2, targetY2, 12, "#ff0000"));
 
             audioManager.playSound('enemy_projectile', { volume: 0.4, throttleMs: 80 });
           }

@@ -70,7 +70,7 @@ export class DenzelBoss extends Boss {
     if (this.fireTimer >= 100) {
       this.fireTimer = 0;
       for (let i = -1; i <= 1; i++) {
-        state.fallingProjectiles.push(new FallingProjectile(this.x, this.y, i * 2.2, -7, 18, "#ffffff"));
+        state.fallingProjectiles.push(new FallingProjectile(this.x, this.y, i * 2.2, -7, 18, "#ff0000"));
       }
       audioManager.playSound('enemy_projectile', { volume: 0.6, throttleMs: 100 });
     }
