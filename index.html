@@ -105,7 +105,7 @@
           <span class="btn-start-text">🔄 RESUME GAME 🔄</span>
         </button>
       </div>
-      <div class="version-indicator">v1.0.21</div>
+      <div class="version-indicator">v1.0.22</div>
     </div>
 
     <!-- Upgrade Modal -->
@@ -232,22 +232,34 @@
           .then(registration => {
             console.log('ServiceWorker registration successful with scope: ', registration.scope);
             
+            // Force an update check with the server every time the app loads
+            registration.update();
+            
+            // Periodically check for updates if the game is left open
+            setInterval(() => registration.update(), 1000 * 60 * 60); // Every hour
+            
             let newWorker;
+            
+            function showUpdateUI(worker) {
+              newWorker = worker;
+              document.getElementById('update-available-overlay').style.display = 'flex';
+            }
             
             // Check if there is an update waiting already
             if (registration.waiting) {
-              newWorker = registration.waiting;
-              document.getElementById('update-available-overlay').style.display = 'flex';
+              showUpdateUI(registration.waiting);
             }
             
             // Listen for new updates
             registration.addEventListener('updatefound', () => {
-              newWorker = registration.installing;
-              newWorker.addEventListener('statechange', () => {
-                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                  document.getElementById('update-available-overlay').style.display = 'flex';
-                }
-              });
+              const installingWorker = registration.installing;
+              if (installingWorker) {
+                installingWorker.addEventListener('statechange', () => {
+                  if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                    showUpdateUI(installingWorker);
+                  }
+                });
+              }
             });
             
             // Handle the restart button click
