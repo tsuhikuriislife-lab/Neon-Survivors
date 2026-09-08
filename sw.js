@@ -1,4 +1,4 @@
-const CACHE_VERSION = '1.0.22';
+const CACHE_VERSION = '1.0.231';
 const CACHE_NAME = `neon-survivors-cache-v${CACHE_VERSION}`;
 
 const urlsToCache = [
@@ -22,7 +22,8 @@ self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => {
-        return cache.addAll(urlsToCache);
+        const requests = urlsToCache.map(url => new Request(url, { cache: 'reload' }));
+        return cache.addAll(requests);
       })
   );
 });
