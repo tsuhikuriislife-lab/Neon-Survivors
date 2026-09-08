@@ -19,8 +19,8 @@
     "path": "/home/Coder/IdeaProjects/juego/android.keystore",
     "alias": "android"
   },
-  "appVersionName": "2",
-  "appVersionCode": 2,
+  "appVersionName": "1",
+  "appVersionCode": 1,
   "shortcuts": [],
   "generatorApp": "bubblewrap-cli",
   "webManifestUrl": "https://tsuhikuriislife-lab.github.io/Neon-Survivors/manifest.json",
@@ -42,5 +42,5 @@
   "fileHandlers": [],
   "launchHandlerClientMode": "",
   "displayOverride": [],
-  "appVersion": "2"
+  "appVersion": "1"
 }
