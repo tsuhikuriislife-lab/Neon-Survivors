@@ -792,10 +792,11 @@ export class Player {
   }
 
   gainXP(val) {
-    const finalVal = Math.round(val * (this.xpMultiplier || 1.0));
+    // Allow XP to accumulate decimals so fractional percentage bonuses aren't lost on small gems
+    const finalVal = val * (this.xpMultiplier || 1.0);
     this.xp += finalVal;
     if (state.floatingTextPool) {
-      state.floatingTextPool.acquire(this.x + (Math.random() * 20 - 10), this.y - 15, `+${finalVal} XP`, "#00ffcc", 11);
+      state.floatingTextPool.acquire(this.x + (Math.random() * 20 - 10), this.y - 15, `+${Math.floor(finalVal)} XP`, "#00ffcc", 11);
     }
     
     audioManager.playSound('pickup_gem', { volume: 0.3, throttleMs: 50 });
