@@ -211,6 +211,17 @@
       <p style="color: #cbd5e0; font-size: 15px; max-width: 320px; line-height: 1.5; text-shadow: 0 0 8px rgba(255,255,255,0.3);">This game is optimized exclusively for landscape mode.</p>
     </div>
 
+    <!-- Update Available Overlay -->
+    <div id="update-available-overlay" class="modal-overlay" style="display: none; z-index: 10000; flex-direction: column;">
+      <div class="admin-box" style="text-align: center;">
+        <h2 style="color: #ffaa00; text-shadow: 0 0 15px #ffaa00; margin-bottom: 15px;">UPDATE AVAILABLE</h2>
+        <p style="color: #cbd5e0; margin-bottom: 25px; line-height: 1.5;">A new version of the game has been downloaded.<br>Please restart to apply the update.</p>
+        <button id="btnApplyUpdate" class="btn-start-game" style="font-size: 18px; padding: 15px 30px;">
+          <span class="btn-start-text">🔄 RESTART GAME 🔄</span>
+        </button>
+      </div>
+    </div>
+
   </div>
 
   <script type="module" src="js/main.js"></script>
@@ -220,9 +231,43 @@
         navigator.serviceWorker.register('./sw.js')
           .then(registration => {
             console.log('ServiceWorker registration successful with scope: ', registration.scope);
+            
+            let newWorker;
+            
+            // Check if there is an update waiting already
+            if (registration.waiting) {
+              newWorker = registration.waiting;
+              document.getElementById('update-available-overlay').style.display = 'flex';
+            }
+            
+            // Listen for new updates
+            registration.addEventListener('updatefound', () => {
+              newWorker = registration.installing;
+              newWorker.addEventListener('statechange', () => {
+                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                  document.getElementById('update-available-overlay').style.display = 'flex';
+                }
+              });
+            });
+            
+            // Handle the restart button click
+            document.getElementById('btnApplyUpdate').addEventListener('click', () => {
+              if (newWorker) {
+                newWorker.postMessage('SKIP_WAITING');
+              }
+            });
+            
           }, err => {
             console.log('ServiceWorker registration failed: ', err);
           });
+          
+        let refreshing = false;
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+          if (!refreshing) {
+            refreshing = true;
+            window.location.reload();
+          }
+        });
       });
     }
   </script>
