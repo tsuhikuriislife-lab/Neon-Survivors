@@ -17,14 +17,14 @@ export class Player {
     this.x = state.width / 2;
     this.y = state.height / 2;
     this.radius = 16;
-    this.baseSpeed = 3.8;
+    this.baseSpeed = 4.2;
     this.speedMult = 1.0;
     this.speed = 3.8;
     this.speedUpgradesCount = 0;
     this.maxHp = 100;
     this.hp = 100;
     this.hullUpgradesCount = 0;
-    this.hpRegen = 0;
+    this.hpRegen = 0.5;
     this.regenUpgradesCount = 0;
     this.level = 1;
     this.xp = 0;
