@@ -1120,6 +1120,18 @@
 /* ==========================================================================
    START SCREEN OVERLAY & CONTROLS
    ========================================================================== */
+.version-indicator {
+  position: absolute;
+  bottom: clamp(6px, 1.2cqh, 12px);
+  left: clamp(10px, 1.5cqw, 20px);
+  font-size: clamp(10px, 1.2cqw, 14px);
+  color: rgba(255, 255, 255, 0.5);
+  font-family: monospace;
+  pointer-events: none;
+  z-index: 55;
+  text-shadow: 0 0 5px rgba(255, 255, 255, 0.3);
+}
+
 .start-screen-overlay {
   position: absolute;
   top: 0;
