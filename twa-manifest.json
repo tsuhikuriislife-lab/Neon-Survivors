@@ -12,15 +12,15 @@
   "navigationDividerColorDark": "#000000",
   "backgroundColor": "#000000",
   "enableNotifications": true,
-  "startUrl": "/index.html",
+  "startUrl": "/Neon-Survivors/index.html",
   "iconUrl": "https://tsuhikuriislife-lab.github.io/Neon-Survivors/assets/icons/splash-icon.png",
   "splashScreenFadeOutDuration": 300,
   "signingKey": {
     "path": "/home/Coder/IdeaProjects/juego/android.keystore",
     "alias": "android"
   },
-  "appVersionName": "1",
-  "appVersionCode": 1,
+  "appVersionName": "2",
+  "appVersionCode": 2,
   "shortcuts": [],
   "generatorApp": "bubblewrap-cli",
   "webManifestUrl": "https://tsuhikuriislife-lab.github.io/Neon-Survivors/manifest.json",
@@ -42,5 +42,5 @@
   "fileHandlers": [],
   "launchHandlerClientMode": "",
   "displayOverride": [],
-  "appVersion": "1"
+  "appVersion": "2"
 }
