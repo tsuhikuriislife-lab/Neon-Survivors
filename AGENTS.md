@@ -90,6 +90,7 @@ This repository contains a browser-based arena survival game ("Neon Survivors").
   - The player's main blaster supports a `homingStrength` mechanic for subtly tracking targets.
   - The `NovaProjectile` class supports a spiral-outward travel pattern if `isSpiral` is passed as true, utilized by the `Tornado Nova` upgrade.
   - The `MissileProjectile` handles its own AoE damage via an `onHit()` method. `Game.js` will trigger this when an enemy collision occurs before despawning the non-piercing projectile.
+  - **Standardized Enemy Projectile Colors**: All hostile projectiles, falling projectiles, accelerating projectiles, and hazard areas (acid pools, toxic smoke) emitted by standard enemies and bosses are strictly unified to red (`#ff0000`). This ensures unambiguous visual clarity for the player against the myriad of colorful player weapons.
 - **Upgrade Balancing & Caps**: Many upgrades in `upgrades.js` have strict maximum limits implemented via `isAvailable` functions checking counters inside `Player.js` (e.g., max 4 upgrades for blaster count/rate and magnet). Weapons like Shockwave, Orbitals (Satellites), and Missiles are split into an unlock card and separate progressive stat upgrades (range, size, speed, etc.).
 - **Upgrade Rarities & Infinite Scaling**:
   - Upgrades are categorized by rarity (`common` 60%, `uncommon` 20%, `rare` 15%, `legendary` 5%).
@@ -101,6 +102,7 @@ This repository contains a browser-based arena survival game ("Neon Survivors").
   - Bosses cannot spawn twice in a row (`state.lastBossName` tracking).
   - Defeating a boss permanently scales its specific base HP by +70% for future spawns via `state.bossScaling`.
   - Defeating a boss triggers a 5-card face-down Reward Modal. Players pick 1 (or 2 with a 20% chance). First pick has a 5% "Jackpot" chance to grant all remaining cards with a CSS confetti particle effect.
+  - **Out-of-Bounds XP Gem Teleportation**: If any gem-dropping Boss (e.g., `DevourerOfTaxBoss`, `CarlosMinion`, `KyrenBoss`, `AmalgamNode`) is killed outside the visible arena bounds, its burst of XP gems is automatically teleported to the center of the field (`state.width / 2`, `state.height / 2`) with slight randomness to guarantee player access.
   - **Boss Spawn Sequence (5 Seconds Anticipation)**: Boss spawns trigger a HUD warning banner (`#boss-warning-banner`), a spawn warning SFX, and render a pulsing red holographic beacon with concentric rotating rings in the arena. After 5.0 seconds, the beacon detonates in neon particles and instantiates the boss.
 - **Arena Dimensions & Camera**:
   - Fixed square arena dimensions of `1920 x 1920` with canonical center at `(960, 960)`.
@@ -198,6 +200,8 @@ This repository contains a browser-based arena survival game ("Neon Survivors").
   - Replaced legacy emoji upgrade icons with standard HTML image tags `<img src="assets/upgrades/...png" alt="icon">`.
   - `preloadUpgradeIcons` dynamically parses `src` attributes, extracting paths to preload new PNG assets directly into `preloadedUpgradeImages` at startup without hardcoded lists.
 - **PWA & TWA (Bubblewrap) Architecture**:
+  - **Dynamic Cache Versioning (`sw.js`)**: Integrated explicit `CACHE_VERSION` management (e.g., `1.0.2`). The Service Worker `activate` event actively deletes obsolete caches to prevent conflicts. Incorporates a `SKIP_WAITING` postMessage listener and `self.clients.claim()` for seamless updates on demand.
+  - **Update Notification Overlay**: The game actively listens to the Service Worker's `updatefound` event and `navigator.serviceWorker.controller` to detect new versions downloaded in the background. It surfaces a non-intrusive `#update-available-overlay` prompting the user to safely `"RESTART GAME"` and apply the update without abrupt interruptions.
   - Implemented `manifest.json` and `sw.js` (Service Worker) to cache all vital assets, fulfilling the technical requirements for a Progressive Web App (PWA) with offline support.
   - Adapted routing paths (`start_url: "/Neon-Survivors/index.html"`) for compatibility with GitHub Pages subdirectory hosting.
   - Configured `@bubblewrap/cli` (`twa-manifest.json`) to generate an installable Android APK, effectively wrapping the web game in a Trusted Web Activity.
