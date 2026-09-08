@@ -1073,10 +1073,11 @@ export function showBossRewardMenu(bossName) {
 
   const getRarityRoll = () => {
     const r = Math.random();
-    if (r < 0.05) return 'legendary';
-    if (r < 0.20) return 'rare';
-    if (r < 0.40) return 'uncommon';
-    return 'common';
+    // No 'common' upgrades in Boss Rewards.
+    // 10% Legendary, 30% Rare, 60% Uncommon.
+    if (r < 0.10) return 'legendary';
+    if (r < 0.40) return 'rare';
+    return 'uncommon';
   };
 
   const choices = [];

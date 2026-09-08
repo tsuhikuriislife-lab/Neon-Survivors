@@ -1,4 +1,4 @@
-const CACHE_VERSION = '1.0.233';
+const CACHE_VERSION = '1.0.234';
 const CACHE_NAME = `neon-survivors-cache-v${CACHE_VERSION}`;
 
 const urlsToCache = [
