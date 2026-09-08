@@ -42,6 +42,9 @@ The game uses a modular, layered architecture to maintain clean separation of co
 
 ## Key Features
 - **Centralized Audio**: Web Audio API manages independent channels, dynamic muffling, and throttling.
+- **Cinematic Pause System**: Seamless event mechanism that freezes gameplay logic (enemies, player) while visual effects and camera sequences play out.
+- **Automated Testing**: Headless Puppeteer smoke tests (`npm test`) verify game stability and catch runtime errors without manual QA.
+- **Dynamic Asset Preloading**: Automatically parses and caches all upgrade PNGs into memory at startup to ensure a zero-hiccup UI experience.
 - **Scaling Difficulty**: Enemies spawn faster over time. Bosses appear randomly and their HP permanently scales by +70% each time they are defeated.
 - **RNG Upgrade System**: Upgrades are sorted into 4 rarities with weighted drops (60%, 20%, 15%, 5%). Once core upgrades max out, infinite stat boosts take over.
 - **Boss Rewards**: Defeating a boss yields a hidden 5-card choice system with chances for double-picks and Jackpots.

@@ -190,3 +190,10 @@ This repository contains a browser-based arena survival game ("Neon Survivors").
 - **Automated Headless Smoke Testing (`test.js`, Puppeteer)**:
   - Implemented a headless Node.js Puppeteer test script (`npm test`) that automatically launches the game, starts a match, triggers the Quick Test panel to max out all upgrades, and verifies runtime stability over 10 seconds.
   - Hard-fails on unhandled `TypeError`s, `SyntaxError`s, or any browser console errors, guaranteeing robust refactors without manual QA verification.
+- **Cinematic Pause System (`state.isCinematic`, `WaveManager.js`, `Game.js`)**:
+  - Automatically isolates visual, environment, and camera updates from the core gameplay loop.
+  - Pauses player movement, enemy logic, projectiles, and wave timers without invoking the UI Pause Menu.
+  - During Boss Spawns (`WaveManager`), the camera focuses on the spawn beacon for 1.4s, and smoothly unpauses gameplay exactly when the camera finishes returning to the player.
+- **Dynamic Asset Integration (`TextureCache.js`, `upgrades.js`)**:
+  - Replaced legacy emoji upgrade icons with standard HTML image tags `<img src="assets/upgrades/...png" alt="icon">`.
+  - `preloadUpgradeIcons` dynamically parses `src` attributes, extracting paths to preload new PNG assets directly into `preloadedUpgradeImages` at startup without hardcoded lists.
