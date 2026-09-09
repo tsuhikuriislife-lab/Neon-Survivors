@@ -10,10 +10,22 @@
   <link rel="icon" type="image/png" href="assets/favicon.png" />
   <title>Neon Survivors - Balanced Waves</title>
   <link rel="stylesheet" href="css/styles.css" />
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/7.3.2/pixi.min.js"></script>
+  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/7.3.2/pixi.min.js"></script>
 </head>
 <body>
   <div id="game-container">
+    <!-- Global Loading Screen -->
+    <div id="global-loading-screen" class="modal-overlay" style="display: flex; z-index: 999999; flex-direction: column; background: #04030a; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;">
+      <div style="text-align: center;">
+        <div class="loading-spinner" style="width: 50px; height: 50px; border: 4px solid #333; border-top: 4px solid #00ffff; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 20px;"></div>
+        <h2 style="color: #00ffff; font-family: monospace; letter-spacing: 2px;">LOADING RESOURCES...</h2>
+        <p style="color: #cbd5e0; font-size: 14px; margin-top: 10px;">Establishing connection</p>
+      </div>
+      <style>
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+      </style>
+    </div>
+
     <canvas id="gameCanvas"></canvas>
     
     <!-- Virtual Movement Joystick (Left) -->
@@ -105,7 +117,7 @@
           <span class="btn-start-text">RESUME GAME</span>
         </button>
       </div>
-      <div class="version-indicator">v1.0.235</div>
+      <div class="version-indicator">v1.0.24</div>
     </div>
 
     <!-- Upgrade Modal -->

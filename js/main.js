@@ -168,6 +168,12 @@ window.addEventListener('touchend', startAudio, { passive: true });
 initInput();
 initUIListeners();
 
+// Hide the global loading screen once the engine is ready
+const loadingScreen = document.getElementById('global-loading-screen');
+if (loadingScreen) {
+  loadingScreen.style.display = 'none';
+}
+
 app.ticker.add(() => {
   loop(performance.now());
 });
