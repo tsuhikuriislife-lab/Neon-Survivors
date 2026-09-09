@@ -23,6 +23,9 @@ export class Player {
     this.speedUpgradesCount = 0;
     this.maxHp = 100;
     this.hp = 100;
+    this.overhealth = 0;
+    this.hasOverhealthUpgrade = false;
+    this.healthPickupRadius = 35;
     this.hullUpgradesCount = 0;
     this.hpRegen = 0.5;
     this.regenUpgradesCount = 0;
@@ -173,6 +176,10 @@ export class Player {
 
     if (this.hpRegen > 0 && this.hp < this.maxHp) {
       this.hp = Math.min(this.maxHp, this.hp + this.hpRegen * dt);
+    }
+
+    if (this.overhealth > 0) {
+      this.overhealth = Math.max(0, this.overhealth - (1.5 * dt));
     }
 
     // Shield passive recharge
@@ -395,60 +402,44 @@ export class Player {
     }
 
     for (let i = 0; i < w.count; i++) {
-      if (w.timers[i] === undefined) {
-        w.timers[i] = Math.floor((i / w.count) * w.tickInterval);
+      const curAng = w.angle + (i * 2 * Math.PI) / w.count;
+      const ox = this.x + Math.cos(curAng) * w.radius;
+      const oy = this.y + Math.sin(curAng) * w.radius;
+      const orbRadius = effSize;
+      const orbDmg = w.damage * this.getEffectiveDamageMult();
+      const sourceSprite = this.orbitalSprites[i];
+      
+      // Orbital Trail
+      if (state.particlePool && Math.random() < 0.65) {
+        state.particlePool.acquire(ox, oy, "#ff00ff", 0.3, 0.12, orbRadius * 0.7);
       }
-      w.timers[i]++;
+      
+      const speedRatio = (w.speed * w.speedMult) / 0.05; 
+      const cooldownSeconds = (w.tickInterval / 60.0) / speedRatio;
 
-      if (w.timers[i] >= w.tickInterval) {
-        w.timers[i] = 0;
-        const curAng = w.angle + (i * 2 * Math.PI) / w.count;
-        const ox = this.x + Math.cos(curAng) * w.radius;
-        const oy = this.y + Math.sin(curAng) * w.radius;
-        const orbRadius = effSize;
-        const orbDmg = w.damage * this.getEffectiveDamageMult();
-        const sourceSprite = this.orbitalSprites[i];
-        
-        // Base speed is 0.05. Scale cooldown inversely with speed so faster satellites hit more frequently
-        // matching their reduced dwell time inside enemy hitboxes.
-        const speedRatio = (w.speed * w.speedMult) / 0.05; 
-        const cooldownSeconds = (w.tickInterval / 60.0) / speedRatio;
-
-        // Query spatial grid for nearby enemies
-        state.spatialGrid.queryRadius(ox, oy, orbRadius, (e) => {
-          if (e.hp <= 0) return;
+      // Query spatial grid for nearby enemies
+      state.spatialGrid.queryRadius(ox, oy, orbRadius, (e) => {
+        if (e.hp <= 0) return;
+        const actualTarget = e.parent || e;
+        if (actualTarget.canBeHitBy && actualTarget.canBeHitBy(sourceSprite, cooldownSeconds)) {
           e.takeDamage(orbDmg, "#ff00ff");
           state.recordDamage('orbitals', orbDmg);
           spawnExplosion(ox, oy, "#ff00ff", 3, 1.5);
           audioManager.playSound('hit_satellite', { volume: 0.5, throttleMs: 50 });
-          const actualTarget = e.parent || e;
-          if (actualTarget.canBeHitBy && actualTarget.canBeHitBy(sourceSprite, cooldownSeconds)) {
-            e.takeDamage(orbDmg, "#ff00ff");
-            state.recordDamage('orbitals', orbDmg);
-            spawnExplosion(ox, oy, "#ff00ff", 3, 1.5);
-            audioManager.playSound('hit_satellite', { volume: 0.5, throttleMs: 50 });
-          }
-        });
+        }
+      });
 
-        // Check bosses
-        for (let b of state.bosses) {
-          const damagedParents = new Set();
-          for (let t of b.getTargetables()) {
-            const actualTarget = t.parent || t;
-            if (damagedParents.has(actualTarget)) continue;
+      // Check bosses
+      for (let b of state.bosses) {
+        for (let t of b.getTargetables()) {
+          const actualTarget = t.parent || t;
 
-            if (dist(ox, oy, t.x, t.y) < orbRadius + t.radius) {
+          if (dist(ox, oy, t.x, t.y) < orbRadius + t.radius) {
+            if (actualTarget.canBeHitBy && actualTarget.canBeHitBy(sourceSprite, cooldownSeconds)) {
               t.takeDamage(orbDmg, "#ff00ff");
               state.recordDamage('orbitals', orbDmg);
               spawnExplosion(ox, oy, "#ff00ff", 3, 1.5);
-              damagedParents.add(actualTarget);
               audioManager.playSound('hit_satellite', { volume: 0.5, throttleMs: 50 });
-              if (actualTarget.canBeHitBy && actualTarget.canBeHitBy(sourceSprite, cooldownSeconds)) {
-                t.takeDamage(orbDmg, "#ff00ff");
-                state.recordDamage('orbitals', orbDmg);
-                spawnExplosion(ox, oy, "#ff00ff", 3, 1.5);
-                audioManager.playSound('hit_satellite', { volume: 0.5, throttleMs: 50 });
-              }
             }
           }
         }
@@ -728,6 +719,14 @@ export class Player {
     }
 
     this.hp -= amount;
+    let remainingDamage = amount;
+    if (this.overhealth > 0) {
+      const blocked = Math.min(this.overhealth, remainingDamage);
+      this.overhealth -= blocked;
+      remainingDamage -= blocked;
+    }
+    
+    this.hp -= remainingDamage;
     this.invulnerabilityTimer = this.invulnerabilityMaxTime;
     const offsetX = (Math.random() * 2 - 1) * (this.radius * 0.8);
     const offsetY = (Math.random() * 2 - 1) * (this.radius * 0.8);
@@ -789,6 +788,26 @@ export class Player {
     if (this.invulnerabilityTimer <= statTime) {
       this.invulnerabilityTimer += statTime;
     }
+  }
+
+  heal(amount) {
+    if (this.hp < this.maxHp) {
+      const healAmount = Math.min(amount, this.maxHp - this.hp);
+      this.hp += healAmount;
+      const leftover = amount - healAmount;
+      
+      if (leftover > 0 && this.hasOverhealthUpgrade) {
+        this.overhealth = Math.min(this.maxHp, this.overhealth + leftover);
+      }
+    } else if (this.hasOverhealthUpgrade) {
+      this.overhealth = Math.min(this.maxHp, this.overhealth + amount);
+    }
+    
+    if (state.floatingTextPool) {
+      state.floatingTextPool.acquire(this.x, this.y - 15, `+${Math.floor(amount)}`, "#33ff55", 14);
+    }
+    audioManager.playSound('pickup_gem', { volume: 0.4, pitch: 1.2, throttleMs: 50 });
+    updateHUD();
   }
 
   gainXP(val) {

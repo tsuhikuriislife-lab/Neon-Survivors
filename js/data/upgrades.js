@@ -625,6 +625,16 @@ export const upgradeDatabase = [
     desc: '+0.1s Invulnerability duration.',
     isAvailable: (p) => (p.iframeUpgradesCount || 0) >= 3, // Only if max iframe upgrades reached
     apply: (p) => { p.invulnerabilityMaxTime += 0.1; }
+  },
+  {
+    id: 'overhealth_unlock',
+    isInfinite: false,
+    rarity: 'legendary',
+    name: 'Overhealth Protocol',
+    icon: '<img src="assets/upgrades/forcefield-battery.png" alt="icon">',
+    desc: 'Health Gems can now heal beyond max HP as a decaying temporary shield.',
+    isAvailable: (p) => !p.hasOverhealthUpgrade,
+    apply: (p) => { p.hasOverhealthUpgrade = true; }
   }
 
 ];

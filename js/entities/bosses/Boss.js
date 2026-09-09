@@ -13,6 +13,7 @@ export class Boss {
     this.radius = radius;
     this.color = color;
     this.dead = false;
+    this.nextDropThreshold = 0.75;
     this.sprite = new PIXI.Sprite();
     this.sprite.anchor.set(0.5);
     worldLayer.addChild(this.sprite);
@@ -56,6 +57,29 @@ export class Boss {
 
     if (state.floatingTextPool) {
       state.floatingTextPool.acquire(hitX + offsetX, hitY + offsetY, Math.round(finalAmount), damageColor, fontSize, isCrit);
+    }
+    
+    this.checkDropThresholds(hitX, hitY);
+  }
+
+  checkDropThresholds(x, y) {
+    if (!this.nextDropThreshold) return;
+    const currentHpRatio = Math.max(0, this.hp / this.maxHp);
+    while (this.nextDropThreshold !== null && currentHpRatio <= this.nextDropThreshold) {
+      this.spawnRewards(x, y);
+      this.nextDropThreshold -= 0.25;
+      if (this.nextDropThreshold <= 0) this.nextDropThreshold = null;
+    }
+  }
+
+  spawnRewards(x, y) {
+    if (!state.gemPool) return;
+    // Spawns 2 Health Gems and a few XP gems
+    state.gemPool.acquire(x + Math.random()*20 - 10, y + Math.random()*20 - 10, 20, false, 'health');
+    state.gemPool.acquire(x + Math.random()*20 - 10, y + Math.random()*20 - 10, 20, false, 'health');
+    
+    for (let i = 0; i < 4; i++) {
+      state.gemPool.acquire(x + Math.random()*30 - 15, y + Math.random()*30 - 15, 10, false, 'xp');
     }
   }
 

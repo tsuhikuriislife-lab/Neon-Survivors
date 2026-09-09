@@ -246,41 +246,41 @@ export class MenuBackgroundShowcase {
     }
 
     // 3. CARLOS (15 segments, lime green)
-    this.carlos = {
+    this.deimos = {
       x: W * 0.75, y: H * 0.35, angle: Math.PI * 0.75, speed: 2.4,
       radius: 36, segmentLength: 36, segmentCount: 15, segments: []
     };
-    for (let i = 0; i < this.carlos.segmentCount; i++) {
-      let sprite = new PIXI.Sprite(textures['boss_carlos_seg']);
+    for (let i = 0; i < this.deimos.segmentCount; i++) {
+      let sprite = new PIXI.Sprite(textures['boss_deimos_seg']);
       sprite.anchor.set(0.5);
-      this.carlos.segments.push({
-        x: this.carlos.x - i * this.carlos.segmentLength,
-        y: this.carlos.y,
-        angle: this.carlos.angle,
+      this.deimos.segments.push({
+        x: this.deimos.x - i * this.deimos.segmentLength,
+        y: this.deimos.y,
+        angle: this.deimos.angle,
         sprite: sprite
       });
     }
 
     // 4. SEBASTIAN (15 segments, purple)
-    this.sebastian = {
+    this.fobos = {
       x: W * 0.25, y: H * 0.75, angle: -Math.PI * 0.25, speed: 2.5,
       radius: 36, segmentLength: 36, segmentCount: 15, segments: []
     };
-    for (let i = 0; i < this.sebastian.segmentCount; i++) {
-      let sprite = new PIXI.Sprite(textures['boss_sebastian_seg']);
+    for (let i = 0; i < this.fobos.segmentCount; i++) {
+      let sprite = new PIXI.Sprite(textures['boss_fobos_seg']);
       sprite.anchor.set(0.5);
-      this.sebastian.segments.push({
-        x: this.sebastian.x - i * this.sebastian.segmentLength,
-        y: this.sebastian.y,
-        angle: this.sebastian.angle,
+      this.fobos.segments.push({
+        x: this.fobos.x - i * this.fobos.segmentLength,
+        y: this.fobos.y,
+        angle: this.fobos.angle,
         sprite: sprite
       });
     }
     
     // add backwards to layer properly
     for (let i = this.devourer.segmentCount - 1; i >= 0; i--) this.container.addChild(this.devourer.segments[i].sprite);
-    for (let i = this.carlos.segmentCount - 1; i >= 0; i--) this.container.addChild(this.carlos.segments[i].sprite);
-    for (let i = this.sebastian.segmentCount - 1; i >= 0; i--) this.container.addChild(this.sebastian.segments[i].sprite);
+    for (let i = this.deimos.segmentCount - 1; i >= 0; i--) this.container.addChild(this.deimos.segments[i].sprite);
+    for (let i = this.fobos.segmentCount - 1; i >= 0; i--) this.container.addChild(this.fobos.segments[i].sprite);
 
     // 5. KYREN (Peaceful wandering dual-octagon)
     this.kyren = { x: W * 0.7, y: H * 0.7, vx: 1.1, vy: -0.9, angle: 0, innerAngle: 0, radius: 135 };
@@ -376,7 +376,7 @@ export class MenuBackgroundShowcase {
     const pulseScale = (0.55 + Math.sin(this.time * 3) * 0.05);
     this.amalgamPulseSprite.scale.set(pulseScale);
 
-    // --- 2. Update Devourer of Tax ---
+    // --- 2. Update Mars ---
     const dev = this.devourer;
     dev.turnTimer++;
     if (dev.turnTimer % 90 === 0) {
@@ -419,8 +419,8 @@ export class MenuBackgroundShowcase {
       seg.sprite.rotation = seg.angle;
     }
 
-    // --- 3. Update Carlos ---
-    const c = this.carlos;
+    // --- 3. Update Deimos ---
+    const c = this.deimos;
     c.angle += Math.sin(this.time * 0.7) * 0.015;
     if (c.x < 150) c.angle = 0;
     else if (c.x > W - 150) c.angle = Math.PI;
@@ -447,8 +447,8 @@ export class MenuBackgroundShowcase {
       seg.sprite.rotation = seg.angle;
     }
 
-    // --- 4. Update Sebastian ---
-    const s = this.sebastian;
+    // --- 4. Update Fobos ---
+    const s = this.fobos;
     s.angle += Math.cos(this.time * 0.6) * 0.018;
     if (s.x < 150) s.angle = 0;
     else if (s.x > W - 150) s.angle = Math.PI;

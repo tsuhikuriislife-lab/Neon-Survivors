@@ -1274,3 +1274,31 @@
   }
 }
 
+
+#background-timer {
+  display: none;
+  position: absolute;
+  top: clamp(26px, 4cqh, 42px);
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: clamp(16px, 2cqw, 24px);
+  font-weight: 800;
+  font-family: monospace;
+  color: #ff0033;
+  opacity: 0.85;
+  z-index: 25;
+  pointer-events: none;
+  text-shadow: 0 0 8px currentColor;
+}
+
+.overhealth-bar-fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 0%;
+  height: 100%;
+  background: linear-gradient(90deg, #d4a373, #ffb703); /* Amarillo miel */
+  box-shadow: 0 0 10px #ffb703;
+  transition: width 0.1s ease-out;
+  border-radius: 6px;
+}

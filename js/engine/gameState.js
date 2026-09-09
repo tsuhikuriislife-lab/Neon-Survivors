@@ -16,6 +16,13 @@ export const state = {
   hasRerolledCurrentLevel: false,
   nextBossTime: 300,
   nextWaveTime: 150,
+  
+  // Phase System
+  phaseTime: 300,
+  isBossPhase: false,
+  currentPhase: 1,
+  waveTriggeredEnFase: false,
+  
   isWaveActive: false,
   waveTimer: 0,
   waveDuration: 20,
@@ -143,6 +150,11 @@ export const state = {
     this.environment.reset();
 
     this.gameTime = 0;
+    this.phaseTime = 300;
+    this.isBossPhase = false;
+    this.currentPhase = 1;
+    this.waveTriggeredEnFase = false;
+    
     this.killCount = 0;
     this.nextBossTime = 300;
     this.nextWaveTime = 150;

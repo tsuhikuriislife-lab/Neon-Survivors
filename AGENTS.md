@@ -25,6 +25,20 @@ This repository contains a browser-based arena survival game ("Neon Survivors").
 - **Modifying UI**: Update HTML in `index.html`, styles in `css/styles.css`, and logic in `js/ui/UIManager.js`.
 
 ### Recent Implementations & System Mechanics
+- **Version 1.1 - The Martian Moons Update (2026-09-09)**:
+  - **Renaming**: 'Devourer of Tax' is now **Mars**, 'Carlos' is **Deimos**, and 'Sebastian' is **Fobos**.
+  - **Size Scaling**: Fobos increased by +25% radius, Deimos decreased by -25% radius. Textures updated dynamically.
+  - **Deimos Rework (Sniper Satellite)**: Removed `SEEK_EXIT` map escape. Deimos now intercepts trajectory and flies in a wide arc (Orbit/Pass-by ~350px distance) without direct ramming. Shoots accelerating projectiles directly aimed at the player with strict tail-in-bounds firing logic to prevent wasted shots.
+  - **Fobos Rework (Comet Rammer)**: Uses a pure Burst Dash mechanic identical to the player. Triggers exactly on 5s cooldown when aligned. Accelerates to massive speed (24.0) for precisely 40 frames, leaving 6 acid pools in its wake, followed by a terrible deceleration drift (friction 0.25) causing it to skid vastly past the player.
+  - **Snake Boss Visibility**: All Snake segments dynamically hide (`visible = false`) upon exiting the map bounds + their radius, creating true visual uncertainty for perimeter re-entry attacks.
+- **Visual & Mechanics Refactor (Projectiles, Waves, Orbitals, Drops)**:
+  - **Projectile Trail Particles (`Pool.js`, `Player.js`, `Projectiles.js`)**: Integrated per-frame zero-GC particle emission trails for all projectiles (Player's `PooledProjectile`, `Nova`, `Missile`, `Accelerating`) and `Orbitals`. Evaluated 65% random emission chance with fast decay to simulate glowing stardust. Orbitals emit Magenta (`#ff00ff`) trails matching their 12px/8px textures.
+  - **Orbital Continuous Collision Fix (`Player.js`)**: Eliminated the legacy 10-frame `tickInterval` gap that allowed fast enemies to pass through Orbitals unharmed. Implemented true per-frame spatial grid collision with `cooldownSeconds` tracked flawlessly in the target's `hitCooldowns` WeakMap to prevent double-damage.
+  - **Wave Loop Fix (`WaveManager.js`, `Game.js`)**: Corrected `dt` frame conversions (`duration * 60`) so 30-second waves actually last 30 real seconds instead of 0.5 seconds. Prevented endless wave-looping by removing premature `waveTriggeredEnFase` resets, ensuring strictly ONE wave triggers exactly at 2:30.
+  - **Amalgam Boss Drop Bloat Fix (`AmalgamNode.js`)**: Removed intermediate `checkDropThresholds` drops that caused exponential reward spam (up to 45 drops). Full boss rewards (Gems/Health) are now cleanly consolidated into a 35% chance per final-stage node death.
+  - **Red Enemy Projectile Normalization (`TextureCache.js`)**: Unified and forcefully baked all hostile projectile textures (`proj_enemy_*`, `proj_accelerating*`) to strictly `#ff0000` Red, eliminating ambiguous Cyan/Green defaults previously buried in procedural texture generation.
+  - **Menu DOM Swallow & Timer Fix (`index.html`, `UIManager.js`)**: Removed a rogue unclosed `<div class="hp-bar-bg">` that caused the main menu to be swallowed and visually hidden inside the non-displayed UI layer. Relocated the 5-minute background timer into a clear, unified DOM overlay underneath the XP bar.
+
 - **Upgrade Asset Preloading & Mobile Offline Cache Integrity (`TextureCache.js`, `main.js`)**:
   - `preloadUpgradeIcons(upgradeDatabase)` scans all upgrade definitions and preloads all 41 PNG sprites asynchronously into a `preloadedUpgradeImages` Map at initial module load time (`main.js`).
   - Guarantees that on mobile devices over local Wi-Fi/LAN, all sprites are cached in browser memory upon initial page launch, preventing missing asset placeholders (`alt="icon"`) if connectivity fluctuates or drops during gameplay.
@@ -62,7 +76,7 @@ This repository contains a browser-based arena survival game ("Neon Survivors").
     - Pushes back nearby swarming enemies within 260px by 140px to grant breathing room upon revival.
     - Implemented invulnerability visual blinking in `Player.prototype.update` (flickering ship sprite alpha at ~14 Hz while `invulnerabilityTimer > 0`).
     - Calls `resetInputState()` to eliminate stuck movement keys.
-- **Boss Mechanics & Snake Movement Architecture (`DevourerOfTaxBoss`, `CarlosMinion`, `SebastianMinion`)**: 
+- **Boss Mechanics & Snake Movement Architecture (`MarsBoss`, `DeimosMinion`, `FobosMinion`)**: 
   - **Eater of Worlds Kinematics, Speed Zones & Low-Speed Exit State Machine**: 
     - **Inside Arena (`ATTACK`)**: Enters at maximum high speed (`outsideSpeed: 14.0` for Devourer, `13.0 - 13.2` for Minions) in a high-momentum dive towards the player. Applies progressive friction (`friction: 0.045 / frame`) down towards `minSpeed: 2.8`.
     - **Low-Speed Exit Trigger (`SEEK_EXIT`)**: When the snake's speed decays to `minSpeed + 0.3`, it switches target away from the player to navigate directly towards the nearest outside map boundary to initiate a new dive loop.
@@ -74,12 +88,12 @@ This repository contains a browser-based arena survival game ("Neon Survivors").
   - **Snake-to-Snake Repulsion & Flanking Separation (`applySnakeRepulsion`)**: 
     - Active snakes continuously calculate head-to-head and head-to-body proximity vectors (`separationDist = radius * 3.0`).
     - Applies soft physical displacement and smooth angular steering deflection ($0.4 \times \Delta\theta_{\text{repel}}$) to prevent snakes from following identical trajectories or superimposing on top of each other.
-    - Carlos and Sebastian maintain complementary flanking offsets ($\pm 0.4\pi$ around the player) and divergent perimeter exit points during `SEEK_EXIT`.
-    - **Carlos Salvo Sequence**: Fires accelerating projectiles (`AcceleratingProjectile`) in a progressive wave from the tip of the tail (`segmentCount - 1`) forward to the head (`0`).
-  - **Parent-Child Delegation Pattern & Unified Rewards (`DevourerOfTaxBoss`, `KyrenBoss`)**:
-    - When complex bosses split, the parent sets its own body to `dead = true` but remains active in `state.bosses` as a hidden controller updating its children (`this.carlos`, `this.sebastian`, `this.denzel`).
+    - Deimos and Fobos maintain complementary flanking offsets ($\pm 0.4\pi$ around the player) and divergent perimeter exit points during `SEEK_EXIT`.
+    - **Deimos Salvo Sequence**: Fires accelerating projectiles (`AcceleratingProjectile`) in a progressive wave from the tip of the tail (`segmentCount - 1`) forward to the head (`0`).
+  - **Parent-Child Delegation Pattern & Unified Rewards (`MarsBoss`, `KyrenBoss`)**:
+    - When complex bosses split, the parent sets its own body to `dead = true` but remains active in `state.bosses` as a hidden controller updating its children (`this.deimos`, `this.fobos`, `this.denzel`).
     - `getTargetables()` combines the active segments of the parent and any surviving children. `Game.js` only removes the boss and triggers the Reward Modal when `getTargetables().length === 0` (i.e. the entire family is defeated).
-  - **Impulse Split Spawn**: When Devourer of Tax splits at 50% HP (or upon quick lethal damage), Carlos and Sebastian spawn directly on top of Devourer with high-velocity initial impulses (`initialSpeed = 12.0`) along divergent random angles.
+  - **Impulse Split Spawn**: When Mars splits at 50% HP (or upon quick lethal damage), Deimos and Fobos spawn directly on top of Devourer with high-velocity initial impulses (`initialSpeed = 12.0`) along divergent random angles.
   - **DenzelBoss Trajectory Tuning**: `targetY` is kept high (`300`) to ensure parabolic `FallingProjectile` (gravity = 0.12) arcs stay safely within the arena's visible bounds and do not despawn prematurely by hitting the top margin.
   - **Amalgam Memory Leak & Cross-Spawn Protection**: `AmalgamBossRoot` properly cleans itself up by monitoring `nodes.length` and setting `dead = true`. `AmalgamNode` subdivisions append children to `this.root.nodes` (preventing array contamination when multiple Amalgams spawn simultaneously).
 - **Projectiles & Weapons (`Projectiles.js`, `LaserBeam.js` & `Player.js`)**:
@@ -103,7 +117,7 @@ This repository contains a browser-based arena survival game ("Neon Survivors").
   - Defeating a boss permanently scales its specific base HP by +70% for future spawns via `state.bossScaling`.
   - Defeating a boss triggers a 5-card face-down Reward Modal. Players pick 1 (or 2 with a 20% chance). First pick has a 5% "Jackpot" chance to grant all remaining cards.
   - **Boss Reward Rebalancing**: Boss rewards exclusively grant 'Uncommon' or higher upgrades (0% Common, 60% Uncommon, 30% Rare, 10% Legendary).
-  - **Out-of-Bounds XP Gem Teleportation**: If any gem-dropping Boss (e.g., `DevourerOfTaxBoss`, `CarlosMinion`, `KyrenBoss`, `AmalgamNode`) is killed outside the visible arena bounds, its burst of XP gems is automatically teleported to the center of the field (`state.width / 2`, `state.height / 2`) with slight randomness to guarantee player access.
+  - **Out-of-Bounds XP Gem Teleportation**: If any gem-dropping Boss (e.g., `MarsBoss`, `DeimosMinion`, `KyrenBoss`, `AmalgamNode`) is killed outside the visible arena bounds, its burst of XP gems is automatically teleported to the center of the field (`state.width / 2`, `state.height / 2`) with slight randomness to guarantee player access.
   - **Boss Spawn Sequence (5 Seconds Anticipation)**: Boss spawns trigger a HUD warning banner (`#boss-warning-banner`), a spawn warning SFX, and render a pulsing red holographic beacon with concentric rotating rings in the arena. After 5.0 seconds, the beacon detonates in neon particles and instantiates the boss.
 - **Arena Dimensions & Camera**:
   - Fixed square arena dimensions of `1920 x 1920` with canonical center at `(960, 960)`.

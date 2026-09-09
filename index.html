@@ -15,7 +15,7 @@
 <body>
   <div id="game-container">
     <!-- Global Loading Screen -->
-    <div id="global-loading-screen" class="modal-overlay" style="display: flex; z-index: 999999; flex-direction: column; background: #04030a; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;">
+    <div id="global-loading-screen" class="modal-overlay" style="display: none; z-index: 999999; flex-direction: column; background: #04030a; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;">
       <div style="text-align: center;">
         <div class="loading-spinner" style="width: 50px; height: 50px; border: 4px solid #333; border-top: 4px solid #00ffff; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 20px;"></div>
         <h2 style="color: #00ffff; font-family: monospace; letter-spacing: 2px;">LOADING RESOURCES...</h2>
@@ -25,6 +25,9 @@
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
       </style>
     </div>
+
+    <!-- Temporizador gigante de fondo -->
+    <div id="background-timer">05:00</div>
 
     <canvas id="gameCanvas"></canvas>
     
@@ -61,6 +64,7 @@
         </div>
         <div class="hp-bar-bg">
           <div class="hp-bar-fill" id="hudHpBar"></div>
+          <div class="overhealth-bar-fill" id="hudOverhealthBar" style="display: none;"></div>
         </div>
         <div id="hudShieldContainer" style="display: none; align-items: center; justify-content: space-between; margin-top: 4px;">
           <div style="font-size: 11px; font-weight: bold; color: #00aaff; display: flex; align-items: center; gap: 6px;">
@@ -117,7 +121,7 @@
           <span class="btn-start-text">RESUME GAME</span>
         </button>
       </div>
-      <div class="version-indicator">v1.0.24</div>
+      <div class="version-indicator">v1.1</div>
     </div>
 
     <!-- Upgrade Modal -->
@@ -240,61 +244,51 @@
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js')
-          .then(registration => {
-            console.log('ServiceWorker registration successful with scope: ', registration.scope);
-            
-            // Force an update check with the server every time the app loads
-            registration.update();
-            
-            // Periodically check for updates if the game is left open
-            setInterval(() => registration.update(), 1000 * 60 * 60); // Every hour
-            
-            let newWorker;
-            
-            function showUpdateUI(worker) {
-              newWorker = worker;
-              document.getElementById('update-available-overlay').style.display = 'flex';
+        // En localhost, forzamos desregistrar para no quedarnos atrapados en versiones viejas
+        if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
+          navigator.serviceWorker.getRegistrations().then(function(registrations) {
+            for(let registration of registrations) {
+              registration.unregister();
             }
-            
-            // Check if there is an update waiting already
-            if (registration.waiting) {
-              showUpdateUI(registration.waiting);
-            }
-            
-            // Listen for new updates
-            registration.addEventListener('updatefound', () => {
-              const installingWorker = registration.installing;
-              if (installingWorker) {
-                installingWorker.addEventListener('statechange', () => {
-                  if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                    showUpdateUI(installingWorker);
-                  }
-                });
-              }
-            });
-            
-            // Handle the restart button click
-            document.getElementById('btnApplyUpdate').addEventListener('click', () => {
-              if (newWorker) {
-                newWorker.postMessage('SKIP_WAITING');
-              }
-            });
-            
-          }, err => {
-            console.log('ServiceWorker registration failed: ', err);
           });
-          
-        let refreshing = false;
-        navigator.serviceWorker.addEventListener('controllerchange', () => {
-          if (!refreshing) {
-            refreshing = true;
-            window.location.reload();
-          }
-        });
+        } else {
+          navigator.serviceWorker.register('./sw.js')
+            .then(registration => {
+              console.log('ServiceWorker registration successful with scope: ', registration.scope);
+              // Handle update
+              registration.addEventListener('updatefound', () => {
+                const installingWorker = registration.installing;
+                if (installingWorker) {
+                  installingWorker.addEventListener('statechange', () => {
+                    if (installingWorker.state === 'installed') {
+                      if (navigator.serviceWorker.controller) {
+                        const updateUI = document.getElementById('update-available-overlay');
+                        if (updateUI) updateUI.style.display = 'flex';
+                      }
+                    }
+                  });
+                }
+              });
+              
+              document.getElementById('btnApplyUpdate').addEventListener('click', () => {
+                if (registration.waiting) {
+                  registration.waiting.postMessage('SKIP_WAITING');
+                }
+              });
+            }, err => {
+              console.log('ServiceWorker registration failed: ', err);
+            });
+            
+          let refreshing = false;
+          navigator.serviceWorker.addEventListener('controllerchange', () => {
+            if (!refreshing) {
+              refreshing = true;
+              window.location.reload();
+            }
+          });
+        }
       });
     }
   </script>
 </body>
 </html>
-

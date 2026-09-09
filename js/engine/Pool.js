@@ -4,6 +4,7 @@
 
 import { textures } from './TextureCache.js';
 import { dist } from './Utils.js';
+import { state } from './gameState.js';
 
 let particleTex;
 function getParticleTexture() {
@@ -180,10 +181,7 @@ class PooledProjectile {
     this.active = true;
 
     if (isEnemy) {
-      if (color === '#00ccff') this.texture = textures['proj_enemy_ranger'];
-      else if (color === '#00ff00') this.texture = textures['proj_enemy_child'];
-      else if (color === '#ff0033') this.texture = textures['proj_enemy_amalgam'];
-      else this.texture = textures['proj_enemy_ranger'] || textures['proj_blaster'];
+      this.texture = textures['proj_enemy_ranger'];
     } else {
       this.texture = textures['proj_blaster'];
     }
@@ -209,7 +207,9 @@ class PooledProjectile {
     // Attempt to set rotation to face velocity (for missiles/etc) if texture exists
     if (this.texture && (this.vx !== 0 || this.vy !== 0)) {
        this.sprite.rotation = Math.atan2(this.vy, this.vx);
-    } else {
+    }
+    
+ else {
        this.sprite.rotation = 0;
     }
     
@@ -228,6 +228,11 @@ class PooledProjectile {
     
     if (this.texture && (this.vx !== 0 || this.vy !== 0)) {
        this.sprite.rotation = Math.atan2(this.vy, this.vx);
+    }
+    
+    // Trail emission
+    if (state.particlePool && Math.random() < 0.65) {
+      state.particlePool.acquire(this.x, this.y, this.color, 0.4, 0.12, this.radius * 0.9);
     }
 
     const inBounds = this.x >= 0 && this.x <= worldWidth && this.y >= 0 && this.y <= worldHeight;
@@ -325,27 +330,35 @@ class PooledGem {
     // worldLayer.addChild(this.sprite);
   }
 
-  reset(x, y, value, isMagnetized = false) {
+  reset(x, y, value, isMagnetized = false, type = 'xp') {
     this.x = x;
     this.y = y;
     this.value = value;
-    this.radius = 6;
+    this.type = type;
+    this.radius = type === 'health' ? 10 : 6;
     this.angle = 0;
     this.active = true;
     this.isMagnetized = isMagnetized;
 
-    if (value > 15) {
-      this.color = "#ff0055";
-      this.texture = textures['gem_red'];
-    } else if (value > 5) {
-      this.color = "#ff00ff";
-      this.texture = textures['gem_magenta'];
-    } else if (value > 2) {
-      this.color = "#00ffff";
-      this.texture = textures['gem_cyan'];
+    if (type === 'health') {
+      this.color = "#ff3333";
+      this.texture = textures['gem_red']; // Optional: You might want a specific health texture later
+      this.sprite.scale.set(1.5);
     } else {
-      this.color = "#39ff14";
-      this.texture = textures['gem_green'];
+      this.sprite.scale.set(1.0);
+      if (value > 15) {
+        this.color = "#ff0055";
+        this.texture = textures['gem_red'];
+      } else if (value > 5) {
+        this.color = "#ff00ff";
+        this.texture = textures['gem_magenta'];
+      } else if (value > 2) {
+        this.color = "#00ffff";
+        this.texture = textures['gem_cyan'];
+      } else {
+        this.color = "#39ff14";
+        this.texture = textures['gem_green'];
+      }
     }
 
     if (this.texture) {
@@ -362,22 +375,39 @@ class PooledGem {
     if (!this.active) return false;
     this.angle += 0.05;
     const d = dist(this.x, this.y, player.x, player.y);
-    if (this.isMagnetized || d < player.pickupRadius * player.pickupRadiusMult) {
-      const speed = this.isMagnetized ? 15.0 : 7.5;
-      const a = Math.atan2(player.y - this.y, player.x - this.x);
-      this.x += Math.cos(a) * speed;
-      this.y += Math.sin(a) * speed;
-      if (d < player.radius + 15) {
-        player.gainXP(this.value);
+    
+    // Check type of gem
+    if (this.type === 'health') {
+      // Prevent pickup if HP is full and no overhealth upgrade
+      if (player.hp >= player.maxHp && !player.hasOverhealthUpgrade) {
+        // Do not pick up, wait until player needs it
+      } else if (d < player.healthPickupRadius) {
+        // Pickup health gem
+        player.heal(this.value);
         this.active = false;
         this.sprite.visible = false;
-        return false;
+        return false; // Despawn
+      }
+    } else {
+      // XP gem logic
+      if (this.isMagnetized || d < player.pickupRadius * player.pickupRadiusMult) {
+        const speed = this.isMagnetized ? 15.0 : 7.5;
+        const a = Math.atan2(player.y - this.y, player.x - this.x);
+        this.x += Math.cos(a) * speed;
+        this.y += Math.sin(a) * speed;
+        if (d < player.radius + 15) {
+          player.gainXP(this.value);
+          this.active = false;
+          this.sprite.visible = false;
+          return false; // Despawn
+        }
       }
     }
+    
     this.sprite.x = this.x;
     this.sprite.y = this.y;
     this.sprite.rotation = this.angle;
-    return true;
+    return true; // Still active
   }
 }
 
@@ -391,19 +421,19 @@ export class GemPool {
     this.searchIndex = 0;
   }
 
-  acquire(x, y, value, isMagnetized = false) {
+  acquire(x, y, value, isMagnetized = false, type = 'xp') {
     const len = this.pool.length;
     for (let i = 0; i < len; i++) {
       const idx = (this.searchIndex + i) % len;
       const g = this.pool[idx];
       if (!g.active) {
-        g.reset(x, y, value, isMagnetized);
+        g.reset(x, y, value, isMagnetized, type);
         this.searchIndex = (idx + 1) % len;
         return g;
       }
     }
     const g = this.pool[this.searchIndex];
-    g.reset(x, y, value, isMagnetized);
+    g.reset(x, y, value, isMagnetized, type);
     this.searchIndex = (this.searchIndex + 1) % len;
     return g;
   }

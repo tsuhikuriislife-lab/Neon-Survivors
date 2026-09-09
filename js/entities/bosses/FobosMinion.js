@@ -1,7 +1,7 @@
 import { state } from '../../engine/gameState.js';
 import { dist } from '../../engine/Utils.js';
 import { spawnExplosion } from '../effects/spawnExplosion.js';
-import { AcceleratingProjectile } from '../projectiles/AcceleratingProjectile.js';
+import { HazardArea } from '../effects/HazardArea.js';
 import { audioManager } from '../../engine/AudioManager.js';
 import { Boss } from './Boss.js';
 
@@ -9,23 +9,26 @@ import { getOrCachePolygon, textures } from '../../engine/TextureCache.js';
 import { worldLayer } from '../../main.js';
 
 
-export class CarlosMinion extends Boss {
+export class FobosMinion extends Boss {
   constructor(x, y, hp, initialAngle = Math.random() * Math.PI * 2, initialSpeed = 7.5, maxHp = hp) {
-    super(x, y, "Carlos", maxHp, 36, "#00ff88", hp);
+    super(x, y, "Fobos", maxHp, 45, "#ff5500", hp);
     if (this.sprite) {
       if (this.sprite.parent) this.sprite.parent.removeChild(this.sprite);
       this.sprite.destroy();
       this.sprite = null;
     }
     this.segmentCount = 15;
-    this.segmentLength = 36;
-    this.radius = 36;
+    this.segmentLength = 45;
+    this.radius = 45;
     this.dead = false;
-    this.salvoTimer = 0;
-    this.rgb = { r: 0, g: 255, b: 136 };
+    this.smokeTimer = 0;
+    this.dashTimer = 0;
+    this.isDashing = false;
+    this.dashDuration = 0;
+    this.rgb = { r: 255, g: 85, b: 0 };
 
     // Fisicas Estilo Eater of Worlds (Asemejadas al padre)
-    this.outsideSpeed = 13.0;       // Velocidad maxima incrementada para persecucion y embestidas
+    this.outsideSpeed = 13.2;       // Velocidad maxima incrementada para persecucion y embestidas
     this.minSpeed = 2.8;            // Velocidad minima dentro del mapa
     this.friction = 0.045;          // Tasa de desaceleracion dentro del mapa
     this.outsideAccel = 0.22;       // Aceleracion rapida afuera
@@ -58,12 +61,12 @@ export class CarlosMinion extends Boss {
       });
     }
 
-    this.texture = textures['boss_carlos_seg'];
+    this.texture = textures['boss_fobos_seg'];
     this.segmentSprites = [];
     for (let i = 0; i < this.segmentCount; i++) {
       let spr = new PIXI.Sprite();
-      if (textures['boss_carlos_seg']) {
-          spr.texture = textures['boss_carlos_seg'];
+      if (textures['boss_fobos_seg']) {
+          spr.texture = textures['boss_fobos_seg'];
       }
       spr.anchor.set(0.5);
       worldLayer.addChild(spr);
@@ -87,7 +90,7 @@ export class CarlosMinion extends Boss {
     return list;
   }
 
-  takeDamage(amt, damageColor = "#00ff66", hitX = this.x, hitY = this.y) {
+  takeDamage(amt, damageColor = "#a855f7", hitX = this.x, hitY = this.y) {
     if (this.dead || this.hp <= 0) return false;
     let finalAmount = amt;
     let isCrit = false;
@@ -112,16 +115,7 @@ export class CarlosMinion extends Boss {
         this.dead = true;
         this.die();
         audioManager.playSound('enemy_death_boss', { volume: 0.8, throttleMs: 200 });
-        spawnExplosion(this.x, this.y, "#ffcc00", 25, 4);
-        const isOutsideMap = this.x < 0 || this.x > state.width || this.y < 0 || this.y > state.height;
-        const baseX = isOutsideMap ? state.width / 2 : this.x;
-        const baseY = isOutsideMap ? state.height / 2 : this.y;
-
-        for (let i = 0; i < 5; i++) {
-          if (state.gemPool) {
-            state.gemPool.acquire(baseX + (Math.random() * 20 - 10), baseY + (Math.random() * 20 - 10), 10);
-          }
-        }
+        spawnExplosion(this.x, this.y, "#a855f7", 20, 4);
       }
     }
   }
@@ -133,8 +127,8 @@ export class CarlosMinion extends Boss {
     for (let b of state.bosses) {
       if (b && !b.dead) {
         if (!list.includes(b)) list.push(b);
-        if (b.carlos && !b.carlos.dead && !list.includes(b.carlos)) list.push(b.carlos);
-        if (b.sebastian && !b.sebastian.dead && !list.includes(b.sebastian)) list.push(b.sebastian);
+        if (b.deimos && !b.deimos.dead && !list.includes(b.deimos)) list.push(b.deimos);
+        if (b.fobos && !b.fobos.dead && !list.includes(b.fobos)) list.push(b.fobos);
       }
     }
     return list;
@@ -190,85 +184,59 @@ export class CarlosMinion extends Boss {
 
     const isOutside = (this.x < 0 || this.x > state.width || this.y < 0 || this.y > state.height);
     const curAngle = Math.atan2(this.vy, this.vx);
-    let targetAngle = curAngle;
-    let turnSpeed = this.minTurnRate;
+    let targetAngle = Math.atan2(player.y - this.y, player.x - this.x);
+    let turnSpeed = 0.045; // Giro base
 
-    // Flanqueo de Carlos (desplaza su punto de mira hacia un costado del jugador)
-    const basePlayerAngle = Math.atan2(player.y - this.y, player.x - this.x);
-    const flankOffsetAngle = basePlayerAngle + Math.PI * 0.4;
-    const flankDist = 120;
-    const targetX = player.x + Math.cos(flankOffsetAngle) * flankDist;
-    const targetY = player.y + Math.sin(flankOffsetAngle) * flankDist;
+    // Calcular diferencia de angulo actual respecto al jugador
+    let diffToPlayer = targetAngle - curAngle;
+    while (diffToPlayer < -Math.PI) diffToPlayer += Math.PI * 2;
+    while (diffToPlayer > Math.PI) diffToPlayer -= Math.PI * 2;
 
-    // 1. Control de Estado y Navegacion por Zonas
-    if (isOutside) {
-      if (this.speed < this.outsideSpeed - 0.3) {
-        // Fuera del mapa acelerando: sigue hacia afuera hasta alcanzar velocidad maxima
-        this.speed = Math.min(this.outsideSpeed, this.speed + this.outsideAccel);
-        this.aiState = 'OUTSIDE_ACCEL';
-        targetAngle = curAngle;
-        turnSpeed = 0.01;
-      } else {
-        // Ya alcanzo su velocidad maxima: activa el reingreso hacia el jugador flanqueando
-        this.speed = this.outsideSpeed;
-        this.aiState = 'OUTSIDE_REENTRY';
-        targetAngle = Math.atan2(targetY - this.y, targetX - this.x);
-        turnSpeed = this.outsideTurnRate;
-      }
+    // Logica de Embestida (Dash Real) de Fobos
+    if (this.isDashing) {
+      this.dashDuration = (this.dashDuration || 0) + 1;
+      turnSpeed = 0.0; // Completamente recto durante el dash
+      this.speed = 24.0; // Velocidad explosiva del dash
 
-      // Failsafe de seguridad si se aleja demasiado
-      const centerDist = dist(this.x, this.y, state.width / 2, state.height / 2);
-      if (centerDist > 2200) {
-        this.speed = this.outsideSpeed;
-        this.aiState = 'OUTSIDE_REENTRY';
-        targetAngle = Math.atan2(player.y - this.y, player.x - this.x);
-        turnSpeed = 0.12;
+      // El dash dura exactamente 40 frames (un estallido rápido como el del jugador)
+      if (this.dashDuration >= 40) {
+        this.isDashing = false;
+        this.dashTimer = 0; // Comienza el cooldown
       }
     } else {
-      // Dentro del mapa:
-      if (this.aiState === 'OUTSIDE_REENTRY' || this.aiState === 'OUTSIDE_ACCEL') {
-        this.aiState = 'ATTACK';
+      turnSpeed = 0.055; // Vuelve a intentar apuntar al jugador
+      this.dashTimer = (this.dashTimer || 0) + 1;
+      
+      // Inercia/Desaceleración pobre después del dash
+      if (this.speed > 2.6) {
+        this.speed = Math.max(2.6, this.speed - 0.25); // Frena lentamente (derrape lejano)
+      } else {
+        this.speed = 2.6; // Velocidad base
       }
-
-      if (this.aiState === 'ATTACK') {
-        // Desaceleracion progresiva (friccion) hasta minSpeed
-        if (this.speed > this.minSpeed) {
-          this.speed = Math.max(this.minSpeed, this.speed - this.friction);
+      
+      // Inicia un nuevo dash solo si pasaron 5s, va a velocidad normal, y mira al jugador
+      if (this.dashTimer >= 300 && this.speed === 2.6 && Math.abs(diffToPlayer) < 0.15) {
+        this.isDashing = true;
+        this.dashDuration = 0;
+        if (typeof audioManager !== 'undefined') {
+          audioManager.playSound('enemy_dash', { volume: 0.8 });
         }
-
-        // Si ya perdio toda su inercia y llego a baja velocidad -> cambiar objetivo a buscar la salida del mapa
-        if (this.speed <= this.minSpeed + 0.3) {
-          this.aiState = 'SEEK_EXIT';
-        }
-
-        targetAngle = Math.atan2(targetY - this.y, targetX - this.x);
-        const rawTurnRate = this.turnRateFactor / Math.max(1.0, this.speed);
-        turnSpeed = Math.min(this.maxTurnRate, Math.max(this.minTurnRate, rawTurnRate));
-      } else if (this.aiState === 'SEEK_EXIT') {
-        // Aceleracion ligera hacia la salida con offset diferenciado
-        this.speed = Math.min(5.5, this.speed + 0.04);
-
-        // Apuntar a la salida de perimetro mas cercana (offset de Carlos hacia +X / -Y)
-        let exitX = this.x + 180;
-        let exitY = this.y - 180;
-        const distLeft = this.x;
-        const distRight = state.width - this.x;
-        const distTop = this.y;
-        const distBottom = state.height - this.y;
-        const minDist = Math.min(distLeft, distRight, distTop, distBottom);
-
-        if (minDist === distLeft) exitX = -250;
-        else if (minDist === distRight) exitX = state.width + 250;
-        else if (minDist === distTop) exitY = -250;
-        else exitY = state.height + 250;
-
-        targetAngle = Math.atan2(exitY - this.y, exitX - this.x);
-        turnSpeed = this.maxTurnRate;
       }
     }
 
-    // Desviar targetAngle suavemente por fuerza de repulsion
-    if (Math.hypot(repelX, repelY) > 0.1) {
+    // Failsafe por si derrapa excesivamente fuera del mapa
+    const centerDist = dist(this.x, this.y, state.width / 2, state.height / 2);
+    if (centerDist > 2200) {
+      targetAngle = Math.atan2(state.height / 2 - this.y, state.width / 2 - this.x);
+      turnSpeed = 0.1;
+      if (this.isDashing) {
+        this.isDashing = false; // Corta el dash bruscamente
+        this.dashTimer = 0; 
+      }
+    }
+
+    // Desviar targetAngle suavemente por fuerza de repulsion entre serpientes
+    if (Math.hypot(repelX, repelY) > 0.1 && !this.isDashing) {
       const repelAngle = Math.atan2(repelY, repelX);
       let diffRepel = repelAngle - targetAngle;
       while (diffRepel < -Math.PI) diffRepel += Math.PI * 2;
@@ -302,30 +270,18 @@ export class CarlosMinion extends Boss {
       cur.angle = ang;
     }
 
-    // 5. Ataques: ONLY when inside the map
-    if (!isOutside) {
-      this.salvoTimer++;
-      if (this.salvoTimer % 180 < this.segmentCount * 6) {
-        const step = Math.floor((this.salvoTimer % 180) / 6);
-        if ((this.salvoTimer % 180) % 6 === 0 && step < this.segmentCount) {
-          // Disparo secuencial desde la cola hacia la cabeza
-          const segIdx = (this.segmentCount - 1) - step;
-          const seg = this.segments[segIdx];
-          if (seg && seg.x >= 0 && seg.x <= state.width && seg.y >= 0 && seg.y <= state.height) {
-            const perpA1 = seg.angle + Math.PI / 2;
-            const perpA2 = seg.angle - Math.PI / 2;
-            const targetX1 = seg.x + Math.cos(perpA1) * 100;
-            const targetY1 = seg.y + Math.sin(perpA1) * 100;
-            const targetX2 = seg.x + Math.cos(perpA2) * 100;
-            const targetY2 = seg.y + Math.sin(perpA2) * 100;
-
-            state.acceleratingProjectiles.push(new AcceleratingProjectile(seg.x, seg.y, targetX1, targetY1, 12, "#ff0000"));
-            state.acceleratingProjectiles.push(new AcceleratingProjectile(seg.x, seg.y, targetX2, targetY2, 12, "#ff0000"));
-
-            audioManager.playSound('enemy_projectile', { volume: 0.4, throttleMs: 80 });
-          }
+    // 5. Ataques: Solo deja charcos (HazardArea) mientras está embistiendo (dashing)
+    if (this.isDashing && !isOutside) {
+      this.smokeTimer = (this.smokeTimer || 0) + 1;
+      if (this.smokeTimer >= 6) {
+        this.smokeTimer = 0;
+        const tail = this.segments[this.segmentCount - 1];
+        if (tail.x >= 0 && tail.x <= state.width && tail.y >= 0 && tail.y <= state.height) {
+          state.hazardAreas.push(new HazardArea(tail.x, tail.y, 45, 300, "#ff0000", 0.2, false));
         }
       }
+    } else {
+      this.smokeTimer = 0;
     }
 
     // 6. Colisiones y balance de dano
@@ -333,14 +289,14 @@ export class CarlosMinion extends Boss {
 
     const headDistance = dist(this.x, this.y, player.x, player.y);
     if (headDistance < this.radius + player.radius) {
-      player.takeDamage(this.headDamage, "#00ff88");
+      player.takeDamage(this.headDamage, "#ff5500");
     }
 
     if (this.bodyHitCooldown <= 0) {
       for (let i = 1; i < this.segmentCount; i++) {
         const seg = this.segments[i];
         if (dist(seg.x, seg.y, player.x, player.y) < this.bodyHitRadius + player.radius) {
-          player.takeDamage(this.bodyDamage, "#00ff88");
+          player.takeDamage(this.bodyDamage, "#ff5500");
           this.bodyHitCooldown = this.bodyHitCooldownMax;
           break;
         }
@@ -353,11 +309,17 @@ export class CarlosMinion extends Boss {
           this.segmentSprites[i].x = this.segments[i].x;
           this.segmentSprites[i].y = this.segments[i].y;
           this.segmentSprites[i].rotation = this.segments[i].angle || 0;
+
+          // Ocultar si está fuera del mapa para generar incertidumbre
+          const segRadius = this.radius || 36;
+          const isInside = this.segments[i].x >= -segRadius && this.segments[i].x <= state.width + segRadius &&
+                           this.segments[i].y >= -segRadius && this.segments[i].y <= state.height + segRadius;
+          this.segmentSprites[i].visible = isInside;
+
           if (this.alpha !== undefined) this.segmentSprites[i].alpha = this.alpha;
         }
       }
     }
-
   }
 
   die() {

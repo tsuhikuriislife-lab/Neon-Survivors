@@ -10,6 +10,15 @@ import { upgradeDatabase } from './data/upgrades.js';
 export const VIRTUAL_WIDTH = 1920;
 export const VIRTUAL_HEIGHT = 1080;
 
+window.addEventListener('error', function(e) {
+  console.error(e);
+  alert("Error fatal: " + e.message + " | " + e.filename + ":" + e.lineno);
+});
+window.addEventListener('unhandledrejection', function(e) {
+  console.error(e);
+  alert("Unhandled Rejection: " + e.reason);
+});
+
 export const app = new PIXI.Application({
   width: VIRTUAL_WIDTH,
   height: VIRTUAL_HEIGHT,
@@ -146,7 +155,11 @@ resize();
 // Preload all upgrade icons immediately so mobile devices cache them before entering game
 preloadUpgradeIcons(upgradeDatabase);
 
-bitmapFont.load().then(() => {
+Promise.race([
+  bitmapFont.load(),
+  new Promise(resolve => setTimeout(resolve, 500)) // Bypass / Timeout de medio segundo
+]).catch(e => console.warn("Error al cargar fuente, iniciando de todos modos:", e))
+.finally(() => {
   initTextureCache();
   audioManager.init();
 

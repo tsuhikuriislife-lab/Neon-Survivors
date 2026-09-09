@@ -62,6 +62,14 @@ export function updateEnemyScaling() {
   state.enemyScaling.hp = 1.0 + (progress * 4.0);
   state.enemyScaling.speed = 1.0 + (progress * 0.75);
   state.enemyScaling.damage = 1.0 + (progress * 0.75);
+  
+  const phaseBonus = (state.currentPhase - 1) * 0.4;
+  const waveBonus = state.waveTriggeredEnFase ? 0.2 : 0;
+  const totalScaling = phaseBonus + waveBonus;
+  
+  state.enemyScaling.hp = 1.0 + (totalScaling * 2.0);
+  state.enemyScaling.speed = 1.0 + (totalScaling * 0.15);
+  state.enemyScaling.damage = 1.0 + (totalScaling * 0.25);
 }
 
 function applyEnemyScaling(enemy) {
@@ -121,14 +129,19 @@ export function triggerBossSpawnSequence(bossType, customX, customY) {
     state.environment.setBorders({
       color: "rgba(255, 0, 85, 0.75)",
       innerColor: "rgba(255, 100, 150, 0.9)",
+      color: "rgba(255, 0, 85, 0.45)",
+      innerColor: "rgba(255, 0, 85, 0.8)",
       cornerColor: "#ff0055",
       glow: 26,
       pulse: { rate: 3, amplitude: 0.5 },
+      glow: 28,
+      pulse: { rate: 3, amplitude: 0.4 },
       duration: 5.0,
       fadeInDuration: 0.4,
       fadeOutDuration: 0.8
     });
 
+    
     state.environment.setGridLines({
       color: "rgba(255, 0, 85, 0.12)",
       pulse: { rate: 3, amplitude: 0.4 },
@@ -211,17 +224,19 @@ export function updatePendingBossSpawn(dt) {
 export function startWave(duration = 30) {
   updateEnemyScaling();
   state.isWaveActive = true;
-  state.waveTimer = duration;
+  state.waveTimer = duration * 60;
   state.waveDuration = duration;
 
   showWarningBanner("wave-warning-banner", 2.5);
 
   // 1. Camera pulse on wave trigger (punchy 1.2s pulse instead of 10s heavy shake)
+  // 1. Camera pulse on wave trigger
   if (state.camera && typeof state.camera.shake === 'function') {
     state.camera.shake({ strength: 5.0, duration: 1.2, rotation: 0.002, scale: 0.012 });
   }
 
   // 2. Alert Environment Effects (Pulsing Amber/Orange Wave Theme)
+  // 2. Alert Environment Effects
   if (state.environment) {
     state.environment.setBorders({
       color: "rgba(255, 140, 0, 0.8)",
@@ -249,6 +264,7 @@ export function startWave(duration = 30) {
 export function endWave() {
   state.isWaveActive = false;
   state.waveTimer = 0;
+  // REMOVED waveTriggeredEnFase = false so it does not endlessly loop
 
   hideWarningBanner("wave-warning-banner");
 }
@@ -259,12 +275,23 @@ export function updateWave(dt) {
     if (state.waveTimer <= 0) {
       endWave();
     }
-  } else {
-    if (state.gameTime >= state.nextWaveTime) {
+  }
+  
+  if (!state.isBossPhase) {
+    if (state.phaseTime <= 150 && !state.waveTriggeredEnFase) {
+      state.waveTriggeredEnFase = true;
       if (!state.disableSpawns) {
         startWave(state.waveDuration || 20);
       }
       state.nextWaveTime += 300; // Next wave in 5 minutes
+      updateEnemyScaling(); // Update difficulty
+    }
+    
+    if (state.phaseTime <= 0) {
+      state.isBossPhase = true;
+      if (!state.disableBossSpawns) {
+        spawnRandomBoss();
+      }
     }
   }
 }
@@ -272,6 +299,7 @@ export function updateWave(dt) {
 export function handleSpawning() {
   if (state.disableSpawns) return;
   updateEnemyScaling();
+  if (state.disableSpawns || state.isBossPhase) return;
   
   state.spawnTimer++;
   const hasActiveBoss = state.bosses.some(b => b.getTargetables().length > 0);

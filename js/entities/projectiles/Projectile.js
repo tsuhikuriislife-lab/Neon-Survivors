@@ -19,10 +19,7 @@ export class Projectile {
     this.sprite = null;
 
     if (isEnemy) {
-      if (color === '#00ccff') this.texture = textures['proj_enemy_ranger'];
-      else if (color === '#00ff00') this.texture = textures['proj_enemy_child'];
-      else if (color === '#ff0033') this.texture = textures['proj_enemy_amalgam'];
-      else this.texture = textures['proj_enemy_ranger'] || textures['proj_blaster'];
+      this.texture = textures['proj_enemy_ranger']; // Default RED enemy texture
     } else {
       this.texture = textures['proj_blaster'];
     }
@@ -89,6 +86,11 @@ export class Projectile {
       this.sprite.x = this.x;
       this.sprite.y = this.y;
       this.sprite.rotation = Math.atan2(this.vy, this.vx);
+    }
+    
+    // Trail emission
+    if (state.particlePool && Math.random() < 0.65) {
+      state.particlePool.acquire(this.x, this.y, this.color, 0.4, 0.12, this.radius * 0.9);
     }
 
     const inBounds = this.x >= 0 && this.x <= state.width && this.y >= 0 && this.y <= state.height;

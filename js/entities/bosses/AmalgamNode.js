@@ -124,6 +124,8 @@ export class AmalgamNode extends Boss {
     if (state.floatingTextPool) {
       state.floatingTextPool.acquire(this.x + offsetX, this.y + offsetY, Math.round(finalAmount), damageColor, fontSize, isCrit);
     }
+    
+    
 
     if (this.hp <= 0) {
       this.hp = 0;
@@ -139,9 +141,13 @@ export class AmalgamNode extends Boss {
           const baseX = isOutsideMap ? state.width / 2 : this.x;
           const baseY = isOutsideMap ? state.height / 2 : this.y;
 
-          for (let i = 0; i < 4; i++) {
-            if (state.gemPool) {
-              state.gemPool.acquire(baseX + (Math.random() * 20 - 10), baseY + (Math.random() * 20 - 10), 6);
+          if (Math.random() < 0.35) {
+            this.spawnRewards(baseX, baseY);
+          } else {
+            for (let i = 0; i < 4; i++) {
+              if (state.gemPool) {
+                state.gemPool.acquire(baseX + (Math.random() * 20 - 10), baseY + (Math.random() * 20 - 10), 6);
+              }
             }
           }
         }

@@ -21,8 +21,10 @@ export function initDOM() {
     hudLevel: document.getElementById("hudLevel"),
     hudXpBar: document.getElementById("hudXpBar"),
     hudHpBar: document.getElementById("hudHpBar"),
+    hudOverhealthBar: document.getElementById("hudOverhealthBar"),
     hudHpText: document.getElementById("hudHpText"),
     hudTime: document.getElementById("hudTime"),
+    backgroundTimer: document.getElementById("background-timer"),
     hudKills: document.getElementById("hudKills"),
     hudShieldContainer: document.getElementById("hudShieldContainer"),
     hudShieldPips: document.getElementById("hudShieldPips"),
@@ -249,6 +251,9 @@ export function returnToMainMenu() {
   
   if (uiLayer) uiLayer.style.display = "none";
   if (startOverlay) startOverlay.style.display = "flex";
+  
+  const backgroundTimer = document.getElementById("background-timer");
+  if (backgroundTimer) backgroundTimer.style.display = "none";
   
   audioManager.setMusicMuffled(false);
   audioManager.playMusic('music_main');
@@ -1003,6 +1008,45 @@ export function triggerHUDUpdate() {
     _uiCache.hpText = hpCeil;
     if (d.hudHpBar) d.hudHpBar.style.width = `${hpPct}%`;
     if (d.hudHpText) d.hudHpText.textContent = `${hpCeil} / ${player.maxHp}`;
+  }
+
+  // 3.1 Overhealth Bar (Dirty checked)
+  const overhealthVisible = (player.overhealth > 0);
+  if (_uiCache.overhealthVisible !== overhealthVisible) {
+    _uiCache.overhealthVisible = overhealthVisible;
+    if (d.hudOverhealthBar) d.hudOverhealthBar.style.display = overhealthVisible ? "block" : "none";
+  }
+  if (overhealthVisible) {
+    const ohPct = Math.min(100, (player.overhealth / player.maxHp) * 100).toFixed(1);
+    if (_uiCache.ohPct !== ohPct) {
+      _uiCache.ohPct = ohPct;
+      if (d.hudOverhealthBar) d.hudOverhealthBar.style.width = `${ohPct}%`;
+    }
+  }
+
+  // 3.2 Background Timer (Dirty checked)
+  if (d.backgroundTimer) {
+    const isBossPhase = state.isBossPhase;
+    if (_uiCache.bgTimerVisible !== isBossPhase) {
+      _uiCache.bgTimerVisible = isBossPhase;
+      d.backgroundTimer.style.display = isBossPhase ? "none" : "block";
+    }
+
+    if (!isBossPhase) {
+      const phaseSecs = Math.max(0, Math.ceil(state.phaseTime));
+      if (_uiCache.phaseSecs !== phaseSecs) {
+        _uiCache.phaseSecs = phaseSecs;
+        const mins = Math.floor(phaseSecs / 60).toString().padStart(2, '0');
+        const secs = (phaseSecs % 60).toString().padStart(2, '0');
+        d.backgroundTimer.textContent = `${mins}:${secs}`;
+      }
+      
+      const borderColor = state.environment.borders.currentProps.color || "#ff0033";
+      if (_uiCache.bgTimerColor !== borderColor) {
+        _uiCache.bgTimerColor = borderColor;
+        d.backgroundTimer.style.color = borderColor;
+      }
+    }
   }
 
   // 4. Kills (Dirty checked)

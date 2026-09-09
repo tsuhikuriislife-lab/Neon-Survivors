@@ -710,6 +710,9 @@ export function loop(timestamp) {
 
     // === 3. GAMEPLAY UPDATES ===
     state.gameTime += dt;
+    if (!state.isBossPhase) {
+      state.phaseTime -= dt;
+    }
 
     if (state.gameTime >= state.nextBossTime) {
       if (!state.disableBossSpawns) {
@@ -717,8 +720,19 @@ export function loop(timestamp) {
       }
       state.nextBossTime += 300;
     }
+    // Boss spawning is now fully handled by WaveManager via phaseTime
+    
+    if (state.isBossPhase && state.bosses.length === 0 && !state.pendingBossSpawn) {
+      // Transition out of Boss Phase
+      state.isBossPhase = false;
+      state.currentPhase++;
+      state.phaseTime = 300; // Reset to 5 mins
+      state.waveTriggeredEnFase = false; // Allow a new wave in the new phase
+      import('../systems/WaveManager.js').then(m => m.updateEnemyScaling());
+    }
 
     updateWave(dt);
+    updatePendingBossSpawn(dt);
     handleSpawning();
 
     // 1. Update Enemies & Cleanup Dead Enemies via Swap-and-Pop
@@ -1010,7 +1024,7 @@ export function loop(timestamp) {
     if (state.bosses.length > 0) {
       const bossName = state.bosses[0].constructor.name;
       if (bossName === 'AmalgamBossRoot') desiredMusic = 'music_boss_amalgam';
-      else if (bossName === 'DevourerOfTaxBoss') desiredMusic = 'music_boss_devourer';
+      else if (bossName === 'MarsBoss') desiredMusic = 'music_boss_devourer';
       else if (bossName === 'KyrenBoss') desiredMusic = 'music_boss_kyren';
     }
     audioManager.playMusic(desiredMusic);
@@ -1133,7 +1147,7 @@ export function resumeGame() {
   if (state.bosses.length > 0) {
     const bossName = state.bosses[0].constructor.name;
     if (bossName === 'AmalgamBossRoot') desiredMusic = 'music_boss_amalgam';
-    else if (bossName === 'DevourerOfTaxBoss') desiredMusic = 'music_boss_devourer';
+    else if (bossName === 'MarsBoss') desiredMusic = 'music_boss_devourer';
     else if (bossName === 'KyrenBoss') desiredMusic = 'music_boss_kyren';
   }
   audioManager.playMusic(desiredMusic);

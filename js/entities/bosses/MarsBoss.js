@@ -1,5 +1,5 @@
-import { CarlosMinion } from './CarlosMinion.js';
-import { SebastianMinion } from './SebastianMinion.js';
+import { DeimosMinion } from './DeimosMinion.js';
+import { FobosMinion } from './FobosMinion.js';
 import { state } from '../../engine/gameState.js';
 import { dist } from '../../engine/Utils.js';
 import { spawnExplosion } from '../effects/spawnExplosion.js';
@@ -21,13 +21,13 @@ function hslToHex(h, s, l) {
   return parseInt('0x' + f(0) + f(8) + f(4));
 }
 
-export class DevourerOfTaxBoss extends Boss {
+export class MarsBoss extends Boss {
   constructor(x, y, hp, maxHp) {
-    const multiplier = state.bossScaling['DevourerOfTaxBoss'] || 1.0;
+    const multiplier = state.bossScaling['MarsBoss'] || 1.0;
     const defaultMaxHp = 15000 * multiplier;
     const finalMaxHp = maxHp !== undefined ? maxHp : defaultMaxHp;
     const finalHp = hp !== undefined ? hp : finalMaxHp;
-    super(0, 0, "Devourer of Tax", finalMaxHp, 36, "#39ff14", finalHp);
+    super(0, 0, "Mars", finalMaxHp, 36, "#39ff14", finalHp);
     if (this.sprite) {
       if (this.sprite.parent) this.sprite.parent.removeChild(this.sprite);
       this.sprite.destroy();
@@ -75,12 +75,12 @@ export class DevourerOfTaxBoss extends Boss {
     for (let i = 0; i < this.segmentCount; i++) {
       this.segments.push({ x: this.x, y: this.y - i * this.segmentLength, angle: 0 });
     }
-    this.texture = textures['boss_devourer_seg'];
+    this.texture = textures['boss_mars_seg'];
     this.segmentSprites = [];
     for (let i = 0; i < this.segmentCount; i++) {
       let spr = new PIXI.Sprite();
-      if (textures['boss_devourer_seg']) {
-          spr.texture = textures['boss_devourer_seg'];
+      if (textures['boss_mars_seg']) {
+          spr.texture = textures['boss_mars_seg'];
       }
       spr.anchor.set(0.5);
       worldLayer.addChild(spr);
@@ -94,8 +94,8 @@ export class DevourerOfTaxBoss extends Boss {
     this.dashDuration = 0;
     
     this.isSplit = false;
-    this.carlos = null;
-    this.sebastian = null;
+    this.deimos = null;
+    this.fobos = null;
   }
 
   getTargetables() {
@@ -111,8 +111,8 @@ export class DevourerOfTaxBoss extends Boss {
         });
       });
     }
-    if (this.carlos && !this.carlos.dead) list.push(...this.carlos.getTargetables());
-    if (this.sebastian && !this.sebastian.dead) list.push(...this.sebastian.getTargetables());
+    if (this.deimos && !this.deimos.dead) list.push(...this.deimos.getTargetables());
+    if (this.fobos && !this.fobos.dead) list.push(...this.fobos.getTargetables());
     return list;
   }
 
@@ -134,6 +134,8 @@ export class DevourerOfTaxBoss extends Boss {
     if (state.floatingTextPool) {
       state.floatingTextPool.acquire(hitX + offsetX, hitY + offsetY, Math.round(finalAmount), damageColor, fontSize, isCrit);
     }
+    
+    this.checkDropThresholds(hitX, hitY);
 
     if (!this.isSplit && this.hp <= this.maxHp * 0.5) {
       this.split();
@@ -163,14 +165,14 @@ export class DevourerOfTaxBoss extends Boss {
     this.isSplit = true;
     const subHp = this.maxHp * 0.25;
 
-    const angleCarlos = Math.random() * Math.PI * 2;
-    const angleSebastian = angleCarlos + Math.PI + (Math.random() - 0.5) * 1.0;
+    const angleDeimos = Math.random() * Math.PI * 2;
+    const angleFobos = angleDeimos + Math.PI + (Math.random() - 0.5) * 1.0;
     const impulseSpeed = 12.0;
 
-    this.carlos = new CarlosMinion(this.x, this.y, subHp, angleCarlos, impulseSpeed);
-    this.sebastian = new SebastianMinion(this.x, this.y, subHp, angleSebastian, impulseSpeed);
+    this.deimos = new DeimosMinion(this.x, this.y, subHp, angleDeimos, impulseSpeed);
+    this.fobos = new FobosMinion(this.x, this.y, subHp, angleFobos, impulseSpeed);
 
-    const minionSegments = (this.carlos ? this.carlos.segmentCount : 0) + (this.sebastian ? this.sebastian.segmentCount : 0);
+    const minionSegments = (this.deimos ? this.deimos.segmentCount : 0) + (this.fobos ? this.fobos.segmentCount : 0);
     this.segmentCount = Math.max(1, this.segmentCount - minionSegments);
     this.segments = this.segments.slice(0, this.segmentCount);
 
@@ -194,8 +196,8 @@ export class DevourerOfTaxBoss extends Boss {
     
     if (saveData.isSplit || this.hp <= this.maxHp * 0.5) {
       if (!this.isSplit) this.split();
-      if (this.carlos && saveData.carlosHp !== undefined) this.carlos.hp = saveData.carlosHp;
-      if (this.sebastian && saveData.sebastianHp !== undefined) this.sebastian.hp = saveData.sebastianHp;
+      if (this.deimos && saveData.deimosHp !== undefined) this.deimos.hp = saveData.deimosHp;
+      if (this.fobos && saveData.fobosHp !== undefined) this.fobos.hp = saveData.fobosHp;
     }
   }
 
@@ -204,13 +206,13 @@ export class DevourerOfTaxBoss extends Boss {
     if (passedSnakes && passedSnakes.length > 0) return passedSnakes;
     const list = [];
     if (!this.dead) list.push(this);
-    if (this.carlos && !this.carlos.dead) list.push(this.carlos);
-    if (this.sebastian && !this.sebastian.dead) list.push(this.sebastian);
+    if (this.deimos && !this.deimos.dead) list.push(this.deimos);
+    if (this.fobos && !this.fobos.dead) list.push(this.fobos);
     for (let b of state.bosses) {
       if (b && !b.dead && b !== this) {
         if (!list.includes(b)) list.push(b);
-        if (b.carlos && !b.carlos.dead && !list.includes(b.carlos)) list.push(b.carlos);
-        if (b.sebastian && !b.sebastian.dead && !list.includes(b.sebastian)) list.push(b.sebastian);
+        if (b.deimos && !b.deimos.dead && !list.includes(b.deimos)) list.push(b.deimos);
+        if (b.fobos && !b.fobos.dead && !list.includes(b.fobos)) list.push(b.fobos);
       }
     }
     return list;
@@ -260,8 +262,8 @@ export class DevourerOfTaxBoss extends Boss {
   update(player, otherSnakes = null) {
     const activeSnakes = this.getNearbySnakes(otherSnakes);
 
-    if (this.carlos && !this.carlos.dead) this.carlos.update(player, activeSnakes);
-    if (this.sebastian && !this.sebastian.dead) this.sebastian.update(player, activeSnakes);
+    if (this.deimos && !this.deimos.dead) this.deimos.update(player, activeSnakes);
+    if (this.fobos && !this.fobos.dead) this.fobos.update(player, activeSnakes);
 
     if (this.dead) return;
 
@@ -434,6 +436,13 @@ export class DevourerOfTaxBoss extends Boss {
           this.segmentSprites[i].x = this.segments[i].x;
           this.segmentSprites[i].y = this.segments[i].y;
           this.segmentSprites[i].rotation = this.segments[i].angle || 0;
+
+          // Ocultar si está fuera del mapa para generar incertidumbre
+          const segRadius = this.radius || 36;
+          const isInside = this.segments[i].x >= -segRadius && this.segments[i].x <= state.width + segRadius &&
+                           this.segments[i].y >= -segRadius && this.segments[i].y <= state.height + segRadius;
+          this.segmentSprites[i].visible = isInside;
+
           if (this.alpha !== undefined) this.segmentSprites[i].alpha = this.alpha;
           
           const hue = (time + i * 8) % 360;
@@ -461,13 +470,13 @@ export class DevourerOfTaxBoss extends Boss {
 
   destroy() {
     this.die();
-    if (this.carlos) {
-      if (typeof this.carlos.die === 'function') this.carlos.die();
-      if (typeof this.carlos.destroy === 'function') this.carlos.destroy();
+    if (this.deimos) {
+      if (typeof this.deimos.die === 'function') this.deimos.die();
+      if (typeof this.deimos.destroy === 'function') this.deimos.destroy();
     }
-    if (this.sebastian) {
-      if (typeof this.sebastian.die === 'function') this.sebastian.die();
-      if (typeof this.sebastian.destroy === 'function') this.sebastian.destroy();
+    if (this.fobos) {
+      if (typeof this.fobos.die === 'function') this.fobos.die();
+      if (typeof this.fobos.destroy === 'function') this.fobos.destroy();
     }
     super.destroy();
   }

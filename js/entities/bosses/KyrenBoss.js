@@ -80,6 +80,8 @@ export class KyrenBoss extends Boss {
     if (state.floatingTextPool) {
       state.floatingTextPool.acquire(this.x + offsetX, this.y + offsetY, Math.round(finalAmount), damageColor, fontSize, isCrit);
     }
+    
+    this.checkDropThresholds(this.x, this.y);
 
     if (!this.isSplit && this.hp <= this.maxHp * 0.5) {
       this.split();

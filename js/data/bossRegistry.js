@@ -2,9 +2,9 @@ import { state } from '../engine/gameState.js';
 import { drawPolygon } from '../engine/Utils.js';
 import { KyrenBoss } from '../entities/bosses/KyrenBoss.js';
 import { DenzelBoss } from '../entities/bosses/DenzelBoss.js';
-import { DevourerOfTaxBoss } from '../entities/bosses/DevourerOfTaxBoss.js';
-import { CarlosMinion } from '../entities/bosses/CarlosMinion.js';
-import { SebastianMinion } from '../entities/bosses/SebastianMinion.js';
+import { MarsBoss } from '../entities/bosses/MarsBoss.js';
+import { DeimosMinion } from '../entities/bosses/DeimosMinion.js';
+import { FobosMinion } from '../entities/bosses/FobosMinion.js';
 import { AmalgamBossRoot } from '../entities/bosses/AmalgamBossRoot.js';
 import { TestingBoss } from '../entities/bosses/TestingBoss.js';
 
@@ -59,10 +59,10 @@ registerBoss({
   }
 });
 
-// 2. Devourer of Tax
+// 2. Mars
 registerBoss({
-  id: 'DevourerOfTaxBoss',
-  name: 'Devourer of Tax',
+  id: 'MarsBoss',
+  name: 'Mars',
   isMainBoss: true,
   theme: {
     primaryColor: '#39ff14',
@@ -77,7 +77,7 @@ registerBoss({
   defaultSpawnX: () => state.width / 2,
   defaultSpawnY: () => 250,
   instantiate: (x, y) => {
-    const b = new DevourerOfTaxBoss(x, y);
+    const b = new MarsBoss(x, y);
     state.bosses.push(b);
     return b;
   },
@@ -140,10 +140,10 @@ registerBoss({
   }
 });
 
-// 5. Carlos (Minion de Devourer)
+// 5. Deimos (Minion de Mars)
 registerBoss({
-  id: 'CarlosMinion',
-  name: 'Carlos (Minion)',
+  id: 'DeimosMinion',
+  name: 'Deimos (Minion)',
   isMainBoss: false,
   theme: {
     primaryColor: '#00ff88',
@@ -158,19 +158,19 @@ registerBoss({
   defaultSpawnX: () => state.width / 2 - 100,
   defaultSpawnY: () => state.height / 2,
   instantiate: (x, y) => {
-    const b = new CarlosMinion(x || state.width / 2 - 100, y || state.height / 2, 3500);
+    const b = new DeimosMinion(x || state.width / 2 - 100, y || state.height / 2, 3500);
     state.bosses.push(b);
     return b;
   },
   drawPreview: (ctx) => {
-    drawPolygon(ctx, 50, 50, 20, 3, 0, "#00ff88", 6, "rgba(0, 255, 136, 0.2)");
+    drawPolygon(ctx, 50, 50, 15, 3, 0, "#00ff88", 6, "rgba(0, 255, 136, 0.2)");
   }
 });
 
-// 6. Sebastian (Minion de Devourer)
+// 6. Fobos (Minion de Mars)
 registerBoss({
-  id: 'SebastianMinion',
-  name: 'Sebastian (Minion)',
+  id: 'FobosMinion',
+  name: 'Fobos (Minion)',
   isMainBoss: false,
   theme: {
     primaryColor: '#ff5500',
@@ -185,12 +185,12 @@ registerBoss({
   defaultSpawnX: () => state.width / 2 + 100,
   defaultSpawnY: () => state.height / 2,
   instantiate: (x, y) => {
-    const b = new SebastianMinion(x || state.width / 2 + 100, y || state.height / 2, 3500);
+    const b = new FobosMinion(x || state.width / 2 + 100, y || state.height / 2, 3500);
     state.bosses.push(b);
     return b;
   },
   drawPreview: (ctx) => {
-    drawPolygon(ctx, 50, 50, 20, 3, Math.PI, "#ff5500", 6, "rgba(255, 85, 0, 0.2)");
+    drawPolygon(ctx, 50, 50, 25, 3, Math.PI, "#ff5500", 6, "rgba(255, 85, 0, 0.2)");
   }
 });
 

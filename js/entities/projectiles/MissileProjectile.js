@@ -143,6 +143,11 @@ export class MissileProjectile extends Projectile {
       this.sprite.rotation = Math.atan2(this.vy, this.vx);
     }
     
+    // Trail emission
+    if (state.particlePool && Math.random() < 0.65) {
+      state.particlePool.acquire(this.x, this.y, this.color, 0.4, 0.12, this.radius * 0.9);
+    }
+    
     if (this.life <= 0) {
       this.onHit();
       this.destroy();
