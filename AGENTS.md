@@ -101,7 +101,8 @@ This repository contains a browser-based arena survival game ("Neon Survivors").
 - **Boss Scaling & Reward Mechanics**:
   - Bosses cannot spawn twice in a row (`state.lastBossName` tracking).
   - Defeating a boss permanently scales its specific base HP by +70% for future spawns via `state.bossScaling`.
-  - Defeating a boss triggers a 5-card face-down Reward Modal. Players pick 1 (or 2 with a 20% chance). First pick has a 5% "Jackpot" chance to grant all remaining cards with a CSS confetti particle effect.
+  - Defeating a boss triggers a 5-card face-down Reward Modal. Players pick 1 (or 2 with a 20% chance). First pick has a 5% "Jackpot" chance to grant all remaining cards.
+  - **Boss Reward Rebalancing**: Boss rewards exclusively grant 'Uncommon' or higher upgrades (0% Common, 60% Uncommon, 30% Rare, 10% Legendary).
   - **Out-of-Bounds XP Gem Teleportation**: If any gem-dropping Boss (e.g., `DevourerOfTaxBoss`, `CarlosMinion`, `KyrenBoss`, `AmalgamNode`) is killed outside the visible arena bounds, its burst of XP gems is automatically teleported to the center of the field (`state.width / 2`, `state.height / 2`) with slight randomness to guarantee player access.
   - **Boss Spawn Sequence (5 Seconds Anticipation)**: Boss spawns trigger a HUD warning banner (`#boss-warning-banner`), a spawn warning SFX, and render a pulsing red holographic beacon with concentric rotating rings in the arena. After 5.0 seconds, the beacon detonates in neon particles and instantiates the boss.
 - **Arena Dimensions & Camera**:
@@ -183,8 +184,9 @@ This repository contains a browser-based arena survival game ("Neon Survivors").
 
 - **Additive Stat Multipliers & Math Refactor (`Player.js`, `upgrades.js`)**:
   - Replaced legacy "compound interest" logic (`*= 1.15`) on percentage upgrades with a stable additive multiplier system (`+= 0.15`).
-  - Added dedicated `*Mult` variables (`speedMult`, `pickupRadiusMult`, `cooldownMult`, `damageMult`) to `Player.js` constructor, weapon objects, and `resetUpgrades()`.
+  - Added dedicated `*Mult` variables (`speedMult`, `pickupRadiusMult`, `cooldownMult`, `damageMult`, `xpMultiplier`) to `Player.js` constructor, weapon objects, and `resetUpgrades()`.
   - Cooldowns are now dynamically calculated using division by their respective rate multipliers (`w.cooldown / (w.cooldownMult || 1.0) * this.getEffectiveCooldownMult()`), capping their acceleration safely and linearly.
+  - **XP Fractional Accumulation**: Removed `Math.round()` from internal XP calculations in `Player.js`, allowing decimal XP multipliers to function properly on low-value gems (preventing total bonus loss due to truncation). Decimals are only rounded via `Math.floor()` for visual floating UI text.
 - **Weapon Hit Cooldown Inversion (`Enemy.js`, `Bosses.js`, Piercing Weapons)**:
   - Migrated hit cooldown memory (`this.hitCooldowns = new Map()`) from individual piercing projectiles (Orbitals, Nova, Laser) directly into the hit targets (`Enemy.js`, `Bosses.js`).
   - Enables piercing weapons to damage multiple overlapping enemies simultaneously without arbitrary cooldown delays. 
@@ -200,7 +202,9 @@ This repository contains a browser-based arena survival game ("Neon Survivors").
   - Replaced legacy emoji upgrade icons with standard HTML image tags `<img src="assets/upgrades/...png" alt="icon">`.
   - `preloadUpgradeIcons` dynamically parses `src` attributes, extracting paths to preload new PNG assets directly into `preloadedUpgradeImages` at startup without hardcoded lists.
 - **PWA & TWA (Bubblewrap) Architecture**:
-  - **Dynamic Cache Versioning (`sw.js`)**: Integrated explicit `CACHE_VERSION` management (e.g., `1.0.2`). The Service Worker `activate` event actively deletes obsolete caches to prevent conflicts. Incorporates a `SKIP_WAITING` postMessage listener and `self.clients.claim()` for seamless updates on demand.
+  - **Dynamic Cache Versioning (`sw.js`)**: Integrated explicit `CACHE_VERSION` management (e.g., `1.0.24`). The Service Worker `activate` event actively deletes obsolete caches to prevent conflicts. Incorporates a `SKIP_WAITING` postMessage listener and `self.clients.claim()` for seamless updates on demand.
+  - **HTTP Cache Bypass**: Implemented `{ cache: 'reload' }` within `cache.addAll()` requests during the Service Worker install phase, strictly bypassing the browser's HTTP CDN cache to guarantee extraction of fresh files instead of storing stale versions.
+  - **Global Loading Screen**: Added a native, render-blocking `<div id="global-loading-screen">` spinner in the DOM body, simultaneously adding `defer` to PixiJS `<script>` tags to unblock HTML parsing. It provides immediate visual feedback on first-paint, automatically hiding once `main.js` and fonts fully initialize.
   - **Update Notification Overlay**: The game actively listens to the Service Worker's `updatefound` event and `navigator.serviceWorker.controller` to detect new versions downloaded in the background. It surfaces a non-intrusive `#update-available-overlay` prompting the user to safely `"RESTART GAME"` and apply the update without abrupt interruptions.
   - Implemented `manifest.json` and `sw.js` (Service Worker) to cache all vital assets, fulfilling the technical requirements for a Progressive Web App (PWA) with offline support.
   - Adapted routing paths (`start_url: "/Neon-Survivors/index.html"`) for compatibility with GitHub Pages subdirectory hosting.
