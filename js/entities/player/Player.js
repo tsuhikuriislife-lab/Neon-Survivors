@@ -148,6 +148,13 @@ export class Player {
     return this.getShieldColor(nextCharge);
   }
 
+  /**
+   * (Sistema de Daño Multiplicativo)
+   * Calcula el multiplicador de daño final. La regla del proyecto estipula que:
+   * Daño Final = Daño Base * Multiplicador Global * Bonus de Escudo Activo.
+   * Por eso usamos `*=` en lugar de sumar porcentajes planos.
+   * @returns {number} Multiplicador efectivo actual.
+   */
   getEffectiveDamageMult() {
     let mult = this.damageMult;
     if (this.hasActiveShield()) {
@@ -156,6 +163,11 @@ export class Player {
     return mult;
   }
 
+  /**
+   * Calcula el multiplicador de enfriamiento (cooldown).
+   * Un valor menor significa que las armas disparan más rápido (ej: 0.8 = 20% más rápido).
+   * Se usa división `mult / (1 + bonus)` para evitar que el cooldown llegue a 0 o negativo.
+   */
   getEffectiveCooldownMult() {
     let mult = this.cooldownMult;
     if (this.hasActiveShield()) {
@@ -218,13 +230,39 @@ export class Player {
       }
     }
 
+    // --- LÓGICA DE MOVIMIENTO VECTORIAL (CON INERCIA) ---
+    // Obtenemos el vector normalizado (longitud = 1) desde Input.js para asegurar
+    // que moverse en diagonal no sea más rápido que moverse en línea recta.
     const move = getMovementVector();
     let dx = move.dx;
     let dy = move.dy;
+    let targetVx = dx * this.speed;
+    let targetVy = dy * this.speed;
 
-    this.x += dx * this.speed;
-    this.y += dy * this.speed;
+    if (this.vx === undefined) this.vx = 0;
+    if (this.vy === undefined) this.vy = 0;
 
+    const isDashing = this.activeSkill && this.activeSkill.isActive && this.activeSkill.id === 'dash';
+    
+    if (isDashing) {
+      // El dash es un impulso explosivo, por lo que anula la inercia e impone la velocidad directamente
+      this.vx = targetVx;
+      this.vy = targetVy;
+    } else {
+      // Interpolación lineal (Lerp) para aceleración y fricción orgánicas. 
+      // 0.25 ofrece una respuesta muy ágil (snappy) pero que visualmente tiene peso.
+      this.vx += (targetVx - this.vx) * 0.25;
+      this.vy += (targetVy - this.vy) * 0.25;
+    }
+
+    // Aplicamos la velocidad inercial a las coordenadas
+    this.x += this.vx;
+    this.y += this.vy;
+
+    // --- LÍMITES DEL MAPA (CLAMPING) ---
+    // Mantiene al jugador dentro del canvas virtual de 1920x1920.
+    // `Math.max` previene que salga por la izquierda/arriba (valores negativos).
+    // `Math.min` previene que salga por la derecha/abajo, restando su radio para no cortar el sprite.
     this.x = Math.max(this.radius, Math.min(state.width - this.radius, this.x));
     this.y = Math.max(this.radius, Math.min(state.height - this.radius, this.y));
 
@@ -233,7 +271,12 @@ export class Player {
     } else if (mouse.down && this.weapons.laserCannon && this.weapons.laserCannon.level > 0 && this.weapons.laserCannon.fullyCharged) {
       this.angle = Math.atan2(mouse.y - this.y, mouse.x - this.x);
     } else if (dx !== 0 || dy !== 0) {
-      this.angle = Math.atan2(dy, dx);
+      const targetAngle = Math.atan2(dy, dx);
+      let diff = targetAngle - this.angle;
+      while (diff < -Math.PI) diff += Math.PI * 2;
+      while (diff > Math.PI) diff -= Math.PI * 2;
+      this.angle += diff * 0.3; // Rotación fluida en lugar de snap instantáneo
+      
       if (Math.random() < 0.35 && state.particlePool) {
         state.particlePool.acquire(this.x, this.y, "#00f0ff", 1, 0.05, 2);
       }
@@ -324,8 +367,9 @@ export class Player {
 
   fireBlaster() {
     const w = this.weapons.blaster;
-    let closest = state.spatialGrid.getNearest(this.x, this.y, w.range);
-    let minD = w.range;
+    const effectiveRange = w.range * (w.rangeMult || 1.0);
+    let closest = state.spatialGrid.getNearest(this.x, this.y, effectiveRange);
+    let minD = effectiveRange;
 
     if (closest) {
       minD = dist(this.x, this.y, closest.x, closest.y);
@@ -350,8 +394,9 @@ export class Player {
     for (let i = 0; i < count; i++) {
       const spread = count > 1 ? (i - (count - 1) / 2) * 0.09 : 0;
       const finalAngle = baseAngle + spread;
-      const vx = Math.cos(finalAngle) * w.speed;
-      const vy = Math.sin(finalAngle) * w.speed;
+      const effectiveSpeed = w.speed * (w.speedMult || 1.0);
+      const vx = Math.cos(finalAngle) * effectiveSpeed;
+      const vy = Math.sin(finalAngle) * effectiveSpeed;
 
       if (state.projectilePool) {
         state.projectilePool.acquire(this.x, this.y, vx, vy, dmg, "#00ffff", 4, false, homing);

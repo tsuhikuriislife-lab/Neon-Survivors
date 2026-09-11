@@ -7,6 +7,7 @@ import { DeimosMinion } from '../entities/bosses/DeimosMinion.js';
 import { FobosMinion } from '../entities/bosses/FobosMinion.js';
 import { AmalgamBossRoot } from '../entities/bosses/AmalgamBossRoot.js';
 import { TestingBoss } from '../entities/bosses/TestingBoss.js';
+import { CerberoBossRoot } from '../entities/bosses/CerberoBoss.js';
 
 export const bossRegistry = [];
 
@@ -218,5 +219,36 @@ registerBoss({
   },
   drawPreview: (ctx) => {
     drawPolygon(ctx, 50, 50, 30, 10, 0, "#00ffff", 10, "rgba(0, 255, 255, 0.2)");
+  }
+});
+
+// 8. Cerbero (Present)
+registerBoss({
+  id: 'CerberoBossRoot',
+  name: 'Present',
+  isMainBoss: true,
+  theme: {
+    primaryColor: '#ffffff',
+    secondaryColor: '#cc00ff',
+    innerColor: 'rgba(255, 255, 255, 0.95)',
+    glow: 35,
+    spawnShake: { strength: 30, duration: 0.8, rotation: 0.1, scale: 0.08 },
+    spawnPulse: { rate: 5, amplitude: 0.7 },
+    focusZoom: 1.30,
+    focusDuration: 3.5
+  },
+  defaultSpawnX: () => state.width / 2,
+  defaultSpawnY: () => state.height / 2,
+  instantiate: (x, y) => {
+    const b = new CerberoBossRoot(x, y);
+    state.bosses.push(b);
+    return b;
+  },
+  drawPreview: (ctx) => {
+    // Hexagono central (Presente)
+    drawPolygon(ctx, 50, 50, 30, 6, 0, "#ffffff", 8, "rgba(255, 255, 255, 0.2)");
+    // Mini triangulo y octagono para representar a Pasado y Futuro
+    drawPolygon(ctx, 35, 50, 8, 3, Math.PI, "#ff5500", 2, "rgba(255, 85, 0, 0.5)");
+    drawPolygon(ctx, 65, 50, 8, 8, 0, "#00ffff", 2, "rgba(0, 255, 255, 0.5)");
   }
 });

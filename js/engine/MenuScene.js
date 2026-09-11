@@ -291,7 +291,23 @@ export class MenuBackgroundShowcase {
     this.container.addChild(this.kyrenOuter);
     this.container.addChild(this.kyrenInner);
 
-    // 6. SWARMERS (Flock keeping flocking / boid behavior)
+    // 6. CERBERO (The Twins and Present)
+    this.present = { x: W * 0.5, y: H * 0.8, vx: 0.5, vy: -0.4, radius: 90 };
+    this.presentSprite = new PIXI.Sprite(getOrCachePolygon(90, 6, "#ffffff"));
+    this.presentSprite.anchor.set(0.5);
+    this.container.addChild(this.presentSprite);
+
+    this.past = { angle: 0, dist: 250, radius: 40 };
+    this.pastSprite = new PIXI.Sprite(getOrCachePolygon(40, 4, "#33ff33"));
+    this.pastSprite.anchor.set(0.5);
+    this.container.addChild(this.pastSprite);
+
+    this.future = { angle: Math.PI, dist: 250, radius: 40 };
+    this.futureSprite = new PIXI.Sprite(getOrCachePolygon(40, 4, "#ff0000"));
+    this.futureSprite.anchor.set(0.5);
+    this.container.addChild(this.futureSprite);
+
+    // 7. SWARMERS (Flock keeping flocking / boid behavior)
     this.swarmers = [];
     const swarmerCount = 12;
     const flockOriginX = W * 0.45;
@@ -497,7 +513,30 @@ export class MenuBackgroundShowcase {
     // Let's just scale it using the sprite. `textures['boss_kyren_inner']` is size 78 which is 150 * 0.52. So scaling is already mostly handled, but we can do:
     // Wait, 150 * 0.52 = 78. So it's 1:1. We can just leave scale = 1.
 
-    // --- 6. Update Swarmers ---
+    // --- 6. Update Cerbero ---
+    const p = this.present;
+    p.x += p.vx;
+    p.y += p.vy;
+    if (p.x <= p.radius + 80) { p.x = p.radius + 80; p.vx *= -1; }
+    else if (p.x >= W - p.radius - 80) { p.x = W - p.radius - 80; p.vx *= -1; }
+    if (p.y <= p.radius + 80) { p.y = p.radius + 80; p.vy *= -1; }
+    else if (p.y >= H - p.radius - 80) { p.y = H - p.radius - 80; p.vy *= -1; }
+    
+    this.presentSprite.x = p.x;
+    this.presentSprite.y = p.y;
+    this.presentSprite.rotation += 0.01;
+
+    this.past.angle += 0.02;
+    this.pastSprite.x = p.x + Math.cos(this.past.angle) * this.past.dist;
+    this.pastSprite.y = p.y + Math.sin(this.past.angle) * this.past.dist;
+    this.pastSprite.rotation += 0.05;
+
+    this.future.angle -= 0.015;
+    this.futureSprite.x = p.x + Math.cos(this.future.angle) * this.future.dist;
+    this.futureSprite.y = p.y + Math.sin(this.future.angle) * this.future.dist;
+    this.futureSprite.rotation -= 0.05;
+
+    // --- 7. Update Swarmers ---
     let avgX = 0, avgY = 0, avgVx = 0, avgVy = 0;
     const n = this.swarmers.length;
     for (let sw of this.swarmers) {

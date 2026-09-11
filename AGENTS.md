@@ -25,6 +25,9 @@ This repository contains a browser-based arena survival game ("Neon Survivors").
 - **Modifying UI**: Update HTML in `index.html`, styles in `css/styles.css`, and logic in `js/ui/UIManager.js`.
 
 ### Recent Implementations & System Mechanics
+- **Version 1.2 - The Temporal Twins Update (2026-09-10)**:
+  - **New Bosses (The Twins)**: Added Present, Past, and Future (Cerbero). Implemented tether drag physics, predictive aiming, and compound HP scaling fixes.
+  - **Core Hack & Mechanics**: Reworked Core Hack to dynamically combat boss scaling. Added Blaster Velocity and Advanced Optics upgrades.
 - **Version 1.1 - The Martian Moons Update (2026-09-09)**:
   - **Renaming**: 'Devourer of Tax' is now **Mars**, 'Carlos' is **Deimos**, and 'Sebastian' is **Fobos**.
   - **Size Scaling**: Fobos increased by +25% radius, Deimos decreased by -25% radius. Textures updated dynamically.
@@ -90,6 +93,11 @@ This repository contains a browser-based arena survival game ("Neon Survivors").
     - Applies soft physical displacement and smooth angular steering deflection ($0.4 \times \Delta\theta_{\text{repel}}$) to prevent snakes from following identical trajectories or superimposing on top of each other.
     - Deimos and Fobos maintain complementary flanking offsets ($\pm 0.4\pi$ around the player) and divergent perimeter exit points during `SEEK_EXIT`.
     - **Deimos Salvo Sequence**: Fires accelerating projectiles (`AcceleratingProjectile`) in a progressive wave from the tip of the tail (`segmentCount - 1`) forward to the head (`0`).
+  - **Cerbero Boss Mechanics (Presente, Pasado, Futuro)**:
+    - **Phase 1 Invulnerability**: `CerberoBossRoot` (Presente) handles the anchor tether (600px radius). It excludes itself from `getTargetables()` until Phase 2 to prevent auto-aim weapons from wasting DPS.
+    - **LaserBeam Target Compatibility**: To ensure piercing lasers (`LaserBeam.js`) can properly strike standalone boss components, `getTargetables()` must return `this` (the entity instance) instead of a `{ x, y, takeDamage }` proxy object. The `LaserBeam.js` global logic was patched to stop auto-canceling damage when `target === actualTarget`.
+    - **Projectile Override Architecture**: The engine strictly evaluates `!ep.update()` in `Game.js`. To add custom projectile despawn conditions (like the Flamethrower range limits or Vortex black hole absorption), we override `.update()` directly on the projectile instance (e.g., `vortexProj.update = function() { const alive = origUpdate(); ... };`), bypassing the default bounds.
+    - **Perimeter Projectile Spawning**: Vortex projectiles use perimeter-spawning (like Swarmers) rather than circular radius spawning, bypassing immediate despawn from engine bounding limits.
   - **Parent-Child Delegation Pattern & Unified Rewards (`MarsBoss`, `KyrenBoss`)**:
     - When complex bosses split, the parent sets its own body to `dead = true` but remains active in `state.bosses` as a hidden controller updating its children (`this.deimos`, `this.fobos`, `this.denzel`).
     - `getTargetables()` combines the active segments of the parent and any surviving children. `Game.js` only removes the boss and triggers the Reward Modal when `getTargetables().length === 0` (i.e. the entire family is defeated).

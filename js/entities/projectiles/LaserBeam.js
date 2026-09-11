@@ -100,13 +100,14 @@ export class LaserBeam {
 
       targetsToHit.forEach((item, index) => {
         const t = item.target;
-        if (this.hitEnemies.has(t)) return;
-        this.hitEnemies.add(t);
         const actualTarget = item.actualTarget;
         
         if (!this.tickDamage) {
            if (this.hitEnemies.has(actualTarget)) return;
            this.hitEnemies.add(actualTarget);
+        } else {
+           if (this.hitEnemies.has(t)) return;
+           this.hitEnemies.add(t);
         }
 
         // Reduccion de 5% de dano por cada enemigo atravesado (100%, 95%, 90%...)

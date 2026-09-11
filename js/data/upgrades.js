@@ -23,6 +23,30 @@ export const upgradeDatabase = [
     }
   },
   {
+    id: 'blaster_speed',
+    rarity: 'uncommon',
+    name: 'Blaster Velocity',
+    icon: '<img src="assets/upgrades/neon-cannon-projectile.png" alt="icon">',
+    desc: '+15% projectile speed for the Neon blaster.',
+    isAvailable: (p) => (p.blasterSpeedUpgrades || 0) < 6,
+    apply: (p) => { 
+      p.weapons.blaster.speedMult = (p.weapons.blaster.speedMult || 1.0) + 0.15; 
+      p.blasterSpeedUpgrades = (p.blasterSpeedUpgrades || 0) + 1;
+    }
+  },
+  {
+    id: 'blaster_range',
+    rarity: 'uncommon',
+    name: 'Advanced Optics',
+    icon: '<img src="assets/upgrades/weapon-tuning.png" alt="icon">',
+    desc: '+20% Neon blaster targeting range.',
+    isAvailable: (p) => (p.blasterRangeUpgrades || 0) < 3,
+    apply: (p) => {
+      p.weapons.blaster.rangeMult = (p.weapons.blaster.rangeMult || 1.0) + 0.20;
+      p.blasterRangeUpgrades = (p.blasterRangeUpgrades || 0) + 1;
+    }
+  },
+  {
     id: 'hp_regen',
     rarity: 'rare',
     name: 'Repairing Nanobots',
@@ -596,9 +620,25 @@ export const upgradeDatabase = [
     rarity: 'legendary',
     name: 'Core Hack',
     icon: '<img src="assets/upgrades/core-hack.png" alt="icon">',
-    desc: 'Halves the current HP of all active bosses.',
-    isAvailable: (p) => state.bosses.length > 0,
+    desc: 'Halves the HP scaling of future bosses and the current/max HP of active ones.',
+    isAvailable: (p) => {
+        if (!state.bossScaling) return false;
+        // Solo aparece si realmente hay alguna vida aumentada que "hackear" (> 1.0x)
+        for (let key in state.bossScaling) {
+            if (state.bossScaling[key] > 1.0) return true;
+        }
+        return false;
+    },
     apply: (p) => {
+        // Reducir los multiplicadores acumulados de vida de futuros jefes
+        if (state.bossScaling) {
+            for (let key in state.bossScaling) {
+                // Se reduce a la mitad, pero nunca por debajo del 100% de la vida original (1.0x)
+                state.bossScaling[key] = Math.max(1.0, state.bossScaling[key] / 2);
+            }
+        }
+        
+        // Reducir la vida actual y máxima de cualquier jefe vivo en pantalla
         if (state.bosses.length > 0) {
             const processed = new Set();
             state.bosses.forEach(b => {
@@ -606,9 +646,10 @@ export const upgradeDatabase = [
                     const target = t.parent || t;
                     if (!processed.has(target)) {
                         processed.add(target);
+                        target.maxHp = Math.max(1, Math.floor(target.maxHp / 2));
                         target.hp = Math.floor(target.hp / 2);
                         if (state.floatingTextPool) {
-                            state.floatingTextPool.acquire(target.x, target.y - 40, "HP HALVED!", "#ffaa00", 20);
+                            state.floatingTextPool.acquire(target.x, target.y - 40, "CORE HACKED!", "#ffaa00", 20);
                         }
                     }
                 });
