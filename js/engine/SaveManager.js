@@ -1,5 +1,6 @@
 export class SaveManager {
   static SAVE_KEY = 'neon_survivors_save';
+  static PROFILE_KEY = 'neon_survivors_profile';
 
   static saveGame(state) {
     if (!state.player) return;
@@ -59,7 +60,7 @@ export class SaveManager {
       isWaveActive: state.isWaveActive,
       waveTimer: state.waveTimer,
       spawnTimer: state.spawnTimer,
-      hasRerolledCurrentLevel: state.hasRerolledCurrentLevel,
+      rerollsUsed: state.rerollsUsed,
       bossScaling: state.bossScaling,
       lastBossName: state.lastBossName,
       bossDefeatTimes: state.bossDefeatTimes,
@@ -91,5 +92,24 @@ export class SaveManager {
 
   static clearSaveGame() {
     localStorage.removeItem(this.SAVE_KEY);
+  }
+
+  static loadProfile() {
+    try {
+      const data = localStorage.getItem(this.PROFILE_KEY);
+      if (data) return JSON.parse(data);
+    } catch (e) {
+      console.error("Failed to load profile:", e);
+    }
+    // Default profile
+    return { chips: 0, upgrades: {} };
+  }
+
+  static saveProfile(profile) {
+    try {
+      localStorage.setItem(this.PROFILE_KEY, JSON.stringify(profile));
+    } catch (e) {
+      console.error("Failed to save profile:", e);
+    }
   }
 }

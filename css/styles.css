@@ -292,6 +292,7 @@
       z-index: 50;
       pointer-events: all;
       overflow-y: auto;
+      overflow-x: hidden;
       box-sizing: border-box;
     }
     .modal-title {
@@ -1301,4 +1302,161 @@
   box-shadow: 0 0 10px #ffb703;
   transition: width 0.1s ease-out;
   border-radius: 6px;
+}
+
+/* ================= LABORATORY ================= */
+.lab-viewport {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  z-index: 5;
+  cursor: grab;
+}
+.lab-viewport:active {
+  cursor: grabbing;
+}
+.lab-tree-container {
+  position: absolute;
+  width: 800px;
+  height: 800px;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  transform-origin: center center;
+  overflow: visible;
+  z-index: 5;
+  pointer-events: none; /* Let events fall through to nodes and viewport */
+}
+.lab-node, .lab-popover {
+  pointer-events: auto;
+}
+#labLinesSvg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+.lab-node {
+  position: absolute;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: #1a1a2e;
+  border: 3px solid #333;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transform: translate(-50%, -50%);
+  transition: all 0.2s ease;
+  z-index: 10;
+}
+.lab-node img {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+  pointer-events: none;
+}
+.lab-node .lab-level {
+  position: absolute;
+  bottom: -22px;
+  font-size: 12px;
+  color: #cbd5e0;
+  font-family: monospace;
+  background: rgba(0,0,0,0.8);
+  padding: 2px 6px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+.lab-node.locked {
+  filter: grayscale(100%) opacity(0.5);
+  cursor: not-allowed;
+}
+.lab-node.unlocked {
+  border-color: #00ffff;
+  box-shadow: 0 0 15px rgba(0,255,255,0.4);
+}
+.lab-node.maxed {
+  border-color: #00ffaa;
+  box-shadow: 0 0 15px rgba(0,255,170,0.6);
+}
+.lab-node:hover:not(.locked) {
+  transform: translate(-50%, -50%) scale(1.1);
+  box-shadow: 0 0 25px rgba(0,255,255,0.8);
+}
+
+/* Lab Popover */
+.lab-popover {
+  position: absolute;
+  width: 250px;
+  background: rgba(10, 10, 25, 0.95);
+  border: 2px solid #00ffff;
+  border-radius: 8px;
+  padding: 15px;
+  color: #fff;
+  z-index: 20;
+  box-shadow: 0 0 30px rgba(0,255,255,0.3);
+  pointer-events: auto;
+  transform: translate(-50%, 15px);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.lab-popover h3 {
+  margin: 0;
+  color: #00ffff;
+  font-size: 16px;
+  text-shadow: 0 0 5px #00ffff;
+}
+.lab-popover p {
+  margin: 0;
+  font-size: 13px;
+  color: #cbd5e0;
+  line-height: 1.4;
+}
+.lab-progress-bg {
+  width: 100%;
+  height: 8px;
+  background: #333;
+  border-radius: 4px;
+  overflow: hidden;
+}
+.lab-progress-fill {
+  height: 100%;
+  background: #00ffaa;
+  width: 0%;
+  transition: width 0.3s;
+}
+.lab-price {
+  font-size: 16px;
+  font-weight: bold;
+  text-align: center;
+}
+.lab-price.affordable {
+  color: #00ffaa;
+}
+.lab-price.expensive {
+  color: #ff2255;
+}
+.lab-btn-buy {
+  background: #00ffaa;
+  color: #000;
+  border: none;
+  padding: 8px;
+  font-weight: bold;
+  cursor: pointer;
+  border-radius: 4px;
+  text-transform: uppercase;
+}
+.lab-btn-buy:disabled {
+  background: #555;
+  color: #888;
+  cursor: not-allowed;
 }

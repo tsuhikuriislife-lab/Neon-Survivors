@@ -121,8 +121,11 @@
         <button id="btnResumeGame" class="btn-start-game">
           <span class="btn-start-text">RESUME GAME</span>
         </button>
+        <button id="btnLaboratory" class="btn-start-game" style="border-color: #00ffff; margin-top: 15px;">
+          <span class="btn-start-text" style="color: #00ffff;">LABORATORY</span>
+        </button>
       </div>
-      <div class="version-indicator">v1.2</div>
+      <div class="version-indicator">v1.3</div>
     </div>
 
     <!-- Upgrade Modal -->
@@ -141,16 +144,48 @@
       <div id="bossRewardInstruction" style="margin-top: 30px; font-size: 20px; font-weight: bold; color: #fff; text-shadow: 0 0 10px #fff; z-index: 2;">Choose a card</div>
     </div>
 
+    <!-- Revive Prompt Modal -->
+    <div class="modal-overlay" id="revivePromptModal" style="display: none;">
+      <div class="gameover-box">
+        <h1 style="color: #ff2255; font-size: 30px; font-weight: 900; text-shadow: 0 0 20px #ff2255; margin-bottom: 15px;">SYSTEM FAILURE</h1>
+        <p style="color: #cbd5e0; margin-bottom: 20px; text-align: center;">CRITICAL DAMAGE DETECTED.<br>INITIATE EMERGENCY REBOOT?</p>
+        <button class="btn-revive" id="btnRevive">REVIVE</button>
+        <button class="btn-restart" id="btnRevivePromptEnd">END RUN</button>
+      </div>
+    </div>
+
     <!-- Game Over Modal -->
-    <div class="modal-overlay" id="gameOverModal">
+    <div class="modal-overlay" id="gameOverModal" style="display: none;">
       <div class="gameover-box">
         <h1 style="color: #ff2255; font-size: 30px; font-weight: 900; text-shadow: 0 0 20px #ff2255; margin-bottom: 15px;">SYSTEM COMPROMISED</h1>
         <p style="color: #cbd5e0; margin-bottom: 8px;">Survival time: <span id="finalTime" style="color: #00ffff; font-weight: 700;">00:00</span></p>
-        <p style="color: #cbd5e0; margin-bottom: 20px;">Enemies eliminated: <span id="finalKills" style="color: #ff00ff; font-weight: 700;">0</span></p>
-        <button class="btn-revive" id="btnRevive">REVIVE</button>
+        <p style="color: #cbd5e0; margin-bottom: 8px;">Enemies eliminated: <span id="finalKills" style="color: #ff00ff; font-weight: 700;">0</span> <span style="font-size:12px; color:#aaa;">(+<span id="finalKillsChips">0</span> chips)</span></p>
+        <p style="color: #cbd5e0; margin-bottom: 8px;">Bosses eliminated: <span id="finalBosses" style="color: #ff0055; font-weight: 700;">0</span> <span style="font-size:12px; color:#aaa;">(+<span id="finalBossesChips">0</span> chips)</span></p>
+        <p style="color: #cbd5e0; margin-bottom: 8px;">Levels Gained: <span id="finalLevels" style="color: #00ff00; font-weight: 700;">0</span> <span style="font-size:12px; color:#aaa;">(+<span id="finalLevelsChips">0</span> chips)</span></p>
+        <p style="color: #cbd5e0; margin-bottom: 8px;">Chips Collected: <span id="finalCollectedChips" style="color: #ffaa00; font-weight: 700;">0</span></p>
+        <p style="color: #cbd5e0; margin-bottom: 8px;">Economy Multiplier: <span id="finalMultiplier" style="color: #00ffff; font-weight: 700;">x1.00</span></p>
+        <p style="color: #cbd5e0; margin-bottom: 20px; font-size: 18px;">Total Chips: <svg width="22" height="22" viewBox="0 0 24 24" style="vertical-align: text-bottom; filter: drop-shadow(0 0 6px #ffaa00); margin-right: 5px;"><polygon points="12 2 22 12 12 22 2 12" fill="#ffaa00" stroke="#ffffff" stroke-width="2"></polygon></svg><span id="finalChips" style="color: #ffaa00; font-weight: 900; font-size: 22px;">0</span></p>
         <button class="btn-restart" id="btnRestart">RESTART GAME</button>
         <button class="btn-menu" id="btnGameOverMenu">MAIN MENU</button>
       </div>
+    </div>
+
+    <!-- Laboratory Modal -->
+    <div class="modal-overlay" id="labModal" style="display: none; background: rgba(4, 3, 10, 0.95);">
+      <div style="position: absolute; top: 20px; right: 30px; font-size: 24px; color: #ffaa00; text-shadow: 0 0 10px #ffaa00; z-index: 10;">
+        <svg width="24" height="24" viewBox="0 0 24 24" style="vertical-align: text-bottom; filter: drop-shadow(0 0 8px #ffaa00); margin-right: 8px;"><polygon points="12 2 22 12 12 22 2 12" fill="#ffaa00" stroke="#ffffff" stroke-width="2"></polygon></svg><span id="labChipsTotal">0</span>
+      </div>
+      <div class="modal-title" style="position: absolute; top: 30px; left: 0; width: 100%; text-align: center; color: #00ffff; text-shadow: 0 0 20px #00ffff; margin: 0; z-index: 10; letter-spacing: 3px; padding-left: 3px;">LABORATORY</div>
+      
+      <div class="lab-viewport" id="labViewport">
+        <div class="lab-tree-container" id="labTreeContainer">
+          <!-- SVG lines will be injected here -->
+          <svg id="labLinesSvg"></svg>
+          <!-- Nodes will be injected here -->
+        </div>
+      </div>
+      
+      <button class="btn-menu" id="btnLabClose" style="position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); width: 200px; z-index: 10; margin: 0;">CLOSE</button>
     </div>
 
     <!-- Options / Pause Modal -->
@@ -158,6 +193,7 @@
       <div class="admin-box">
         <h2>⏸️ PAUSE</h2>
         <div class="admin-section">
+          <button id="optionsBtnResume" class="admin-action-btn" style="border-color: #00ff00; color: #00ff00; background: rgba(0, 255, 0, 0.15); margin-bottom: 15px;">RESUME GAME</button>
           <h3>Sound</h3>
           <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px;">
             <label><input type="checkbox" id="optionsBgmMute"> Mute BGM</label>
@@ -179,7 +215,10 @@
           <h3>Tools</h3>
           <button id="optionsBtnDev" class="admin-action-btn" style="border-color: #00ffff; color: #00ffff; background: rgba(0, 255, 255, 0.15);">🛠️ ADMIN / DEV PANEL</button>
         </div>
-        <button id="optionsBtnClose" class="admin-action-btn close-btn">CLOSE</button>
+        <div id="optionsBtnEndRunArea" style="position: relative; width: 100%; height: 40px; background: rgba(255,0,0,0.1); border: 2px solid #ff0055; border-radius: 4px; overflow: hidden; cursor: pointer; user-select: none; margin-top: 15px;">
+          <div id="optionsBtnEndRunProgress" style="position: absolute; top: 0; left: 0; height: 100%; width: 0%; background: rgba(255,0,85,0.5); pointer-events: none; transition: none;"></div>
+          <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: #ff0055; font-weight: bold; font-size: 16px; pointer-events: none; text-shadow: 0 0 5px #ff0055; z-index: 2;">HOLD TO END RUN</div>
+        </div>
       </div>
     </div>
 

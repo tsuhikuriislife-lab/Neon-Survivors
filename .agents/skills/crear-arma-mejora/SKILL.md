@@ -21,3 +21,6 @@ description: Guía paso a paso para añadir nuevas armas, habilidades y mejoras 
 4. **Entidad del Proyectil (`js/entities/Projectiles.js`)**:
    - Si requiere un proyectil único, extiéndelo aquí (ej. `NovaProjectile`, `MissileProjectile`).
    - Configura su partícula de rastro si aplica (emisión cero-GC vinculada a los pools de partículas).
+
+5. **Limpieza y Reseteo (`Player.prototype.resetUpgrades` en `js/entities/Player.js`)**:
+   - ¡CRÍTICO! Si tu nueva arma o mejora añade nuevas variables de estado o contadores dinámicos a la instancia del jugador (ej. `p.miNuevaArmaUpgrades = ...`), DEBES inicializarlos y resetearlos explícitamente dentro de `resetUpgrades()`. De lo contrario, estas variables se "filtrarán" persistiendo en nuevas partidas o al resetear las mejoras.

@@ -25,6 +25,13 @@ This repository contains a browser-based arena survival game ("Neon Survivors").
 - **Modifying UI**: Update HTML in `index.html`, styles in `css/styles.css`, and logic in `js/ui/UIManager.js`.
 
 ### Recent Implementations & System Mechanics
+- **Version 1.3 - The Metaprogression Topology Update (2026-09-11)**:
+  - **Geometric Laboratory Topology (metaUpgrades.js)**: Restructured the entire Laboratory tree into a perfect non-overlapping diamond fractal. The 4 core branches stem outwards in a '+' shape (Health X<0, Damage Y>0, Utility X>0, Economy Y<0). Sub-branches expand strictly diagonally via dx=±120, dy=±120 relative offsets, guaranteeing infinite expansion without quadrant line collisions.
+  - **8 New Meta-Upgrades Engine Integration**:
+    - **Health**: casco_electrificado (Thorns logic reflecting damage via Player.prototype.takeDamage()), protocolo_lazaro (Dynamically recalculates Extra Revives inside UIManager.js Game Over modal).
+    - **Damage**: refrigeracion_liquida (Global Weapon CDR via getEffectiveCooldownMult()), calibracion_anti_titanes (Multiplicative boss damage boost safely injected directly into all Boss ASTs).
+    - **Utility**: sobremarcha_propulsion (Dash Active Skill CDR modifier), sintesis_biologica (Passive healOnLevelUp), inyeccion_codigo (Migrated from a boolean reroll to a full rerollsUsedThisLevel counter pool tracking base rerolls).
+    - **Economy**: caza_recompensas (Injects guaranteed chips into Game.js when a boss is defeated), secuencia_arranque (Hooks into initGame() granting start XP to new Player()), soborno_sistema (1% passive discount calculated in real-time within Laboratory.js checkout logic).
 - **Version 1.2 - The Temporal Twins Update (2026-09-10)**:
   - **New Bosses (The Twins)**: Added Present, Past, and Future (Cerbero). Implemented tether drag physics, predictive aiming, and compound HP scaling fixes.
   - **Core Hack & Mechanics**: Reworked Core Hack to dynamically combat boss scaling. Added Blaster Velocity and Advanced Optics upgrades.

@@ -37,6 +37,9 @@ export function initGame() {
     state.player = null;
   }
   state.player = new Player();
+  if (state.player.startXP && state.player.startXP > 0) {
+    state.player.addXp(state.player.startXP);
+  }
   if (state.camera) {
     state.camera.reset();
     state.camera.x = state.player.x;
@@ -910,8 +913,11 @@ export function loop(timestamp) {
       if (dist(ep.x, ep.y, state.player.x, state.player.y) < ep.radius + state.player.radius) {
         state.player.takeDamage(ep.damage, ep.color);
         spawnExplosion(ep.x, ep.y, ep.color, 6, 2);
-        if (state.enemyProjectiles[i].destroy) state.enemyProjectiles[i].destroy(); state.enemyProjectiles[i] = state.enemyProjectiles[state.enemyProjectiles.length - 1];
-        state.enemyProjectiles.pop();
+        
+        if (!ep.pierce) {
+          if (state.enemyProjectiles[i].destroy) state.enemyProjectiles[i].destroy(); state.enemyProjectiles[i] = state.enemyProjectiles[state.enemyProjectiles.length - 1];
+          state.enemyProjectiles.pop();
+        }
       }
     }
 
@@ -993,6 +999,30 @@ export function loop(timestamp) {
         const bossName = b.constructor.name;
         if (typeof b.die === 'function') b.die();
         if (typeof b.destroy === 'function') b.destroy();
+        
+        state.bossesKilled = (state.bossesKilled || 0) + 1;
+        
+        const isOutsideMap = b.x < 0 || b.x > state.width || b.y < 0 || b.y > state.height;
+        const baseX = isOutsideMap || b.x === undefined ? state.width / 2 : b.x;
+        const baseY = isOutsideMap || b.y === undefined ? state.height / 2 : b.y;
+
+        const numChips = Math.floor(Math.random() * 11) + 5; // 5 to 15
+        if (state.gemPool) {
+          for (let c = 0; c < numChips; c++) {
+            const cx = baseX + (Math.random() * 80 - 40);
+            const cy = baseY + (Math.random() * 80 - 40);
+            const isMagnetized = Math.random() < (state.player?.autoMagnetChance || 0);
+            state.gemPool.acquire(cx, cy, 1, isMagnetized, 'chip');
+          }
+        }
+        
+        if (state.player && state.player.bossChipBounty) {
+            state.droppedChips += state.player.bossChipBounty;
+            if (state.floatingTextPool) {
+                state.floatingTextPool.acquire(state.player.x, state.player.y - 40, `+${state.player.bossChipBounty} CHIPS`, "#ffd700", 25);
+            }
+        }
+        
         state.bosses[i] = state.bosses[state.bosses.length - 1];
         state.bosses.pop();
         
@@ -1065,7 +1095,7 @@ export function resumeGame() {
   state.isWaveActive = saveData.isWaveActive;
   state.waveTimer = saveData.waveTimer;
   state.spawnTimer = saveData.spawnTimer;
-  state.hasRerolledCurrentLevel = saveData.hasRerolledCurrentLevel;
+  state.rerollsUsed = saveData.rerollsUsed || 0;
   state.bossScaling = saveData.bossScaling;
   state.lastBossName = saveData.lastBossName;
   state.bossDefeatTimes = saveData.bossDefeatTimes;

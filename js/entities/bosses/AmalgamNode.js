@@ -109,6 +109,7 @@ export class AmalgamNode extends Boss {
   takeDamage(amt, damageColor = "#ff0033") {
     if (this.dead || this.hp <= 0) return false;
     let finalAmount = amt;
+    if (state.player && state.player.bossDamageMult) finalAmount *= (1 + state.player.bossDamageMult);
     let isCrit = false;
 
     if (state.player && Math.random() < (state.player.critChance || 0)) {
@@ -240,7 +241,7 @@ export class AmalgamNode extends Boss {
     }
 
     if (dist(this.x, this.y, player.x, player.y) < this.radius + player.radius) {
-      player.takeDamage(20, this.color);
+      player.takeDamage(20, this.color, this);
     }
     super.update(player);
   }

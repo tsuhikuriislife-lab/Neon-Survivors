@@ -1,6 +1,6 @@
 import { state } from '../engine/gameState.js';
 import { cancelAiming, resetInputState } from '../engine/Input.js';
-import { formatTime, drawPolygon } from '../engine/Utils.js';
+import { formatTime, drawPolygon, enterFullscreen } from '../engine/Utils.js';
 import { upgradeDatabase } from '../data/upgrades.js';
 import { initGame, resumeGame } from '../engine/Game.js';
 import { SaveManager } from '../engine/SaveManager.js';
@@ -128,9 +128,18 @@ export function showUpgradeMenu() {
   const modal = document.getElementById("levelModal");
   const container = document.getElementById("cardsContainer");
   const btnReroll = document.getElementById("btnReroll");
-
-  btnReroll.disabled = state.hasRerolledCurrentLevel;
-  btnReroll.innerText = state.hasRerolledCurrentLevel ? "🎲 REROLL EXHAUSTED" : "🎲 REROLL AVAILABLE (1)";
+  const remainingRerolls = (state.player ? state.player.baseRerolls : 0) - (state.rerollsUsed || 0);
+  if (btnReroll) {
+    if (remainingRerolls > 0) {
+      btnReroll.innerText = `🎲 REROLL AVAILABLE (${remainingRerolls})`;
+      btnReroll.classList.remove("disabled");
+      btnReroll.disabled = false;
+      btnReroll.style.display = "block";
+    } else {
+      btnReroll.style.display = "none";
+    }
+  }
+  // btnReroll logic handled above
 
   container.innerHTML = "";
 
@@ -241,9 +250,11 @@ export function returnToMainMenu() {
   const adminSubModal = document.getElementById("adminSubModal");
   const uiLayer = document.getElementById("ui-layer");
   const startOverlay = document.getElementById("start-screen-overlay");
+  const revivePromptModal = document.getElementById("revivePromptModal");
   
   if (gameOverModal) gameOverModal.style.display = "none";
   if (levelModal) levelModal.style.display = "none";
+  if (revivePromptModal) revivePromptModal.style.display = "none";
   if (bossRewardModal) bossRewardModal.style.display = "none";
   if (optionsModal) optionsModal.style.display = "none";
   if (adminModal) adminModal.style.display = "none";
@@ -263,6 +274,7 @@ export function initUIListeners() {
   const btnStartGame = document.getElementById("btnStartGame");
   if (btnStartGame) {
     btnStartGame.onclick = () => {
+      enterFullscreen();
       startGame();
     };
   }
@@ -273,6 +285,7 @@ export function initUIListeners() {
     if (SaveManager.hasSaveGame()) {
       btnResumeGame.classList.remove("disabled");
       btnResumeGame.onclick = () => {
+        enterFullscreen();
         resumeGame();
       };
     } else {
@@ -289,13 +302,15 @@ export function initUIListeners() {
   }
 
   document.getElementById("btnReroll").onclick = () => {
-    if (!state.hasRerolledCurrentLevel) {
-      state.hasRerolledCurrentLevel = true;
+    const totalRerolls = state.player ? state.player.baseRerolls : 0;
+    if ((state.rerollsUsed || 0) < totalRerolls) {
+      state.rerollsUsed = (state.rerollsUsed || 0) + 1;
       showUpgradeMenu();
     }
   };
 
   document.getElementById("btnRestart").onclick = () => {
+    enterFullscreen();
     SaveManager.clearSaveGame();
     document.getElementById("gameOverModal").style.display = "none";
     document.getElementById("ui-layer").style.display = "block";
@@ -306,7 +321,15 @@ export function initUIListeners() {
   const btnRevive = document.getElementById("btnRevive");
   if (btnRevive) {
     btnRevive.onclick = () => {
+      enterFullscreen();
       revivePlayer();
+    };
+  }
+
+  const btnRevivePromptEnd = document.getElementById("btnRevivePromptEnd");
+  if (btnRevivePromptEnd) {
+    btnRevivePromptEnd.onclick = () => {
+      showGameOverStats();
     };
   }
 
@@ -413,9 +436,11 @@ export function initUIListeners() {
     const levelModal = document.getElementById("levelModal");
     const bossRewardModal = document.getElementById("bossRewardModal");
     const gameOverModal = document.getElementById("gameOverModal");
+    const revivePromptModal = document.getElementById("revivePromptModal");
     if (levelModal && levelModal.style.display === "flex") return;
     if (bossRewardModal && bossRewardModal.style.display === "flex") return;
     if (gameOverModal && gameOverModal.style.display === "flex") return;
+    if (revivePromptModal && revivePromptModal.style.display === "flex") return;
 
     state.isPaused = true;
     cancelAiming();
@@ -467,9 +492,58 @@ export function initUIListeners() {
     pauseBtn.onclick = togglePauseMenu;
   }
 
-  const optionsBtnClose = document.getElementById("optionsBtnClose");
-  if (optionsBtnClose) {
-    optionsBtnClose.onclick = closePauseMenu;
+  const optionsBtnResume = document.getElementById("optionsBtnResume");
+  if (optionsBtnResume) {
+    optionsBtnResume.onclick = closePauseMenu;
+  }
+
+  const endRunArea = document.getElementById("optionsBtnEndRunArea");
+  if (endRunArea) {
+    let endRunTimer = null;
+    const bar = document.getElementById("optionsBtnEndRunProgress");
+
+    const startEndRun = (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      if (endRunTimer) clearTimeout(endRunTimer);
+      
+      bar.style.transition = 'none';
+      bar.style.width = '0%';
+      void bar.offsetWidth; // Force reflow
+      
+      bar.style.transition = 'width 1.5s ease-out';
+      bar.style.width = '100%';
+      
+      endRunTimer = setTimeout(() => {
+        closePauseMenu();
+        if (state.player && typeof state.player.die === 'function') {
+           // Skip revive logic by forcing revivesUsed = max
+           state.player.revivesUsed = 999;
+           state.player.die();
+        } else {
+           triggerGameOver();
+        }
+      }, 1500);
+    };
+
+    const cancelEndRun = (e) => {
+      if (e) {
+        e.stopPropagation();
+        e.preventDefault();
+      }
+      if (endRunTimer) clearTimeout(endRunTimer);
+      endRunTimer = null;
+      bar.style.transition = 'width 0.2s ease';
+      bar.style.width = '0%';
+    };
+
+    endRunArea.addEventListener('mousedown', startEndRun);
+    endRunArea.addEventListener('touchstart', startEndRun, { passive: false });
+    
+    endRunArea.addEventListener('mouseup', cancelEndRun);
+    endRunArea.addEventListener('mouseleave', cancelEndRun);
+    endRunArea.addEventListener('touchend', cancelEndRun);
+    endRunArea.addEventListener('touchcancel', cancelEndRun);
   }
 
   window.addEventListener("keydown", (e) => {
@@ -766,29 +840,76 @@ export function triggerGameOver() {
   state.isGameOver = true;
   state.isPaused = true;
   cancelAiming();
+  audioManager.setMusicMuffled(true);
+
+  if (state.player && state.player.revivesUsed < state.player.extraRevives) {
+    const remaining = state.player.extraRevives - state.player.revivesUsed;
+    const btnRevive = document.getElementById("btnRevive");
+    if (btnRevive) {
+      btnRevive.innerText = `❤ REVIVE (${remaining} LEFT)`;
+      btnRevive.disabled = false;
+    }
+    document.getElementById("revivePromptModal").style.display = "flex";
+  } else {
+    showGameOverStats();
+  }
+}
+
+export function showGameOverStats() {
+  document.getElementById("revivePromptModal").style.display = "none";
+  
   document.getElementById("finalTime").innerText = formatTime(state.gameTime);
   document.getElementById("finalKills").innerText = state.killCount;
+  
+  const bossesKilled = state.bossesKilled || 0;
+  const bossesChips = bossesKilled * 50;
+  const killsChips = Math.floor(state.killCount / 50);
+  const levelsChips = state.player ? state.player.level * 2 : 0;
+  const collectedChips = state.droppedChips || 0;
 
-  const btnRevive = document.getElementById("btnRevive");
-  if (btnRevive) {
-    btnRevive.disabled = false;
-    btnRevive.innerText = "❤ REVIVE (1 PER GAME)";
-    if (state.player && !state.player.hasRevivedOnce) {
-      btnRevive.style.display = "block";
-    } else {
-      btnRevive.style.display = "none";
-    }
+  const baseChips = bossesChips + killsChips + levelsChips + collectedChips;
+  
+  // Economy Node 1.2: endgameChipBonus
+  let multiplier = 1.0;
+  if (state.player && state.player.endgameChipBonus) {
+    multiplier += state.player.endgameChipBonus;
+  }
+  
+  let totalEarned = Math.floor(baseChips * multiplier);
+
+  // Update UI
+  document.getElementById("finalBosses").innerText = bossesKilled;
+  document.getElementById("finalBossesChips").innerText = bossesChips;
+  
+  document.getElementById("finalKillsChips").innerText = killsChips;
+  
+  document.getElementById("finalLevels").innerText = state.player ? state.player.level : 1;
+  document.getElementById("finalLevelsChips").innerText = levelsChips;
+  
+  document.getElementById("finalCollectedChips").innerText = collectedChips;
+  
+  document.getElementById("finalMultiplier").innerText = `x${multiplier.toFixed(2)}`;
+  
+  const previouslyEarned = state.chipsAwardedThisRun || 0;
+  const earnedChips = Math.max(0, totalEarned - previouslyEarned);
+  
+  document.getElementById("finalChips").innerText = totalEarned + (earnedChips > 0 ? "" : " (Already Saved)");
+  
+  if (earnedChips > 0) {
+    const profile = SaveManager.loadProfile();
+    profile.chips = (profile.chips || 0) + earnedChips;
+    SaveManager.saveProfile(profile);
+    state.chipsAwardedThisRun = totalEarned;
   }
 
   document.getElementById("gameOverModal").style.display = "flex";
-  audioManager.setMusicMuffled(true);
 }
 
 export function revivePlayer() {
   if (!state.player) return;
 
   // 1. Marcar resurreccion unica por partida
-  state.player.hasRevivedOnce = true;
+  state.player.revivesUsed++;
 
   // 2. Restaurar 50% de la salud maxima
   state.player.hp = state.player.maxHp * 0.5;
@@ -878,9 +999,13 @@ export function revivePlayer() {
   }
   audioManager.playSound('level_up', { volume: 0.9, throttleMs: 50 });
 
-  // 8. Ocultar modal de Game Over y reanudar el juego
+  // 8. Ocultar modals y reanudar el juego
   const gameOverModal = document.getElementById("gameOverModal");
   if (gameOverModal) gameOverModal.style.display = "none";
+  
+  const revivePromptModal = document.getElementById("revivePromptModal");
+  if (revivePromptModal) revivePromptModal.style.display = "none";
+  
   const btnRevive = document.getElementById("btnRevive");
   if (btnRevive) btnRevive.disabled = false;
 

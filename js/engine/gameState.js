@@ -12,8 +12,11 @@ export const state = {
   isAdPlaying: false,
   gameTime: 0,
   killCount: 0,
+  bossesKilled: 0,
+  droppedChips: 0,
+  chipsAwardedThisRun: 0,
   lastFrameTime: performance.now(),
-  hasRerolledCurrentLevel: false,
+  rerollsUsed: 0,
   nextBossTime: 300,
   nextWaveTime: 150,
   
@@ -156,6 +159,9 @@ export const state = {
     this.waveTriggeredEnFase = false;
     
     this.killCount = 0;
+    this.bossesKilled = 0;
+    this.droppedChips = 0;
+    this.chipsAwardedThisRun = 0;
     this.nextBossTime = 300;
     this.nextWaveTime = 150;
     this.isWaveActive = false;
@@ -165,7 +171,7 @@ export const state = {
     this.isCinematic = false;
     this.isGameOver = false;
     this.isAdPlaying = false;
-    this.hasRerolledCurrentLevel = false;
+    this.rerollsUsed = 0;
     this.bossScaling = {};
     this.lastBossName = null;
     this.enemyScaling = { hp: 1.0, speed: 1.0, damage: 1.0 };

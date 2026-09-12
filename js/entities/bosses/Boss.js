@@ -43,6 +43,7 @@ export class Boss {
   takeDamage(amt, damageColor = this.color, hitX = this.x, hitY = this.y) {
     if (this.dead || this.hp <= 0) return false;
     let finalAmount = amt;
+    if (state.player && state.player.bossDamageMult) finalAmount *= (1 + state.player.bossDamageMult);
     let isCrit = false;
 
     if (state.player && Math.random() < (state.player.critChance || 0)) {

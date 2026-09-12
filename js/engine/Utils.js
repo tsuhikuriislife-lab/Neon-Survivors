@@ -32,3 +32,12 @@ export function formatTime(sec) {
   const s = Math.floor(sec % 60).toString().padStart(2, '0');
   return `${m}:${s}`;
 }
+
+export function enterFullscreen() {
+  const docElm = document.documentElement;
+  if (docElm.requestFullscreen) {
+    docElm.requestFullscreen().catch(() => {});
+  } else if (docElm.webkitRequestFullscreen) {
+    docElm.webkitRequestFullscreen();
+  }
+}

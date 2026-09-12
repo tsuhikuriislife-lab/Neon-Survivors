@@ -90,6 +90,7 @@ export class DeimosMinion extends Boss {
   takeDamage(amt, damageColor = "#00ff66", hitX = this.x, hitY = this.y) {
     if (this.dead || this.hp <= 0) return false;
     let finalAmount = amt;
+    if (state.player && state.player.bossDamageMult) finalAmount *= (1 + state.player.bossDamageMult);
     let isCrit = false;
 
     if (state.player && Math.random() < (state.player.critChance || 0)) {
@@ -346,14 +347,14 @@ export class DeimosMinion extends Boss {
 
     const headDistance = dist(this.x, this.y, player.x, player.y);
     if (headDistance < this.radius + player.radius) {
-      player.takeDamage(this.headDamage, "#00ff88");
+      player.takeDamage(this.headDamage, "#00ff88", this);
     }
 
     if (this.bodyHitCooldown <= 0) {
       for (let i = 1; i < this.segmentCount; i++) {
         const seg = this.segments[i];
         if (dist(seg.x, seg.y, player.x, player.y) < this.bodyHitRadius + player.radius) {
-          player.takeDamage(this.bodyDamage, "#00ff88");
+          player.takeDamage(this.bodyDamage, "#00ff88", this);
           this.bodyHitCooldown = this.bodyHitCooldownMax;
           break;
         }

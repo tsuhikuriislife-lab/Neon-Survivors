@@ -3,6 +3,9 @@ import { dist } from '../../engine/Utils.js';
 import { audioManager } from '../../engine/AudioManager.js';
 import { Boss } from './Boss.js';
 import { Projectile } from '../projectiles/Projectile.js';
+import { CerberoFlameProjectile } from '../projectiles/CerberoFlameProjectile.js';
+import { CerberoSpiralProjectile } from '../projectiles/CerberoSpiralProjectile.js';
+import { CerberoVortexProjectile } from '../projectiles/CerberoVortexProjectile.js';
 import { spawnExplosion } from '../effects/spawnExplosion.js';
 import { worldLayer } from '../../main.js';
 import { getOrCachePolygon } from '../../engine/TextureCache.js';
@@ -98,11 +101,60 @@ export class CerberoFuturoMinion extends Boss {
           this.burstCount--;
           this.firePredictive(this.aimAngle, true); // Mantiene la pequeña desviación (spread)
         }
-      } else if (this.timer >= 180) { // Mayor tiempo de recarga entre ráfagas (3 segundos a 60FPS)
-        this.timer = 0;
-        this.burstCount = 3;
+      } else {
+        if (this.burstsFired >= 3) {
+          if (this.timer >= 60) { // Pequeña pausa antes de embestir
+            this.timer = 0;
+            this.aiState = 'PHASE1_DASH_AIM';
+            this.dashCount = 0;
+            this.burstsFired = 0;
+          }
+        } else if (this.timer >= 120) { // Recarga entre ráfagas
+          this.timer = 0;
+          this.burstCount = 3;
+          this.burstsFired = (this.burstsFired || 0) + 1;
+        }
       }
     } 
+    else if (this.aiState === 'PHASE1_DASH_AIM') {
+      this.vx *= 0.85; 
+      this.vy *= 0.85;
+      this.timer++;
+      
+      if (this.timer < 15) { 
+        const d = dist(this.x, this.y, player.x, player.y);
+        const dashSpeed = 12.0; 
+        const ticks = d / dashSpeed;
+        const predictedX = player.x + pVx * ticks;
+        const predictedY = player.y + pVy * ticks;
+        this.aimAngle = Math.atan2(predictedY - this.y, predictedX - this.x);
+      } else if (this.timer >= 25) { 
+        this.aiState = 'PHASE1_DASHING';
+        this.timer = 0;
+        
+        const dashSpeed = 12.0;
+        this.vx = Math.cos(this.aimAngle) * dashSpeed;
+        this.vy = Math.sin(this.aimAngle) * dashSpeed;
+        audioManager.playSound('enemy_dash', { volume: 0.4, throttleMs: 50 }); 
+      }
+    }
+    else if (this.aiState === 'PHASE1_DASHING') {
+      this.vx *= 0.96; 
+      this.vy *= 0.96;
+      this.timer++;
+      
+      if (this.timer >= 30) {
+        this.dashCount++;
+        if (this.dashCount >= 8) { 
+          this.aiState = 'PHASE1_HOVER';
+          this.timer = 0;
+          // Dejar burstCount en 0 para que espere y recargue incrementando burstsFired
+        } else {
+          this.aiState = 'PHASE1_DASH_AIM';
+          this.timer = 0;
+        }
+      }
+    }
     else if (this.aiState === 'TRANSITION') {
       this.vx *= 0.9;
       this.vy *= 0.9;
@@ -132,8 +184,51 @@ export class CerberoFuturoMinion extends Boss {
       
       if (this.timer >= 120) {
         this.timer = 0;
-        this.aiState = 'PHASE2_DEATHRAY';
-        this.rayAngle = angleToPlayer;
+        this.aiState = 'PHASE2_DASH_AIM';
+        this.dashCount = 0;
+      }
+    }
+    else if (this.aiState === 'PHASE2_DASH_AIM') {
+      this.vx *= 0.85;
+      this.vy *= 0.85;
+      this.timer++;
+      
+      if (this.timer < 20) {
+        const d = dist(this.x, this.y, player.x, player.y);
+        const dashSpeed = 18.0;
+        const ticks = d / dashSpeed;
+        const predictedX = player.x + pVx * ticks;
+        const predictedY = player.y + pVy * ticks;
+        this.aimAngle = Math.atan2(predictedY - this.y, predictedX - this.x);
+      } else if (this.timer === 20) {
+        if (this.sprite) this.sprite.tint = 0xffffff;
+        if (this.pupil) this.pupil.tint = 0xffffff;
+      } else if (this.timer >= 35) {
+        this.aiState = 'PHASE2_DASHING';
+        this.timer = 0;
+        if (this.sprite) this.sprite.tint = 0xff0000; 
+        if (this.pupil) this.pupil.tint = 0xff0000;
+        
+        const dashSpeed = 18.0;
+        this.vx = Math.cos(this.aimAngle) * dashSpeed;
+        this.vy = Math.sin(this.aimAngle) * dashSpeed;
+        audioManager.playSound('enemy_dash', { volume: 0.7, throttleMs: 50 });
+      }
+    }
+    else if (this.aiState === 'PHASE2_DASHING') {
+      this.vx *= 0.98;
+      this.vy *= 0.98;
+      this.timer++;
+      if (this.timer >= 35) {
+        this.dashCount++;
+        if (this.dashCount >= 4) {
+          this.aiState = 'PHASE2_DEATHRAY';
+          this.timer = 0;
+          this.rayAngle = angleToPlayer;
+        } else {
+          this.aiState = 'PHASE2_DASH_AIM';
+          this.timer = 0;
+        }
       }
     }
     else if (this.aiState === 'PHASE2_DEATHRAY') {
@@ -193,13 +288,14 @@ export class CerberoFuturoMinion extends Boss {
 
         const d = this.distToSegment(player.x, player.y, this.x, this.y, rayEndX, rayEndY);
         if (d < 15 + player.radius) {
-          player.takeDamage(15, "#ff0000");
+          player.takeDamage(15, "#ff0000", this);
         }
       }
 
       if (this.timer >= 200) {
         this.timer = 0;
-        this.aiState = 'PHASE2_BURST';
+        this.aiState = 'PHASE2_DASH_AIM';
+        this.dashCount = 0;
       }
     }
 
@@ -350,13 +446,7 @@ export class CerberoPasadoMinion extends Boss {
         const flameSpeed = 7.0;
         const vx = Math.cos(this.targetAngle) * flameSpeed;
         const vy = Math.sin(this.targetAngle) * flameSpeed;
-        const p = new Projectile(this.x, this.y, vx, vy, 15, "#33ff33", 10, true);
-        const origUpdate = p.update.bind(p);
-        p.life = 120;
-        p.update = function() {
-          const alive = origUpdate();
-          return alive && this.life-- > 0;
-        };
+        const p = new CerberoSpiralProjectile(this.x, this.y, vx, vy, 15, "#33ff33", 10);
         state.enemyProjectiles.push(p);
 
         if (this.shotCount >= 5) {
@@ -478,18 +568,12 @@ export class CerberoPasadoMinion extends Boss {
       this.timer++;
       
       if (this.timer % 2 === 0) {
-        const spread = this.targetAngle + (Math.random() - 0.5) * 0.4;
-        const flameSpeed = 8.0 + Math.random() * 2.0;
+        const spread = this.targetAngle + (Math.random() - 0.5) * 0.1;
+        const flameSpeed = 14.0 + Math.random() * 2.0;
         const vx = Math.cos(spread) * flameSpeed;
         const vy = Math.sin(spread) * flameSpeed;
         
-        const flameProj = new Projectile(this.x, this.y, vx, vy, 18, "#33ff33", 14, true);
-        flameProj.life = 45; 
-        const origUpdate = flameProj.update.bind(flameProj);
-        flameProj.update = function() {
-          const alive = origUpdate();
-          return alive && this.life-- > 0;
-        };
+        const flameProj = new CerberoFlameProjectile(this.x, this.y, vx, vy, 18, "#33ff33", 14);
         state.enemyProjectiles.push(flameProj);
 
         if (state.particlePool) {
@@ -574,6 +658,7 @@ export class CerberoBossRoot extends Boss {
     if (this.dead || this.hp <= 0) return false;
     
     let finalAmount = amt;
+    if (state.player && state.player.bossDamageMult) finalAmount *= (1 + state.player.bossDamageMult);
     if (!this.phase2) {
       finalAmount *= 0.01; 
       damageColor = "#aaaaaa";
@@ -658,7 +743,7 @@ export class CerberoBossRoot extends Boss {
 
       if (!this.isSnapping && d > this.tetherMaxDist) {
         this.isSnapping = true;
-        player.takeDamage(25, "#ff0055");
+        player.takeDamage(25, "#ff0055", this);
         
         if (state.camera && typeof state.camera.shake === 'function') {
           state.camera.shake({ strength: 15, duration: 0.5 });
@@ -717,17 +802,7 @@ export class CerberoBossRoot extends Boss {
         const vy = Math.sin(aimAng) * speed;
 
         const homingStr = 0.02 + severity * 0.04;
-        const vortexProj = new Projectile(startX, startY, vx, vy, 20, "#cc00ff", 6, true, homingStr);
-        
-        const bossRoot = this;
-        const origUpdate = vortexProj.update.bind(vortexProj);
-        vortexProj.update = function() {
-          origUpdate(); // Ejecutar físicas de movimiento
-          const d = Math.hypot(this.x - bossRoot.x, this.y - bossRoot.y);
-          if (d < bossRoot.radius * 0.6) return false; // Absorber al tocar el centro
-          // IGNORAR los límites estrictos de Projectile.js para que no desaparezcan al nacer fuera del mapa
-          return this.x >= -200 && this.x <= 2120 && this.y >= -200 && this.y <= 2120;
-        };
+        const vortexProj = new CerberoVortexProjectile(startX, startY, vx, vy, 20, "#cc00ff", 6, homingStr, this);
         
         state.enemyProjectiles.push(vortexProj);
       }

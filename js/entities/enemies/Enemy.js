@@ -69,6 +69,7 @@ export class Enemy {
     this.angle += 0.02;
     if (dist(this.x, this.y, player.x, player.y) < this.radius + player.radius) {
       player.takeDamage(this.damage, this.color);
+      player.takeDamage(this.damage, this.color, this);
     }
     if (this.sprite) {
       this.sprite.x = this.x;
@@ -117,6 +118,32 @@ export class Enemy {
   die() {
     state.killCount++;
     spawnExplosion(this.x, this.y, this.color, 14, 3);
+    
+    // 5% Base + Upgrades
+    const chipChance = 0.05 + (state.player && state.player.chipDropChance ? state.player.chipDropChance : 0);
+    if (Math.random() < chipChance) {
+      let chipsToGive = 1;
+      if (state.player && state.player.doubleChipChance && Math.random() < state.player.doubleChipChance) {
+        chipsToGive = 2;
+      }
+      
+      const isOutsideMap = this.x < 0 || this.x > state.width || this.y < 0 || this.y > state.height;
+      let gx, gy;
+      if (isOutsideMap) {
+        const margin = 80;
+        gx = margin + Math.random() * (state.width - margin * 2);
+        gy = margin + Math.random() * (state.height - margin * 2);
+      } else {
+        gx = this.x + (Math.random() * 2 - 1) * this.radius;
+        gy = this.y + (Math.random() * 2 - 1) * this.radius;
+      }
+      
+      if (state.gemPool) {
+        const isMagnetized = Math.random() < (state.player?.autoMagnetChance || 0);
+        state.gemPool.acquire(gx, gy, chipsToGive, isMagnetized, 'chip');
+      }
+    }
+
     this.dropLoot();
     this.playDeathSound();
     this.destroy();

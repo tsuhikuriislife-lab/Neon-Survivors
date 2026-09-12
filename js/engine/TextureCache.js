@@ -123,6 +123,7 @@ export function initTextureCache() {
   textures['gem_cyan'] = createPolygonTexture(6, 4, "#00ffff", 8, "rgba(255,255,255,0.2)", 2.5);
   textures['gem_magenta'] = createPolygonTexture(6, 4, "#ff00ff", 8, "rgba(255,255,255,0.2)", 2.5);
   textures['gem_red'] = createPolygonTexture(6, 4, "#ff0055", 8, "rgba(255,255,255,0.2)", 2.5);
+  textures['gem_yellow'] = createPolygonTexture(6, 4, "#ffaa00", 8, "rgba(255,255,255,0.2)", 2.5);
 
   // Projectiles
   textures['proj_blaster'] = createCircleTexture(4, "#00ffff", "#ffffff", 10, 2);

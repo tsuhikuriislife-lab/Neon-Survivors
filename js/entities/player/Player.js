@@ -11,6 +11,8 @@ import { showUpgradeMenu, triggerGameOver, updateHUD } from '../../ui/UIManager.
 import { audioManager } from '../../engine/AudioManager.js';
 import { textures, drawCachedTexture, getOrCachePolygon } from '../../engine/TextureCache.js';
 import { worldLayer } from '../../main.js';
+import { metaUpgradesTree } from '../../data/metaUpgrades.js';
+import { SaveManager } from '../../engine/SaveManager.js';
 
 export class Player {
   constructor() {
@@ -58,10 +60,21 @@ export class Player {
     this.uiGraphics = new PIXI.Graphics();
     this.container.addChild(this.uiGraphics);
 
+    // --- Apply Meta Upgrades ---
+    const profile = SaveManager.loadProfile();
+    for (const key in metaUpgradesTree) {
+      const node = metaUpgradesTree[key];
+      const level = profile.upgrades[key];
+      if (level && level > 0 && node.apply) {
+        node.apply(this, level);
+      }
+    }
+
     worldLayer.addChild(this.container);
     this.magnetUpgrades = 0;
     this.angle = 0;
     this.hasRevivedOnce = false;
+    this.revivesUsed = 0;
     
     this.missilesQueue = 0;
     this.missileFireTimer = 0;
@@ -83,6 +96,21 @@ export class Player {
     this.doubleGemUpgradesCount = 0;
     this.autoMagnetChance = 0;
     this.autoMagnetUpgrades = 0;
+    
+    this.chipDropChance = 0;
+    this.doubleChipChance = 0;
+    this.endgameChipBonus = 0;
+
+    this.thorns = 0;
+    this.extraRevives = 0;
+    this.cooldownReduction = 0;
+    this.bossDamageMult = 0;
+    this.dashCooldownReduction = 0;
+    this.healOnLevelUp = 0;
+    this.baseRerolls = 0;
+    this.bossChipBounty = 0;
+    this.startXP = 0;
+
     this.acquiredUpgrades = {};
 
     this.activeSkill = {
@@ -173,6 +201,9 @@ export class Player {
     if (this.hasActiveShield()) {
       const speedBonus = (this.shield.rateBonusUpgrades || 0) * 0.05;
       mult = mult / (1 + speedBonus);
+    }
+    if (this.cooldownReduction && this.cooldownReduction > 0) {
+      mult *= Math.max(0.1, 1 - this.cooldownReduction);
     }
     return mult;
   }
@@ -337,6 +368,7 @@ export class Player {
     this.activeSkill.isActive = true;
     this.activeSkill.activeTimer = this.activeSkill.duration;
     this.activeSkill.timer = this.activeSkill.cooldown;
+    this.activeSkill.timer = this.activeSkill.cooldown * (1 - (this.dashCooldownReduction || 0));
     
     if (this.activeSkill.id === 'dash') {
       audioManager.playSound('ui_click', { volume: 0.5, throttleMs: 0 });
@@ -722,7 +754,7 @@ export class Player {
     }
   }
 
-  takeDamage(amount, damageColor = "#ff2255") {
+  takeDamage(amount, damageColor = "#ff2255", attacker = null) {
     if (state.godMode) return;
     if (this.invulnerabilityTimer > 0) return;
     if (this.activeSkill && this.activeSkill.isActive && this.activeSkill.id === 'dash') return;
@@ -763,8 +795,14 @@ export class Player {
       return; // Damage to HP fully prevented!
     }
 
-    this.hp -= amount;
-    let remainingDamage = amount;
+    let actualAmount = amount;
+    if (this.damageReduction && this.damageReduction > 0) {
+      actualAmount *= (1 - this.damageReduction);
+    }
+    
+    let remainingDamage = Math.floor(Math.max(1, actualAmount));
+    const originalDamage = remainingDamage;
+
     if (this.overhealth > 0) {
       const blocked = Math.min(this.overhealth, remainingDamage);
       this.overhealth -= blocked;
@@ -772,6 +810,13 @@ export class Player {
     }
     
     this.hp -= remainingDamage;
+    
+    // Thorns logic
+    if (this.thorns > 0 && attacker && typeof attacker.takeDamage === 'function' && originalDamage > 0) {
+      const thornsDmg = Math.max(1, Math.floor(originalDamage * this.thorns));
+      attacker.takeDamage(thornsDmg, "#ffff00");
+    }
+
     this.invulnerabilityTimer = this.invulnerabilityMaxTime;
     const offsetX = (Math.random() * 2 - 1) * (this.radius * 0.8);
     const offsetY = (Math.random() * 2 - 1) * (this.radius * 0.8);
@@ -875,17 +920,21 @@ export class Player {
     this.xp -= this.nextXp;
     this.level++;
     this.nextXp = Math.floor(this.nextXp * 1.05 + 6);
-    state.hasRerolledCurrentLevel = false;
+    
+    if (this.healOnLevelUp && this.healOnLevelUp > 0) {
+      this.heal(this.healOnLevelUp);
+    }
+    
     showUpgradeMenu();
     updateHUD();
   }
 
   resetUpgrades() {
-    this.baseSpeed = 3.8;
+    this.baseSpeed = 4.2; // Corregido de 3.8
     this.speedMult = 1.0;
     this.speed = 3.8;
     this.speedUpgradesCount = 0;
-    this.hpRegen = 0;
+    this.hpRegen = 0.5; // Corregido de 0
     this.regenUpgradesCount = 0;
     this.pickupRadius = 130;
     this.pickupRadiusMult = 1.0;
@@ -895,17 +944,40 @@ export class Player {
     this.damageMult = 1.0;
     this.damageUpgradesCount = 0;
     this.cooldownMult = 1.0;
+    
+    // Weapon-specific upgrade counters
     this.blasterRateUpgrades = 0;
-    this.critChance = 0.0;
+    this.blasterSpeedUpgrades = 0;
+    this.blasterRangeUpgrades = 0;
+    
+    this.critChance = 0.05; // Corregido de 0.0
     this.critDamage = 1.5;
     this.xpMultiplier = 1.0;
     this.doubleGemChance = 0;
     this.doubleGemUpgradesCount = 0;
     this.autoMagnetChance = 0;
     this.autoMagnetUpgrades = 0;
+    
+    this.chipDropChance = 0;
+    this.doubleChipChance = 0;
+    this.endgameChipBonus = 0;
+
+    this.thorns = 0;
+    this.extraRevives = 0;
+    this.cooldownReduction = 0;
+    this.bossDamageMult = 0;
+    this.dashCooldownReduction = 0;
+    this.healOnLevelUp = 0;
+    this.baseRerolls = 0;
+    this.bossChipBounty = 0;
+    this.startXP = 0;
+
     this.acquiredUpgrades = {};
+    
     this.maxHp = 100;
     this.hp = Math.min(this.hp, 100);
+    this.overhealth = 0;
+    this.hasOverhealthUpgrade = false;
     this.hullUpgradesCount = 0;
 
     this.missilesQueue = 0;
@@ -1075,6 +1147,14 @@ export class Player {
         this.uiGraphics.endFill();
       }
     }
+  }
+
+  collectChip(value = 1) {
+    state.droppedChips = (state.droppedChips || 0) + value;
+    if (state.floatingTextPool) {
+      state.floatingTextPool.acquire(this.x, this.y - 15, `+${value} CHIP`, "#ffaa00", 14);
+    }
+    audioManager.playSound('pickup_gem', { volume: 0.4, pitch: 1.5, throttleMs: 50 });
   }
 
   destroy() {

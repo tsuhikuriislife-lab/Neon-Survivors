@@ -342,8 +342,13 @@ class PooledGem {
 
     if (type === 'health') {
       this.color = "#ff3333";
-      this.texture = textures['gem_red']; // Optional: You might want a specific health texture later
+      this.texture = textures['gem_red']; 
       this.sprite.scale.set(1.5);
+    } else if (type === 'chip') {
+      this.color = "#ffaa00";
+      // Fallback to yellow gem if chip texture isn't defined
+      this.texture = textures['gem_yellow'] || textures['gem_red']; 
+      this.sprite.scale.set(1.2);
     } else {
       this.sprite.scale.set(1.0);
       if (value > 15) {
@@ -363,6 +368,7 @@ class PooledGem {
 
     if (this.texture) {
       this.sprite.texture = this.texture;
+      this.sprite.tint = 0xffffff;
     }
     
     this.sprite.x = this.x;
@@ -387,6 +393,20 @@ class PooledGem {
         this.active = false;
         this.sprite.visible = false;
         return false; // Despawn
+      }
+    } else if (this.type === 'chip') {
+      // Chip gem logic
+      if (this.isMagnetized || d < player.pickupRadius * player.pickupRadiusMult) {
+        const speed = this.isMagnetized ? 15.0 : 7.5;
+        const a = Math.atan2(player.y - this.y, player.x - this.x);
+        this.x += Math.cos(a) * speed;
+        this.y += Math.sin(a) * speed;
+        if (d < player.radius + 15) {
+          player.collectChip(this.value);
+          this.active = false;
+          this.sprite.visible = false;
+          return false; // Despawn
+        }
       }
     } else {
       // XP gem logic
