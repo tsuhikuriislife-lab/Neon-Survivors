@@ -17,9 +17,7 @@ export const state = {
   chipsAwardedThisRun: 0,
   lastFrameTime: performance.now(),
   rerollsUsed: 0,
-  nextBossTime: 300,
-  nextWaveTime: 150,
-  
+
   // Phase System
   phaseTime: 300,
   isBossPhase: false,
@@ -162,8 +160,7 @@ export const state = {
     this.bossesKilled = 0;
     this.droppedChips = 0;
     this.chipsAwardedThisRun = 0;
-    this.nextBossTime = 300;
-    this.nextWaveTime = 150;
+
     this.isWaveActive = false;
     this.waveTimer = 0;
     this.spawnTimer = 0;

@@ -55,8 +55,10 @@ export class SaveManager {
     const saveData = {
       gameTime: state.gameTime,
       killCount: state.killCount,
-      nextBossTime: state.nextBossTime,
-      nextWaveTime: state.nextWaveTime,
+      phaseTime: state.phaseTime,
+      isBossPhase: state.isBossPhase,
+      currentPhase: state.currentPhase,
+      waveTriggeredEnFase: state.waveTriggeredEnFase,
       isWaveActive: state.isWaveActive,
       waveTimer: state.waveTimer,
       spawnTimer: state.spawnTimer,

@@ -1082,9 +1082,11 @@ export function startUILoop() {
   uiInterval = setInterval(() => {
     if (!state.player || state.isPaused || state.isGameOver || state.isInMenu) return;
     
-    // 1. Time (Continuous)
-    const m = Math.floor(state.gameTime / 60);
-    const s = Math.floor(state.gameTime % 60);
+    // 1. Time (Countdown)
+    let displayTime = Math.max(0, state.phaseTime);
+    if (state.isBossPhase) displayTime = 0; // Lock at 00:00 while boss is active
+    const m = Math.floor(displayTime / 60);
+    const s = Math.floor(displayTime % 60);
     const timeText = (m < 10 ? "0" + m : m) + ":" + (s < 10 ? "0" + s : s);
     if (_uiCache.timeText !== timeText) {
       _uiCache.timeText = timeText;

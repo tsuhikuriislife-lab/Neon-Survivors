@@ -717,12 +717,6 @@ export function loop(timestamp) {
       state.phaseTime -= dt;
     }
 
-    if (state.gameTime >= state.nextBossTime) {
-      if (!state.disableBossSpawns) {
-        spawnRandomBoss();
-      }
-      state.nextBossTime += 300;
-    }
     // Boss spawning is now fully handled by WaveManager via phaseTime
     
     if (state.isBossPhase && state.bosses.length === 0 && !state.pendingBossSpawn) {
@@ -1090,8 +1084,10 @@ export function resumeGame() {
   // Rebuild State
   state.gameTime = saveData.gameTime;
   state.killCount = saveData.killCount;
-  state.nextBossTime = saveData.nextBossTime;
-  state.nextWaveTime = saveData.nextWaveTime;
+  state.phaseTime = saveData.phaseTime !== undefined ? saveData.phaseTime : 300;
+  state.isBossPhase = saveData.isBossPhase || false;
+  state.currentPhase = saveData.currentPhase || 1;
+  state.waveTriggeredEnFase = saveData.waveTriggeredEnFase || false;
   state.isWaveActive = saveData.isWaveActive;
   state.waveTimer = saveData.waveTimer;
   state.spawnTimer = saveData.spawnTimer;
