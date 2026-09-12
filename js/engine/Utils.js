@@ -35,9 +35,19 @@ export function formatTime(sec) {
 
 export function enterFullscreen() {
   const docElm = document.documentElement;
+  const lockOrientation = () => {
+    if (screen.orientation && screen.orientation.lock) {
+      screen.orientation.lock('landscape').catch(() => {});
+    }
+  };
+  
   if (docElm.requestFullscreen) {
-    docElm.requestFullscreen().catch(() => {});
+    docElm.requestFullscreen().then(lockOrientation).catch(() => {});
   } else if (docElm.webkitRequestFullscreen) {
     docElm.webkitRequestFullscreen();
+    // setTimeout fallback for webkit
+    setTimeout(lockOrientation, 100);
+  } else {
+    lockOrientation();
   }
 }

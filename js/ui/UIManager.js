@@ -497,6 +497,13 @@ export function initUIListeners() {
     optionsBtnResume.onclick = closePauseMenu;
   }
 
+  const optionsBtnFullscreen = document.getElementById("optionsBtnFullscreen");
+  if (optionsBtnFullscreen) {
+    optionsBtnFullscreen.onclick = () => {
+      enterFullscreen();
+    };
+  }
+
   const endRunArea = document.getElementById("optionsBtnEndRunArea");
   if (endRunArea) {
     let endRunTimer = null;
