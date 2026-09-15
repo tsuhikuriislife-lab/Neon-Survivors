@@ -25,7 +25,7 @@ This repository contains a browser-based arena survival game ("Neon Survivors").
 - **Modifying UI**: Update HTML in `index.html`, styles in `css/styles.css`, and logic in `js/ui/UIManager.js`.
 
 ### Recent Implementations & System Mechanics
-- **Version 1.3 - The Metaprogression Topology Update (2026-09-11)**:
+- **Version 1.3.3 - The Quality of Life Update (2026-09-11)**:
   - **Geometric Laboratory Topology (metaUpgrades.js)**: Restructured the entire Laboratory tree into a perfect non-overlapping diamond fractal. The 4 core branches stem outwards in a '+' shape (Health X<0, Damage Y>0, Utility X>0, Economy Y<0). Sub-branches expand strictly diagonally via dx=±120, dy=±120 relative offsets, guaranteeing infinite expansion without quadrant line collisions.
   - **8 New Meta-Upgrades Engine Integration**:
     - **Health**: casco_electrificado (Thorns logic reflecting damage via Player.prototype.takeDamage()), protocolo_lazaro (Dynamically recalculates Extra Revives inside UIManager.js Game Over modal).

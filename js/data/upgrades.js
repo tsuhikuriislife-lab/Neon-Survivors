@@ -101,6 +101,7 @@ export const upgradeDatabase = [
     icon: '<img src="assets/upgrades/quantum-singularity.png" alt="icon">',
     desc: '10% chance to instantly attract an XP gem.',
     isAvailable: (p) => (p.autoMagnetUpgrades || 0) < 3,
+    isAvailable: (p) => (p.autoMagnetChance || 0) < 1.0,
     apply: (p) => {
       p.autoMagnetChance = (p.autoMagnetChance || 0) + 0.10;
       p.autoMagnetUpgrades = (p.autoMagnetUpgrades || 0) + 1;
@@ -336,12 +337,12 @@ export const upgradeDatabase = [
   {
     id: 'laser_charge',
     rarity: 'common',
-    name: 'Quick Charge',
+    name: 'Cooling System',
     icon: '<img src="assets/upgrades/laser-cannon-cooldown.png" alt="icon">',
-    desc: '+15% Laser Cannon charge speed.',
+    desc: 'Reduces Laser Cannon heat generation by 15%.',
     isAvailable: (p) => p.weapons.laserCannon.level > 0 && (p.weapons.laserCannon.chargeUpgrades || 0) < 4,
     apply: (p) => {
-      p.weapons.laserCannon.chargeSpeedMult += 0.15;
+      p.weapons.laserCannon.heatGenMult = (p.weapons.laserCannon.heatGenMult || 1.0) * 0.85;
       p.weapons.laserCannon.chargeUpgrades = (p.weapons.laserCannon.chargeUpgrades || 0) + 1;
     }
   },
@@ -372,12 +373,12 @@ export const upgradeDatabase = [
   {
     id: 'laser_lifespan',
     rarity: 'uncommon',
-    name: 'Luminous Persistence',
+    name: 'Thermal Battery',
     icon: '<img src="assets/upgrades/laser-cannon-duration.png" alt="icon">',
-    desc: '+0.1s Laser Cannon duration.',
+    desc: '+25% Maximum Heat Capacity before overheating.',
     isAvailable: (p) => p.weapons.laserCannon.level > 0 && (p.weapons.laserCannon.lifeUpgrades || 0) < 5,
     apply: (p) => {
-      p.weapons.laserCannon.duration += 6;
+      p.weapons.laserCannon.maxHeat *= 1.25;
       p.weapons.laserCannon.lifeUpgrades = (p.weapons.laserCannon.lifeUpgrades || 0) + 1;
     }
   },
@@ -419,12 +420,13 @@ export const upgradeDatabase = [
   {
     id: 'laser_tick',
     rarity: 'legendary',
-    name: 'Continuous Beam',
+    name: 'Thermal Coolant',
     icon: '<img src="assets/upgrades/laser-cannon-continuous-beam.png" alt="icon">',
-    desc: 'Laser continuously deals damage for its entire duration.',
-    isAvailable: (p) => p.weapons.laserCannon.level > 0 && !p.weapons.laserCannon.tickDamage,
+    desc: 'Laser Cannon takes 50% longer to overheat and cools down twice as fast.',
+    isAvailable: (p) => p.weapons.laserCannon.level > 0 && !p.weapons.laserCannon.coolantInstalled,
     apply: (p) => {
-      p.weapons.laserCannon.tickDamage = true;
+      p.weapons.laserCannon.maxHeat *= 1.5;
+      p.weapons.laserCannon.coolantInstalled = true;
     }
   },
 
@@ -583,9 +585,12 @@ export const upgradeDatabase = [
   },
   {
     id: 'spawn_more_xp_less',
-    isInfinite: true,
     rarity: 'rare',
     name: 'Lure Beacon',
+    isAvailable: (p) => {
+        const count = (p.acquiredUpgrades && p.acquiredUpgrades['spawn_more_xp_less']) ? p.acquiredUpgrades['spawn_more_xp_less'] : 0;
+        return count < 5;
+    },
     icon: '<img src="assets/upgrades/lure-beacon.png" alt="icon">',
     desc: '+10% Enemies, -5% XP.',
     apply: (p) => { 
@@ -595,15 +600,27 @@ export const upgradeDatabase = [
   },
   {
     id: 'spawn_less_xp_more',
-    isInfinite: true,
     rarity: 'rare',
     name: 'Active Camouflage',
+    isAvailable: (p) => {
+        const count = (p.acquiredUpgrades && p.acquiredUpgrades['spawn_less_xp_more']) ? p.acquiredUpgrades['spawn_less_xp_more'] : 0;
+        return count < 5;
+    },
     icon: '<img src="assets/upgrades/active-camouflage.png" alt="icon">',
     desc: '-5% Enemies, +10% XP.',
     apply: (p) => { 
-        state.spawnRateMultiplier = (state.spawnRateMultiplier || 1.0) - 0.05;
+        state.spawnRateMultiplier = Math.max(0.2, (state.spawnRateMultiplier || 1.0) - 0.05);
         p.xpMultiplier = (p.xpMultiplier || 1.0) + 0.10;
     }
+  },
+  {
+    id: 'health_drop_chance',
+    isInfinite: true,
+    rarity: 'rare',
+    name: 'Biomass Recycler',
+    icon: '<img src="assets/upgrades/passive-regeneration.png" alt="icon">',
+    desc: '+0.5% chance for basic enemies to drop Healing Orbs.',
+    apply: (p) => { p.healDropChance += 0.005; }
   },
   {
     id: 'regen_small',

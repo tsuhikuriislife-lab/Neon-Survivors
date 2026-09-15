@@ -156,11 +156,11 @@ export function showUpgradeMenu() {
   const choices = [];
   for (let i = 0; i < 3; i++) {
     const r = getRarityRoll();
-    let pool = available.filter(u => u.rarity === r && !choices.includes(u));
-    if (pool.length === 0) {
-      // Fallback si no hay mejoras de la rareza sorteada
-      pool = available.filter(u => !choices.includes(u));
-    }
+    let pool = available.filter(u => u.rarity === r && !choices.includes(u) && !u.isInfinite);
+    if (pool.length === 0) pool = available.filter(u => u.rarity === r && !choices.includes(u) && u.isInfinite);
+    if (pool.length === 0) pool = available.filter(u => !choices.includes(u) && !u.isInfinite);
+    if (pool.length === 0) pool = available.filter(u => !choices.includes(u) && u.isInfinite);
+    
     if (pool.length > 0) {
       const upg = pool[Math.floor(Math.random() * pool.length)];
       choices.push(upg);
@@ -265,12 +265,15 @@ export function returnToMainMenu() {
   
   const backgroundTimer = document.getElementById("background-timer");
   if (backgroundTimer) backgroundTimer.style.display = "none";
+  _uiCache.bgTimerVisible = undefined; // Force cache invalidation so it reappears on new game
   
   audioManager.setMusicMuffled(false);
   audioManager.playMusic('music_main');
 }
 
 export function initUIListeners() {
+  initAdminConsole();
+  
   const btnStartGame = document.getElementById("btnStartGame");
   if (btnStartGame) {
     btnStartGame.onclick = () => {
@@ -416,9 +419,11 @@ export function initUIListeners() {
     });
 
     const panel = document.getElementById("testing-panel");
-    if (panel) panel.style.display = "block";
-    const panelCheck = document.getElementById("adminToggleTestingPanel");
-    if (panelCheck) panelCheck.checked = true;
+      if (panel) panel.style.display = "block";
+      const panelCheck = document.getElementById("adminToggleTestingPanel");
+      if (panelCheck) panelCheck.checked = true;
+      state.showTestingPanel = true;
+      state.showTestingPanel = true;
 
     updateHUD();
     audioManager.playSound('level_up', { volume: 0.8, throttleMs: 50 });
@@ -601,6 +606,7 @@ export function initUIListeners() {
     adminToggleTestingPanel.onchange = (e) => {
       const panel = document.getElementById("testing-panel");
       if (panel) panel.style.display = e.target.checked ? "block" : "none";
+      state.showTestingPanel = e.target.checked;
     };
   }
 
@@ -623,6 +629,7 @@ export function initUIListeners() {
       if (panel) panel.style.display = "block";
       const panelCheck = document.getElementById("adminToggleTestingPanel");
       if (panelCheck) panelCheck.checked = true;
+      state.showTestingPanel = true;
       adminModal.style.display = "none";
       optionsModal.style.display = "none";
       audioManager.setMusicMuffled(false);
@@ -642,7 +649,15 @@ export function initUIListeners() {
   }
 
   document.getElementById("adminKillAll").onclick = () => {
-    state.enemies.forEach(e => e.takeDamage(e.hp));
+    state.enemies.forEach(e => e.takeDamage(e.maxHp * 999));
+    state.bosses.forEach(b => {
+      if (b.name === "Dummy Target" || b.constructor.name === "TestingBoss") {
+        b.dead = true; // Remove immortal dummy
+        if (b.sprite && b.sprite.parent) b.sprite.parent.removeChild(b.sprite);
+      } else {
+        b.takeDamage(b.maxHp * 999);
+      }
+    });
   };
 
   const openSubMenu = (title, items) => {
@@ -928,9 +943,9 @@ export function revivePlayer() {
   cancelAiming();
   if (state.player.weapons && state.player.weapons.laserCannon) {
     const lc = state.player.weapons.laserCannon;
-    lc.charging = false;
-    lc.chargeTimer = 0;
-    lc.fullyCharged = false;
+    lc.heat = 0;
+    lc.overheated = false;
+    if (state.player.destroyActiveLasers) state.player.destroyActiveLasers(lc);
     if (lc.soundNode) {
       try { lc.soundNode.stop(); lc.soundNode.disconnect(); } catch(e){}
       lc.soundNode = null;
@@ -1089,11 +1104,10 @@ export function startUILoop() {
   uiInterval = setInterval(() => {
     if (!state.player || state.isPaused || state.isGameOver || state.isInMenu) return;
     
-    // 1. Time (Countdown)
-    let displayTime = Math.max(0, state.phaseTime);
-    if (state.isBossPhase) displayTime = 0; // Lock at 00:00 while boss is active
-    const m = Math.floor(displayTime / 60);
-    const s = Math.floor(displayTime % 60);
+    // 1. Bottom Stats HUD Timer (Total Game Time)
+    const totalTime = Math.floor(state.gameTime || 0);
+    const m = Math.floor(totalTime / 60);
+    const s = Math.floor(totalTime % 60);
     const timeText = (m < 10 ? "0" + m : m) + ":" + (s < 10 ? "0" + s : s);
     if (_uiCache.timeText !== timeText) {
       _uiCache.timeText = timeText;
@@ -1118,6 +1132,7 @@ export function startUILoop() {
 
 export function triggerHUDUpdate() {
   if (!state.player) return;
+  initDOM();
   const d = DOM;
   const player = state.player;
 
@@ -1167,7 +1182,7 @@ export function triggerHUDUpdate() {
     }
 
     if (!isBossPhase) {
-      const phaseSecs = Math.max(0, Math.ceil(state.phaseTime));
+      const phaseSecs = Math.max(0, Math.ceil(state.phaseTime)); // Countdown to Boss
       if (_uiCache.phaseSecs !== phaseSecs) {
         _uiCache.phaseSecs = phaseSecs;
         const mins = Math.floor(phaseSecs / 60).toString().padStart(2, '0');
@@ -1235,7 +1250,17 @@ export function showBossRewardMenu(bossName) {
   audioManager.setMusicMuffled(true);
 
   if (!state.bossScaling) state.bossScaling = {};
-  state.bossScaling[bossName] = (state.bossScaling[bossName] || 1.0) * 1.70;
+  
+  const allBosses = getAllBosses();
+  allBosses.forEach(b => {
+    if (!state.bossScaling[b.id]) state.bossScaling[b.id] = 1.0;
+    
+    if (b.id === bossName) {
+      state.bossScaling[b.id] += 0.70;
+    } else {
+      state.bossScaling[b.id] += 0.25;
+    }
+  });
 
   const modal = document.getElementById("bossRewardModal");
   const container = document.getElementById("bossRewardCards");
@@ -1261,8 +1286,11 @@ export function showBossRewardMenu(bossName) {
   const choices = [];
   for (let i = 0; i < 5; i++) {
     const r = getRarityRoll();
-    let pool = available.filter(u => u.rarity === r && !choices.includes(u));
-    if (pool.length === 0) pool = available.filter(u => !choices.includes(u));
+    let pool = available.filter(u => u.rarity === r && !choices.includes(u) && !u.isInfinite);
+    if (pool.length === 0) pool = available.filter(u => u.rarity === r && !choices.includes(u) && u.isInfinite);
+    if (pool.length === 0) pool = available.filter(u => !choices.includes(u) && !u.isInfinite);
+    if (pool.length === 0) pool = available.filter(u => !choices.includes(u) && u.isInfinite);
+    
     if (pool.length > 0) {
       choices.push(pool[Math.floor(Math.random() * pool.length)]);
     }
@@ -1400,4 +1428,138 @@ export function updateActiveSkillHUD() {
     d.hudActiveSkillKey.style.display = isTouch ? 'none' : 'block';
     _uiCache.activeSkillKeyVisible = !isTouch;
   }
+}
+
+// ==========================================
+// ADMIN CONSOLE (j + k + l)
+// ==========================================
+export function initAdminConsole() {
+  const modal = document.getElementById("adminConsoleModal");
+  const closeBtn = document.getElementById("adminConsoleClose");
+  const logDiv = document.getElementById("adminConsoleLog");
+  const inputEl = document.getElementById("adminConsoleInput");
+  const submitBtn = document.getElementById("adminConsoleSubmit");
+
+  if (!modal) return;
+
+  function printLog(msg, type = 'info') {
+    const p = document.createElement("p");
+    p.className = `console-${type}`;
+    p.innerText = msg;
+    logDiv.appendChild(p);
+    logDiv.scrollTop = logDiv.scrollHeight;
+  }
+
+  window.toggleAdminConsole = () => {
+    if (modal.style.display === "flex") {
+      modal.style.display = "none";
+      if (!state.isInMenu && !state.isGameOver) {
+        state.isPaused = false;
+        audioManager.setMusicMuffled(false);
+      }
+    } else {
+      modal.style.display = "flex";
+      state.isPaused = true;
+      audioManager.setMusicMuffled(true);
+      cancelAiming();
+      resetInputState();
+      inputEl.focus();
+    }
+  };
+
+  closeBtn.onclick = () => window.toggleAdminConsole();
+
+  const commandDocs = {
+    '/setchips': { desc: "Modifica la cantidad de chips en tu perfil.", usage: "/setchips [cantidad]" },
+    '/addchips': { desc: "Alias para /setchips.", usage: "/addchips [cantidad]" },
+    '/addxp': { desc: "Añade experiencia al jugador actual.", usage: "/addxp [cantidad]" },
+    '/sethp': { desc: "Modifica la vida actual y máxima del jugador.", usage: "/sethp [cantidad]" },
+    '/setlevel': { desc: "Sube automáticamente al jugador hasta el nivel indicado.", usage: "/setlevel [nivel]" },
+    '/help': { desc: "Muestra esta ayuda o la de un comando específico.", usage: "/help [comando (opcional)]" }
+  };
+
+  function processCommand(cmdLine) {
+    const args = cmdLine.trim().split(/\s+/);
+    if (args.length === 0 || args[0] === "") return;
+    
+    const cmd = args[0].toLowerCase();
+    printLog(`> ${cmdLine}`, 'cmd');
+
+    if (args[1] && args[1].toLowerCase() === 'help') {
+      const doc = commandDocs[cmd];
+      if (doc) {
+        return printLog(`${cmd} - Uso: ${doc.usage}`, "info");
+      }
+    }
+
+    if (cmd === '/setchips' || cmd === '/addchips') {
+      const amount = parseInt(args[1]);
+      if (isNaN(amount)) return printLog(`Uso: ${commandDocs['/setchips'].usage}`, "error");
+      const profile = SaveManager.loadProfile();
+      profile.chips = amount;
+      SaveManager.saveProfile(profile);
+      printLog(`Chips modificados a ${amount}`, "success");
+    } 
+    else if (cmd === '/addxp') {
+      const amount = parseInt(args[1]);
+      if (isNaN(amount)) return printLog(`Uso: ${commandDocs['/addxp'].usage}`, "error");
+      if (state.player) {
+        state.player.gainXP(amount);
+        printLog(`Añadida ${amount} de experiencia`, "success");
+      } else {
+        printLog("Jugador no encontrado.", "error");
+      }
+    }
+    else if (cmd === '/sethp') {
+      const amount = parseInt(args[1]);
+      if (isNaN(amount)) return printLog(`Uso: ${commandDocs['/sethp'].usage}`, "error");
+      if (state.player) {
+        state.player.maxHp = amount;
+        state.player.hp = amount;
+        printLog(`Vida cambiada a ${amount}`, "success");
+      } else {
+        printLog("Jugador no encontrado.", "error");
+      }
+    }
+    else if (cmd === '/setlevel') {
+      const targetLevel = parseInt(args[1]);
+      if (isNaN(targetLevel) || targetLevel < 1) return printLog(`Uso: ${commandDocs['/setlevel'].usage}`, "error");
+      if (state.player) {
+        while (state.player.level < targetLevel) {
+           state.player.gainXP(state.player.nextLevelXp - state.player.xp);
+        }
+        printLog(`Nivel cambiado a ${targetLevel}`, "success");
+      } else {
+        printLog("Jugador no encontrado.", "error");
+      }
+    }
+    else if (cmd === '/help') {
+      const targetCmd = args[1] ? (args[1].startsWith('/') ? args[1] : '/' + args[1]) : null;
+      if (targetCmd && commandDocs[targetCmd]) {
+        printLog(`${targetCmd} - Uso: ${commandDocs[targetCmd].usage}`, "info");
+      } else {
+        printLog("Comandos disponibles:", "info");
+        for (const [key, doc] of Object.entries(commandDocs)) {
+          printLog(`  ${key}: ${doc.desc}`, "info");
+        }
+      }
+    }
+    else {
+      printLog(`Comando desconocido: ${cmd}`, "error");
+    }
+    updateHUD();
+  }
+
+  submitBtn.onclick = () => {
+    processCommand(inputEl.value);
+    inputEl.value = "";
+  };
+
+  inputEl.addEventListener("keydown", (e) => {
+    e.stopPropagation(); // Evitar que el juego lea las teclas mientras se escribe
+    if (e.key === "Enter") {
+      processCommand(inputEl.value);
+      inputEl.value = "";
+    }
+  });
 }

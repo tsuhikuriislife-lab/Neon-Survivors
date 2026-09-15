@@ -331,5 +331,17 @@
       });
     }
   </script>
+  <!-- Admin Console Modal -->
+  <div id="adminConsoleModal">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+      <h3 style="margin:0; color:#00ffff;">TERMINAL DE DESARROLLADOR</h3>
+      <button id="adminConsoleClose" style="background:none; border:none; color:#fff; cursor:pointer; font-size:18px;">❌</button>
+    </div>
+    <div id="adminConsoleLog"></div>
+    <div id="adminConsoleInputContainer">
+      <input type="text" id="adminConsoleInput" placeholder="Ingresa un comando (ej: /setchips 1000)" autocomplete="off" />
+      <button id="adminConsoleSubmit">Ejecutar</button>
+    </div>
+  </div>
 </body>
 </html>

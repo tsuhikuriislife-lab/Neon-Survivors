@@ -228,6 +228,14 @@ export function initInput() {
   // --- KEYBOARD ---
   window.addEventListener("keydown", (e) => { 
     keys[e.key.toLowerCase()] = true; 
+    
+    // Admin Console Toggle
+    if (keys['j'] && keys['k'] && keys['l']) {
+      if (typeof window.toggleAdminConsole === 'function') {
+        window.toggleAdminConsole();
+        keys['j'] = false; keys['k'] = false; keys['l'] = false;
+      }
+    }
   });
   
   window.addEventListener("keyup", (e) => { 

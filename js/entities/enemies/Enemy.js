@@ -84,9 +84,21 @@ export class Enemy {
     let finalAmount = amount;
     let isCrit = false;
 
-    if (state.player && Math.random() < (state.player.critChance || 0)) {
-      finalAmount *= (state.player.critDamage || 1.5);
-      isCrit = true;
+    if (state.player) {
+      const critChance = state.player.critChance || 0;
+      if (Math.random() < (critChance > 1.0 ? 1.0 : critChance)) {
+        finalAmount *= (state.player.critDamage || 1.5);
+        isCrit = true;
+        
+        if (critChance > 1.0) {
+          const overCrit = critChance - 1.0;
+          const extraRolls = Math.floor(overCrit) + (Math.random() < (overCrit % 1) ? 1 : 0);
+          if (extraRolls > 0) {
+            finalAmount *= Math.pow(3, extraRolls);
+            isCrit = "super";
+          }
+        }
+      }
     }
 
     this.hp -= finalAmount;
@@ -173,8 +185,27 @@ export class Enemy {
     };
     
     dropGem();
-    if (Math.random() < (state.player?.doubleGemChance || 0)) {
-      dropGem();
+    if (state.player && state.player.healDropChance > 0 && Math.random() < state.player.healDropChance) {
+      if (state.gemPool) {
+        let gx, gy;
+        if (isOutsideMap) {
+          const margin = 80;
+          gx = margin + Math.random() * (state.width - margin * 2);
+          gy = margin + Math.random() * (state.height - margin * 2);
+        } else {
+          gx = this.x;
+          gy = this.y;
+        }
+        state.gemPool.acquire(gx, gy, 15, false, 'health'); // 15 is standard health amount
+      }
+    }
+
+    if (state.player && state.player.doubleGemChance > 0) {
+      const chance = state.player.doubleGemChance;
+      const extraGems = Math.floor(chance) + (Math.random() < (chance % 1) ? 1 : 0);
+      for (let i = 0; i < extraGems; i++) {
+        dropGem();
+      }
     }
   }
 

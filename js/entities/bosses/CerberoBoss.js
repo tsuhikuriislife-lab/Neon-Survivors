@@ -612,7 +612,7 @@ export class CerberoPasadoMinion extends Boss {
 // CerberoBossRoot (Presente - Ancla y Vórtice)
 // ============================================================================
 export class CerberoBossRoot extends Boss {
-  constructor(x, y, hp = 30000, maxHp = 30000) {
+  constructor(x, y, hp = 45000, maxHp = 45000) {
     const multiplier = state.bossScaling['CerberoBossRoot'] || 1.0;
     const finalMaxHp = maxHp * multiplier;
     super(960, 960, "Present", finalMaxHp, 90, "#ffffff", finalMaxHp);
@@ -664,8 +664,16 @@ export class CerberoBossRoot extends Boss {
       damageColor = "#aaaaaa";
     }
 
-    if (state.player && Math.random() < (state.player.critChance || 0)) {
-      finalAmount *= (state.player.critDamage || 1.5);
+    if (state.player) {
+      const critChance = state.player.critChance || 0;
+      if (Math.random() < (critChance > 1.0 ? 1.0 : critChance)) {
+        finalAmount *= (state.player.critDamage || 1.5);
+        if (critChance > 1.0) {
+          const overCrit = critChance - 1.0;
+          const extraRolls = Math.floor(overCrit) + (Math.random() < (overCrit % 1) ? 1 : 0);
+          if (extraRolls > 0) finalAmount *= Math.pow(3, extraRolls);
+        }
+      }
     }
 
     this.hp -= finalAmount;
@@ -752,7 +760,7 @@ export class CerberoBossRoot extends Boss {
       }
 
       if (this.isSnapping) {
-        const pullSpeed = 16.0; // Fuerte velocidad de arrastre
+        const pullSpeed = 12.0; // Fuerte velocidad de arrastre
         const angToBoss = Math.atan2(this.y - player.y, this.x - player.x);
         player.x += Math.cos(angToBoss) * pullSpeed;
         player.y += Math.sin(angToBoss) * pullSpeed;
@@ -775,7 +783,7 @@ export class CerberoBossRoot extends Boss {
       }
 
       const hpRatio = this.hp / this.maxHp;
-      const severity = 1.0 - hpRatio;
+      const severity = 1.5 - hpRatio;
 
       const pullForce = 0.5 + severity * 2.5;
       const angToCenter = Math.atan2(this.y - player.y, this.x - player.x);

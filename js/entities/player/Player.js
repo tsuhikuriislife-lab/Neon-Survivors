@@ -60,16 +60,6 @@ export class Player {
     this.uiGraphics = new PIXI.Graphics();
     this.container.addChild(this.uiGraphics);
 
-    // --- Apply Meta Upgrades ---
-    const profile = SaveManager.loadProfile();
-    for (const key in metaUpgradesTree) {
-      const node = metaUpgradesTree[key];
-      const level = profile.upgrades[key];
-      if (level && level > 0 && node.apply) {
-        node.apply(this, level);
-      }
-    }
-
     worldLayer.addChild(this.container);
     this.magnetUpgrades = 0;
     this.angle = 0;
@@ -97,6 +87,7 @@ export class Player {
     this.autoMagnetChance = 0;
     this.autoMagnetUpgrades = 0;
     
+    this.healDropChance = 0;
     this.chipDropChance = 0;
     this.doubleChipChance = 0;
     this.endgameChipBonus = 0;
@@ -150,8 +141,18 @@ export class Player {
       nova: { level: 0, count: 6, timer: 0, cooldown: 400, speed: 6, speedMult: 1.0, spiral: false },
       shockwave: { level: 0, timer: 0, cooldown: 230, cooldownMult: 1.0, radius: 175, radiusMult: 1.0, damage: 150, rangeUpgrades: 0, rateUpgrades: 0 },
       missiles: { level: 0, count: 6, timer: 0, cooldown: 220, speed: 7, speedMult: 1.0, homing: 0.05, aoe: 70, aoeMult: 1.0, damage: 23, countUpgrades: 0, speedUpgrades: 0, homingUpgrade: false, aoeUpgrades: 0 },
-      laserCannon: { level: 0, chargeTimer: 0, maxCharge: 1140, fullyCharged: false, damage: 250, width: 25, duration: 24, chargeSpeedMult: 1, damageMult: 1, widthMult: 1, subLasers: false, dot: false, dotDamage: 20, dotDuration: 5, tickDamage: false, soundNode: null, chargeUpgrades: 0, dmgUpgrades: 0, widthUpgrades: 0, lifeUpgrades: 0, dotUpgrades: 0 }
+      laserCannon: { level: 0, chargeTimer: 0, maxCharge: 1140, fullyCharged: false, damage: 80, width: 25, duration: 24, chargeSpeedMult: 1, damageMult: 1, widthMult: 1, subLasers: false, dot: false, dotDamage: 20, dotDuration: 5, tickDamage: false, soundNode: null, chargeUpgrades: 0, dmgUpgrades: 0, widthUpgrades: 0, lifeUpgrades: 0, dotUpgrades: 0 }
     };
+
+    // --- Apply Meta Upgrades ---
+    const profile = SaveManager.loadProfile();
+    for (const key in metaUpgradesTree) {
+      const node = metaUpgradesTree[key];
+      const level = profile.upgrades[key];
+      if (level && level > 0 && node.apply) {
+        node.apply(this, level);
+      }
+    }
   }
 
   unlockShield() {
@@ -253,6 +254,11 @@ export class Player {
       this.speed = this.baseSpeed;
       this.speed = this.baseSpeed * this.speedMult;
     }
+    
+    const isFiringLaser = (this.weapons.laserCannon && this.weapons.laserCannon.level > 0 && !this.weapons.laserCannon.overheated && (aimInput.active || mouse.down));
+    if (isFiringLaser) {
+      this.speed *= 0.45; // 55% movement speed penalty while firing
+    }
 
     if (this.activeSkill && this.activeSkill.isActive && this.activeSkill.id === 'dash') {
       this.speed *= 2.5;
@@ -297,10 +303,38 @@ export class Player {
     this.x = Math.max(this.radius, Math.min(state.width - this.radius, this.x));
     this.y = Math.max(this.radius, Math.min(state.height - this.radius, this.y));
 
-    if (aimInput.active && this.weapons.laserCannon && this.weapons.laserCannon.level > 0) {
-      this.angle = aimInput.angle;
-    } else if (mouse.down && this.weapons.laserCannon && this.weapons.laserCannon.level > 0 && this.weapons.laserCannon.fullyCharged) {
-      this.angle = Math.atan2(mouse.y - this.y, mouse.x - this.x);
+    if (aimInput.active && this.weapons.laserCannon && this.weapons.laserCannon.level > 0 && !this.weapons.laserCannon.overheated) {
+      const targetAngle = aimInput.angle;
+      let diff = targetAngle - this.angle;
+      while (diff < -Math.PI) diff += Math.PI * 2;
+      while (diff > Math.PI) diff -= Math.PI * 2;
+      
+      if (!this.weapons.laserCannon.activeLaser) {
+        this.angle = targetAngle; // Snap immediately on first shot
+      } else {
+        const turnRate = 0.015; // Constant turn speed
+        if (Math.abs(diff) <= turnRate) {
+          this.angle = targetAngle;
+        } else {
+          this.angle += Math.sign(diff) * turnRate;
+        }
+      }
+    } else if (mouse.down && this.weapons.laserCannon && this.weapons.laserCannon.level > 0 && !this.weapons.laserCannon.overheated) {
+      const targetAngle = Math.atan2(mouse.y - this.y, mouse.x - this.x);
+      let diff = targetAngle - this.angle;
+      while (diff < -Math.PI) diff += Math.PI * 2;
+      while (diff > Math.PI) diff -= Math.PI * 2;
+      
+      if (!this.weapons.laserCannon.activeLaser) {
+        this.angle = targetAngle; // Snap immediately on first shot
+      } else {
+        const turnRate = 0.015; // Constant turn speed
+        if (Math.abs(diff) <= turnRate) {
+          this.angle = targetAngle;
+        } else {
+          this.angle += Math.sign(diff) * turnRate;
+        }
+      }
     } else if (dx !== 0 || dy !== 0) {
       const targetAngle = Math.atan2(dy, dx);
       let diff = targetAngle - this.angle;
@@ -602,155 +636,114 @@ export class Player {
 
   updateLaserCannon() {
     const w = this.weapons.laserCannon;
-    if (w.level <= 0) {
-      mouse.justReleased = false;
-      aimInput.justReleased = false;
-      return;
+    if (w.level <= 0) return;
+
+    if (w.heat === undefined) {
+      w.heat = 0;
+      w.maxHeat = 240; // 4 seconds to overheat
+      w.overheated = false;
+      w.activeLaser = null;
+      w.activeSubLasers = [];
+      w.tickDamage = true; // Force tick damage for continuous beams
+      w.duration = 9999;
     }
 
-    if (!w.fullyCharged) {
-      if (state.camera && typeof state.camera.setAimOffset === 'function') {
-        state.camera.setAimOffset(0, 0);
-      }
-      mouse.justReleased = false;
-      aimInput.justReleased = false;
+    const isFiring = (mouse.down || aimInput.active);
 
-      if (!w.charging) {
-         w.charging = true;
-         const chargeTimeSeconds = (w.maxCharge / w.chargeSpeedMult) / 60;
-         const soundBaseLen = 19; 
-         const speed = soundBaseLen / chargeTimeSeconds;
-         const chargeRatio = w.chargeTimer / w.maxCharge;
-         const offset = chargeRatio * soundBaseLen;
-         const res = audioManager.playSound('charge_laser_cannon', { volume: 0.5, throttleMs: 0, speed: speed, offset: offset, randomPitch: false });
-         if (res) w.soundNode = res.source;
-      }
-
-      const rateMult = this.hasActiveShield() ? (1 + (this.shield.rateBonusUpgrades || 0) * 0.05) : 1;
-      w.chargeTimer += w.chargeSpeedMult * rateMult;
+    if (isFiring && !w.overheated) {
+      // Heating up
+      const heatRate = this.hasActiveShield() ? (1 - (this.shield.rateBonusUpgrades || 0) * 0.05) : 1;
+      w.heat += 1.0 * heatRate * (w.heatGenMult || 1.0); // Heating is faster now
       
-      const chargeRatio = w.chargeTimer / w.maxCharge;
-      if (Math.random() < chargeRatio * 0.8 && state.particlePool) {
-         const angle = Math.random() * Math.PI * 2;
-         const distP = 50 + Math.random() * 50;
-         const px = this.x + Math.cos(angle) * distP;
-         const py = this.y + Math.sin(angle) * distP;
-         const p = state.particlePool.acquire(px, py, w.tickDamage ? "#ffff00" : "#00ff00", 2 + chargeRatio * 3, 0.05, 3);
-         if (p) {
-           p.vx = -Math.cos(angle) * (2 + chargeRatio * 2);
-           p.vy = -Math.sin(angle) * (2 + chargeRatio * 2);
-         }
-      }
+      if (w.heat >= w.maxHeat) {
+        // Overheat trigger
+        w.heat = w.maxHeat; // lock at exactly max
+        w.overheated = true;
+        w.overheatLockTimer = 120; // 2 seconds locked in red
+        this.destroyActiveLasers(w);
+        if (state.camera && typeof state.camera.setAimOffset === 'function') state.camera.setAimOffset(0, 0);
+        audioManager.playSound('error', { volume: 0.5, throttleMs: 200 }); // Error/Overheat sound
+      } else {
+        // Firing logic
+        let angle = this.angle; // The ship is now turning slowly, the laser must follow the ship's physical rotation
 
-      if (w.chargeTimer >= w.maxCharge) {
-        w.fullyCharged = true;
-        w.charging = false;
-        w.chargeTimer = 0;
-        mouse.justReleased = false;
-        aimInput.justReleased = false;
-        if (w.soundNode) {
-          try { w.soundNode.stop(); } catch(e){}
-          w.soundNode = null;
+        if (state.camera && typeof state.camera.setAimOffset === 'function') {
+           const aimDist = 160;
+           state.camera.setAimOffset(Math.cos(angle) * aimDist, Math.sin(angle) * aimDist);
         }
-        
-        if (state.particlePool) {
-          for (let i = 0; i < 20; i++) {
-            const a = Math.random() * Math.PI * 2;
-            const p = state.particlePool.acquire(this.x, this.y, w.tickDamage ? "#ffff00" : "#00ff00", 4, 0.03, 3);
-            if (p) {
-              p.vx = Math.cos(a) * Math.random() * 5;
-              p.vy = Math.sin(a) * Math.random() * 5;
-            }
-          }
-        }
-      }
-    } else {
-      // Fully Charged: Check Aiming Peek & Camera Offset
-      const isMobileAiming = aimInput.active;
-      const isDesktopAiming = mouse.down;
 
-      if (state.camera && typeof state.camera.setAimOffset === 'function') {
-        if (isMobileAiming) {
-          const aimDist = 160;
-          state.camera.setAimOffset(Math.cos(aimInput.angle) * aimDist, Math.sin(aimInput.angle) * aimDist);
-        } else if (isDesktopAiming) {
-          const aimAngle = Math.atan2(mouse.y - this.y, mouse.x - this.x);
-          const aimDist = 160;
-          state.camera.setAimOffset(Math.cos(aimAngle) * aimDist, Math.sin(aimAngle) * aimDist);
-        } else {
-          state.camera.setAimOffset(0, 0);
-        }
-      }
+        const effectiveLaserDmg = (w.damage * w.damageMult * this.getEffectiveDamageMult()) * 0.5; // Scaled down per tick since it hits 12 times/sec
 
-      const isMobileFire = aimInput.justReleased;
-      const isDesktopFire = mouse.justReleased;
-
-      if (isMobileFire || isDesktopFire) {
-         let angle;
-         if (isMobileFire) {
-            angle = aimInput.angle;
-            aimInput.justReleased = false;
-         } else {
-            angle = Math.atan2(mouse.y - this.y, mouse.x - this.x);
-            mouse.justReleased = false;
-         }
-
-         w.fullyCharged = false;
-         w.chargeTimer = 0;
-
-         if (state.camera && typeof state.camera.setAimOffset === 'function') {
-           state.camera.setAimOffset(0, 0);
-         }
-         
-         const effectiveLaserDmg = w.damage * w.damageMult * this.getEffectiveDamageMult();
-         state.laserBeams.push(new LaserBeam(
-            this.x, this.y, angle, 
-            effectiveLaserDmg, 
-            w.width * w.widthMult, 
-            w.duration, 
-            false, 
-            w.dot ? w.dotDamage : 0, 
-            w.dot ? w.dotDuration : 0, 
-            w.tickDamage
-         ));
-         
-         if (w.subLasers) {
+        if (!w.activeLaser) {
+           w.activeLaser = new LaserBeam(this.x, this.y, angle, effectiveLaserDmg, w.width * w.widthMult, 9999, false, w.dot ? w.dotDamage : 0, w.dot ? w.dotDuration : 0, true);
+           state.laserBeams.push(w.activeLaser);
+           
+           if (w.subLasers) {
              const subWidth = (w.width * w.widthMult) * 0.25;
              const subDmg = effectiveLaserDmg * 0.25;
-             state.laserBeams.push(new LaserBeam(
-                this.x, this.y, angle - Math.PI / 6, 
-                subDmg, subWidth, w.duration, true, 
-                w.dot ? w.dotDamage : 0, 
-                w.dot ? w.dotDuration : 0, 
-                w.tickDamage
-             ));
-             state.laserBeams.push(new LaserBeam(
-                this.x, this.y, angle + Math.PI / 6, 
-                subDmg, subWidth, w.duration, true, 
-                w.dot ? w.dotDamage : 0, 
-                w.dot ? w.dotDuration : 0, 
-                w.tickDamage
-             ));
-         }
-
-         audioManager.playSound('fire_laser_cannon', { volume: 0.8, throttleMs: 50 });
-
-         if (state.camera && typeof state.camera.shake === 'function') {
-           state.camera.shake({ strength: 18, duration: 0.48, rotation: 0.06, scale: 0.05 });
-         }
-
-         if (state.particlePool) {
-            for (let i = 0; i < 15; i++) {
-               const a = angle + (Math.random() - 0.5) * 0.5;
-               const p = state.particlePool.acquire(this.x, this.y, w.tickDamage ? "#ffff00" : "#00ff00", 3, 0.04, 3);
-               const s = Math.random() * 6 + 2;
-               if (p) {
-                 p.vx = Math.cos(a) * s;
-                 p.vy = Math.sin(a) * s;
-               }
-            }
-         }
+             w.activeSubLasers = [
+               new LaserBeam(this.x, this.y, angle - Math.PI / 6, subDmg, subWidth, 9999, true, w.dot ? w.dotDamage : 0, w.dot ? w.dotDuration : 0, true),
+               new LaserBeam(this.x, this.y, angle + Math.PI / 6, subDmg, subWidth, 9999, true, w.dot ? w.dotDamage : 0, w.dot ? w.dotDuration : 0, true)
+             ];
+             state.laserBeams.push(...w.activeSubLasers);
+           }
+        } else {
+           // Update coordinates of continuous beam
+           w.activeLaser.startX = this.x;
+           w.activeLaser.startY = this.y;
+           w.activeLaser.angle = angle;
+           w.activeLaser.damage = effectiveLaserDmg;
+           w.activeLaser.life = 9999;
+           
+           if (w.subLasers && w.activeSubLasers && w.activeSubLasers.length === 2) {
+             w.activeSubLasers[0].startX = this.x; w.activeSubLasers[0].startY = this.y; w.activeSubLasers[0].angle = angle - Math.PI / 6; w.activeSubLasers[0].life = 9999; w.activeSubLasers[0].damage = effectiveLaserDmg * 0.25;
+             w.activeSubLasers[1].startX = this.x; w.activeSubLasers[1].startY = this.y; w.activeSubLasers[1].angle = angle + Math.PI / 6; w.activeSubLasers[1].life = 9999; w.activeSubLasers[1].damage = effectiveLaserDmg * 0.25;
+           }
+        }
+        
+        // Firing particles & sound
+        if (state.particlePool && Math.random() < 0.2) {
+           const p = state.particlePool.acquire(this.x, this.y, "#00ff00", 3, 0.05, 3);
+           if (p) {
+             p.vx = Math.cos(angle + (Math.random()-0.5)) * 4;
+             p.vy = Math.sin(angle + (Math.random()-0.5)) * 4;
+           }
+        }
+        audioManager.playSound('hit_laser_cannon', { volume: 0.2, throttleMs: 80 }); 
       }
+    } else {
+      // Cooling down
+      if (state.camera && typeof state.camera.setAimOffset === 'function') {
+         state.camera.setAimOffset(0, 0);
+      }
+      this.destroyActiveLasers(w);
+      
+      if (w.overheated && w.overheatLockTimer > 0) {
+        w.overheatLockTimer--; // stays locked at maxHeat
+      } else {
+        // Convert flat cooling to percentage of maxHeat so larger battery doesn't mean longer cooldown time
+        const baseCoolPct = w.overheated ? (0.35 / 240) : (0.75 / 240);
+        const coolRate = (w.maxHeat * baseCoolPct) * (w.coolantInstalled ? 2.0 : 1.0);
+        w.heat = Math.max(0, w.heat - coolRate);
+        if (w.heat === 0) {
+          w.overheated = false;
+        }
+      }
+    }
+    
+    // Clear justReleased flags to prevent other logic from firing
+    mouse.justReleased = false;
+    aimInput.justReleased = false;
+  }
+
+  destroyActiveLasers(w) {
+    if (w.activeLaser) {
+      w.activeLaser.life = 0;
+      w.activeLaser = null;
+    }
+    if (w.activeSubLasers) {
+      w.activeSubLasers.forEach(l => { if(l) l.life = 0; });
+      w.activeSubLasers = [];
     }
   }
 
@@ -958,6 +951,7 @@ export class Player {
     this.autoMagnetChance = 0;
     this.autoMagnetUpgrades = 0;
     
+    this.healDropChance = 0;
     this.chipDropChance = 0;
     this.doubleChipChance = 0;
     this.endgameChipBonus = 0;
@@ -1069,12 +1063,11 @@ export class Player {
     // 1. Aiming Line
     let isAiming = false;
     let aimAngle = 0;
-    if (aimInput.active && this.weapons.laserCannon.level > 0) {
+    const w = this.weapons.laserCannon;
+    
+    if (w && w.level > 0 && !w.overheated && (aimInput.active || mouse.down)) {
       isAiming = true;
-      aimAngle = aimInput.angle;
-    } else if (this.weapons.laserCannon.level > 0 && this.weapons.laserCannon.fullyCharged && mouse.down) {
-      isAiming = true;
-      aimAngle = Math.atan2(mouse.y - this.y, mouse.x - this.x);
+      aimAngle = aimInput.active ? aimInput.angle : Math.atan2(mouse.y - this.y, mouse.x - this.x);
     }
     
     if (isAiming) {
@@ -1098,24 +1091,28 @@ export class Player {
       }
     }
 
-    // 2. Laser Charge Bar
-    const w = this.weapons.laserCannon;
+    // 2. Laser Heat Bar
     if (w && w.level > 0) {
       const barWidth = 36;
       const barHeight = 4;
       const barX = -barWidth / 2;
       const barY = 24;
       const radius = 2;
-      const chargeRatio = w.fullyCharged ? 1.0 : Math.min(1.0, Math.max(0.0, w.chargeTimer / w.maxCharge));
+      const heatRatio = Math.min(1.0, Math.max(0.0, (w.heat || 0) / (w.maxHeat || 1)));
 
-      this.uiGraphics.lineStyle(1, w.tickDamage ? 0xffff00 : 0x00ff64, 0.4);
+      const frameCount = (Date.now() / 100) % 2;
+      const isFlashing = w.overheated && frameCount < 1.0;
+      const outlineColor = w.overheated ? 0xff0000 : 0xffaa00;
+      const fillColor = w.overheated ? (isFlashing ? 0xff0000 : 0xaa0000) : (heatRatio > 0.75 ? 0xffaa00 : 0x00ff66);
+
+      this.uiGraphics.lineStyle(1, outlineColor, 0.6);
       this.uiGraphics.beginFill(0x0a140f, 0.7);
       this.uiGraphics.drawRoundedRect(barX, barY, barWidth, barHeight, radius);
       this.uiGraphics.endFill();
 
-      const fillW = Math.max(0.01, barWidth * chargeRatio);
+      const fillW = Math.max(0.01, barWidth * heatRatio);
       if (fillW > 0) {
-        this.uiGraphics.beginFill(w.fullyCharged ? (w.tickDamage ? 0xffdd00 : 0x00ff88) : (w.tickDamage ? 0xffff00 : 0x00ff66), w.fullyCharged ? 0.9 : 1.0);
+        this.uiGraphics.beginFill(fillColor, 1.0);
         this.uiGraphics.drawRoundedRect(barX, barY, fillW, barHeight, radius);
         this.uiGraphics.endFill();
       }

@@ -83,7 +83,7 @@ export function updateEnemyScaling() {
   const progress = Math.min(1.0, Math.max(0, (state.gameTime || 0) / 1800));
   
   // Escalas máximas a los 30 min: HP x5.0, Velocidad x1.75, Daño x1.75
-  state.enemyScaling.hp = 1.0 + (progress * 4.0);
+  state.enemyScaling.hp = 1.0 + (progress * 2.5);
   state.enemyScaling.speed = 1.0 + (progress * 0.75);
   state.enemyScaling.damage = 1.0 + (progress * 0.75);
   

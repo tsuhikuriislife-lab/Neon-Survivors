@@ -38,7 +38,7 @@ export function initGame() {
   }
   state.player = new Player();
   if (state.player.startXP && state.player.startXP > 0) {
-    state.player.addXp(state.player.startXP);
+    state.player.gainXP(state.player.startXP);
   }
   if (state.camera) {
     state.camera.reset();

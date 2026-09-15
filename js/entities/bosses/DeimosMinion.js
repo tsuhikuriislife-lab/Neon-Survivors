@@ -93,9 +93,21 @@ export class DeimosMinion extends Boss {
     if (state.player && state.player.bossDamageMult) finalAmount *= (1 + state.player.bossDamageMult);
     let isCrit = false;
 
-    if (state.player && Math.random() < (state.player.critChance || 0)) {
-      finalAmount *= (state.player.critDamage || 1.5);
-      isCrit = true;
+    if (state.player) {
+      const critChance = state.player.critChance || 0;
+      if (Math.random() < (critChance > 1.0 ? 1.0 : critChance)) {
+        finalAmount *= (state.player.critDamage || 1.5);
+        isCrit = true;
+        
+        if (critChance > 1.0) {
+          const overCrit = critChance - 1.0;
+          const extraRolls = Math.floor(overCrit) + (Math.random() < (overCrit % 1) ? 1 : 0);
+          if (extraRolls > 0) {
+            finalAmount *= Math.pow(3, extraRolls);
+            isCrit = "super";
+          }
+        }
+      }
     }
 
     this.hp -= finalAmount;
