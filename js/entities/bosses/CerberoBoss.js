@@ -6,6 +6,9 @@ import { Projectile } from '../projectiles/Projectile.js';
 import { CerberoFlameProjectile } from '../projectiles/CerberoFlameProjectile.js';
 import { CerberoSpiralProjectile } from '../projectiles/CerberoSpiralProjectile.js';
 import { CerberoVortexProjectile } from '../projectiles/CerberoVortexProjectile.js';
+import { getOrCachePolygon } from '../../engine/TextureCache.js';
+import { worldLayer } from '../../main.js';
+import { spawnExplosion } from '../effects/spawnExplosion.js';
 
 // ============================================================================
 // CerberoFuturoMinion (Retinazer - Francotirador)

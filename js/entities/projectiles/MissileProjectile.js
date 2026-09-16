@@ -37,8 +37,56 @@ export class MissileProjectile extends Projectile {
     worldLayer.addChild(this.sprite);
   }
   
+  /**
+   * Genera una explosión visual en el punto de impacto exacto del misil.
+   * La cantidad, velocidad y tamaño de las partículas escalan dinámicamente
+   * en función del radio de daño en área (aoeRadius) del misil.
+   */
+  spawnImpactExplosion() {
+    if (!state.particlePool) return;
+
+    // Escala del radio de daño en área respecto a la base canónica (140px)
+    const aoeRatio = Math.max(0.5, this.aoeRadius / 140);
+
+    // Velocidad límite calculada para que las esquirlas exteriores alcancen la frontera física del AoE
+    // (Bajo la fricción 0.96 y decay ~0.025 de PooledParticle, distancia recorrida ≈ 18 * speed)
+    const maxSpeed = this.aoeRadius / 18;
+
+    // Cantidad de partículas adaptada al volumen del área para mantener densidad visual sin colapsar el pool
+    const totalParticles = Math.min(64, Math.round(26 + 18 * aoeRatio));
+
+    for (let i = 0; i < totalParticles; i++) {
+      // Distribución en 3 estratos: 40% núcleo denso, 40% plasma intermedio, 20% esquirlas rápidas
+      const layerRoll = Math.random();
+      let pSpeed, pDecay, pSize, pColor;
+
+      if (layerRoll < 0.4) {
+        // Núcleo central caliente: partículas de gran tamaño con baja velocidad para simular la bola de fuego
+        pSpeed = (Math.random() * 0.35 + 0.1) * maxSpeed;
+        pDecay = 0.022;
+        // El tamaño escala directamente con el radio de AoE del misil
+        pSize = (Math.random() * 8 + 8) * aoeRatio;
+        pColor = Math.random() < 0.4 ? "#ffffff" : (Math.random() < 0.7 ? "#ffee44" : "#ff8800");
+      } else if (layerRoll < 0.8) {
+        // Cuerpo intermedio de plasma ardiente en expansión
+        pSpeed = (Math.random() * 0.45 + 0.35) * maxSpeed;
+        pDecay = 0.026;
+        pSize = (Math.random() * 5 + 5) * aoeRatio;
+        pColor = Math.random() < 0.6 ? "#ff4400" : "#ff8800";
+      } else {
+        // Onda de choque exterior y esquirlas que delinean el radio máximo del daño en área
+        pSpeed = (Math.random() * 0.3 + 0.7) * maxSpeed;
+        pDecay = 0.034;
+        pSize = (Math.random() * 3 + 3) * aoeRatio;
+        pColor = Math.random() < 0.5 ? "#ff1100" : "#ff4400";
+      }
+
+      state.particlePool.acquire(this.x, this.y, pColor, pSpeed, pDecay, pSize);
+    }
+  }
+
   onHit() {
-    spawnExplosion(this.x, this.y, this.color, 20, 2.5);
+    this.spawnImpactExplosion();
     audioManager.playSound('hit_missile', { volume: 0.5, throttleMs: 80 });
     
     const damagedParents = new Set();

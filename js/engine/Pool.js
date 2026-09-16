@@ -116,9 +116,10 @@ export class ParticlePool {
     return p;
   }
 
-  spawnExplosion(x, y, color, count = 16, speed = 4) {
+  spawnExplosion(x, y, color, count = 16, speed = 4, size = null) {
     for (let i = 0; i < count; i++) {
-      this.acquire(x, y, color, speed, 0.025, Math.random() * 3 + 2);
+      const pSize = size !== null ? (Math.random() * 0.4 + 0.8) * size : Math.random() * 3 + 2;
+      this.acquire(x, y, color, speed, 0.025, pSize);
     }
   }
 

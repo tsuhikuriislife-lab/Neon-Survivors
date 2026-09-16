@@ -68,6 +68,9 @@ export class Player {
     
     this.missilesQueue = 0;
     this.missileFireTimer = 0;
+    this.shockwaveQueue = 0;
+    this.shockwaveFireTimer = 0;
+    this.shockwaveBurstPoints = [];
 
     this.invulnerabilityMaxTime = 1.5;
     this.invulnerabilityTimer = 0;
@@ -139,8 +142,8 @@ export class Player {
       blaster: { level: 1, timer: 0, cooldown: 30, cooldownMult: 1.0, projectileCount: 1, damage: 10, range: 500, speed: 12, homing: 0, homingUpgrades: 0 },
       orbitals: { level: 0, count: 2, radius: 120, angle: 0, speed: 0.05, speedMult: 1.0, damage: 35, tickTimer: 0, tickInterval: 10, size: 12, sizeMult: 1.0, countUpgrades: 0, sizeUpgrades: 0, speedUpgrades: 0 },
       nova: { level: 0, count: 6, timer: 0, cooldown: 400, speed: 6, speedMult: 1.0, spiral: false },
-      shockwave: { level: 0, timer: 0, cooldown: 230, cooldownMult: 1.0, radius: 175, radiusMult: 1.0, damage: 150, rangeUpgrades: 0, rateUpgrades: 0 },
-      missiles: { level: 0, count: 6, timer: 0, cooldown: 220, speed: 7, speedMult: 1.0, homing: 0.05, aoe: 70, aoeMult: 1.0, damage: 23, countUpgrades: 0, speedUpgrades: 0, homingUpgrade: false, aoeUpgrades: 0 },
+      shockwave: { level: 0, count: 1, countUpgrades: 0, timer: 0, cooldown: 230, cooldownMult: 1.0, radius: 175, radiusMult: 1.0, damage: 150, damageMult: 1.0, rangeUpgrades: 0, rateUpgrades: 0, unbound: false },
+      missiles: { level: 0, count: 6, timer: 0, cooldown: 220, speed: 7, speedMult: 1.0, homing: 0.05, aoe: 140, aoeMult: 1.0, damage: 23, countUpgrades: 0, speedUpgrades: 0, homingUpgrade: false, aoeUpgrades: 0 },
       laserCannon: { level: 0, chargeTimer: 0, maxCharge: 1140, fullyCharged: false, damage: 80, width: 25, duration: 24, chargeSpeedMult: 1, damageMult: 1, widthMult: 1, subLasers: false, dot: false, dotDamage: 20, dotDuration: 5, tickDamage: false, soundNode: null, chargeUpgrades: 0, dmgUpgrades: 0, widthUpgrades: 0, lifeUpgrades: 0, dotUpgrades: 0 }
     };
 
@@ -649,15 +652,85 @@ export class Player {
     }
   }
 
+  /**
+   * Actualiza el temporizador y el disparo en cascada de Seismic Pulse.
+   * Al completarse la recarga, carga la cola de pulsos según w.count.
+   */
   updateShockwave() {
     const w = this.weapons.shockwave;
     if (w.level <= 0) return;
+
     w.timer++;
     if (w.timer >= (w.cooldown / (w.cooldownMult || 1.0)) * this.getEffectiveCooldownMult()) {
       w.timer = 0;
-      state.shockwaves.push(new Shockwave(this.x, this.y, w.radius * w.radiusMult, w.damage * this.getEffectiveDamageMult()));
-      audioManager.playSound('fire_shockwave', { volume: 0.7, throttleMs: 100 });
+      this.shockwaveQueue = w.count || 1;
+      this.shockwaveBurstPoints = []; // Reiniciamos el registro de puntos de la ráfaga actual
     }
+
+    if (this.shockwaveQueue > 0) {
+      if (this.shockwaveFireTimer <= 0) {
+        this.fireSingleShockwave();
+        this.shockwaveQueue--;
+        // Retardo de 4 frames (~0.06s) entre cada pulso en cascada
+        this.shockwaveFireTimer = 4;
+      } else {
+        this.shockwaveFireTimer--;
+      }
+    }
+  }
+
+  /**
+   * Dispara una onda individual de Seismic Pulse.
+   * Si unbound es true (Chaotic Resonance), se ubica aleatoriamente en la arena
+   * garantizando que nunca se genere dentro del radio de otro pulso de la misma ráfaga.
+   */
+  fireSingleShockwave() {
+    const w = this.weapons.shockwave;
+    const finalRadius = w.radius * (w.radiusMult || 1.0);
+    const finalDamage = w.damage * (w.damageMult || 1.0) * this.getEffectiveDamageMult();
+
+    let spawnX = this.x;
+    let spawnY = this.y;
+
+    if (w.unbound) {
+      const margin = 50;
+      const arenaW = state.width || 1920;
+      const arenaH = state.height || 1920;
+      // Distancia mínima requerida para que ningún pulso se genere dentro del radio del otro
+      const minDistance = finalRadius * 2;
+
+      let found = false;
+      // Algoritmo de muestreo con rechazo (máximo 30 intentos rápidos)
+      for (let attempt = 0; attempt < 30; attempt++) {
+        const candX = Math.random() * (arenaW - margin * 2) + margin;
+        const candY = Math.random() * (arenaH - margin * 2) + margin;
+
+        const tooClose = this.shockwaveBurstPoints.some(pt => {
+          return Math.hypot(candX - pt.x, candY - pt.y) < minDistance;
+        });
+
+        if (!tooClose) {
+          spawnX = candX;
+          spawnY = candY;
+          found = true;
+          break;
+        }
+      }
+
+      // Fallback seguro si no encontró posición tras los intentos
+      if (!found) {
+        spawnX = Math.random() * (arenaW - margin * 2) + margin;
+        spawnY = Math.random() * (arenaH - margin * 2) + margin;
+      }
+
+      this.shockwaveBurstPoints.push({ x: spawnX, y: spawnY });
+    }
+
+    state.shockwaves.push(new Shockwave(spawnX, spawnY, finalRadius, finalDamage));
+
+    // Atenuación de volumen con cadencia x4 para evitar saturación de audio
+    const sfxVolume = w.unbound ? 0.45 : 0.7;
+    audioManager.playSound('fire_shockwave', { volume: sfxVolume, throttleMs: 50 });
   }
 
   updateNova() {
@@ -1113,6 +1186,15 @@ export class Player {
     this.startXP = 0;
 
     this.acquiredUpgrades = {};
+    this.shockwaveQueue = 0;
+    this.shockwaveFireTimer = 0;
+    this.shockwaveBurstPoints = [];
+    if (this.weapons && this.weapons.shockwave) {
+      this.weapons.shockwave.count = 1;
+      this.weapons.shockwave.countUpgrades = 0;
+      this.weapons.shockwave.unbound = false;
+      this.weapons.shockwave.damageMult = 1.0;
+    }
     
     this.maxHp = 100;
     this.hp = Math.min(this.hp, 100);
@@ -1155,13 +1237,17 @@ export class Player {
       color: '#ffff00'
     };
 
+    this.shockwaveQueue = 0;
+    this.shockwaveFireTimer = 0;
+    this.shockwaveBurstPoints = [];
+
     this.weapons = {
 
       blaster: { level: 1, timer: 0, cooldown: 60, cooldownMult: 1.0, projectileCount: 1, damage: 22, range: 500, speed: 12, homing: 0, homingUpgrades: 0 },
       orbitals: { level: 0, count: 2, radius: 120, angle: 0, speed: 0.05, speedMult: 1.0, damage: 35, tickTimer: 0, tickInterval: 10, size: 12, sizeMult: 1.0, countUpgrades: 0, sizeUpgrades: 0, speedUpgrades: 0 },
       nova: { level: 0, count: 6, timer: 0, cooldown: 400, speed: 6, speedMult: 1.0, spiral: false },
-      shockwave: { level: 0, timer: 0, cooldown: 230, cooldownMult: 1.0, radius: 175, radiusMult: 1.0, damage: 150, rangeUpgrades: 0, rateUpgrades: 0 },
-      missiles: { level: 0, count: 6, timer: 0, cooldown: 220, speed: 7, speedMult: 1.0, homing: 0.05, aoe: 70, aoeMult: 1.0, damage: 23, countUpgrades: 0, speedUpgrades: 0, homingUpgrade: false, aoeUpgrades: 0 },
+      shockwave: { level: 0, count: 1, countUpgrades: 0, timer: 0, cooldown: 230, cooldownMult: 1.0, radius: 175, radiusMult: 1.0, damage: 150, damageMult: 1.0, rangeUpgrades: 0, rateUpgrades: 0, unbound: false },
+      missiles: { level: 0, count: 6, timer: 0, cooldown: 220, speed: 7, speedMult: 1.0, homing: 0.05, aoe: 140, aoeMult: 1.0, damage: 23, countUpgrades: 0, speedUpgrades: 0, homingUpgrade: false, aoeUpgrades: 0 },
       laserCannon: { level: 0, chargeTimer: 0, maxCharge: 1140, fullyCharged: false, damage: 250, width: 25, duration: 24, chargeSpeedMult: 1, damageMult: 1, widthMult: 1, subLasers: false, dot: false, dotDamage: 20, dotDuration: 5, tickDamage: false, soundNode: null, chargeUpgrades: 0, dmgUpgrades: 0, widthUpgrades: 0, lifeUpgrades: 0, dotUpgrades: 0 }
     };
     

@@ -3,7 +3,7 @@ import { updateAimJoystickUI } from "../engine/Input.js";
 export const upgradeDatabase = [
   {
     id: 'blaster_count',
-    rarity: 'uncommon',
+    rarity: 'common',
     name: 'Multi-Laser Fire Rate',
     icon: '<img src="assets/upgrades/neon-cannon-projectile.png" alt="icon">',
     desc: '+1 Neon blaster projectile per shot.',
@@ -12,7 +12,7 @@ export const upgradeDatabase = [
   },
   {
     id: 'blaster_rate',
-    rarity: 'uncommon',
+    rarity: 'common',
     name: 'Fire Overload',
     icon: '<img src="assets/upgrades/neon-cannon-cooldown.png" alt="icon">',
     desc: '+25% Neon Blaster reload speed.',
@@ -146,7 +146,7 @@ export const upgradeDatabase = [
   },
   {
     id: 'nova_up',
-    rarity: 'uncommon',
+    rarity: 'common',
     name: '+ Nova Projectiles',
     icon: '<img src="assets/upgrades/nova-discharg-projectiles.png" alt="icon">',
     desc: '+2 Nova projectiles.',
@@ -181,7 +181,7 @@ export const upgradeDatabase = [
   },
   {
     id: 'orbital_count',
-    rarity: 'uncommon',
+    rarity: 'common',
     name: '+ Satellites',
     icon: '<img src="assets/upgrades/orbital-plasma-shield-ammount.png" alt="icon">',
     desc: '+2 Orbitals.',
@@ -251,6 +251,33 @@ export const upgradeDatabase = [
     }
   },
   {
+    id: 'shockwave_unbound',
+    rarity: 'legendary',
+    name: 'Chaotic Resonance',
+    icon: '<img src="assets/upgrades/seismic-radial-pulse.png" alt="icon">',
+    desc: 'Unchains Seismic Pulse: Detonates randomly across the arena. 4x Fire Rate, 50% Damage, 50% Size.',
+    isAvailable: (p) => p.weapons.shockwave.level > 0 && !p.weapons.shockwave.unbound,
+    apply: (p) => {
+      const w = p.weapons.shockwave;
+      w.unbound = true;
+      w.cooldownMult = (w.cooldownMult || 1.0) * 4.0;
+      w.damageMult = (w.damageMult || 1.0) * 0.5;
+      w.radiusMult = (w.radiusMult || 1.0) * 0.5;
+    }
+  },
+  {
+    id: 'shockwave_count',
+    rarity: 'rare',
+    name: 'Seismic Aftershocks',
+    icon: '<img src="assets/upgrades/seismic-radial-pulse.png" alt="icon">',
+    desc: '+1 Seismic Pulse per burst in cascading sequence. Never spawns inside other pulses.',
+    isAvailable: (p) => p.weapons.shockwave.level > 0 && p.weapons.shockwave.unbound && (p.weapons.shockwave.countUpgrades || 0) < 3,
+    apply: (p) => {
+      p.weapons.shockwave.count = (p.weapons.shockwave.count || 1) + 1;
+      p.weapons.shockwave.countUpgrades = (p.weapons.shockwave.countUpgrades || 0) + 1;
+    }
+  },
+  {
     id: 'missiles_unlock',
     rarity: 'common',
     name: 'Missile Battery',
@@ -263,7 +290,7 @@ export const upgradeDatabase = [
   },
   {
     id: 'missiles_count',
-    rarity: 'uncommon',
+    rarity: 'common',
     name: '+ Missiles',
     icon: '<img src="assets/upgrades/missile-battery-ammount.png" alt="icon">',
     desc: '+2 Missiles.',
@@ -570,9 +597,9 @@ export const upgradeDatabase = [
     rarity: 'rare',
     name: 'Data Extraction',
     icon: '<img src="assets/upgrades/data-extraction.png" alt="icon">',
-    desc: '+5% XP gain.',
+    desc: '+25% XP gain.',
     isAvailable: (p) => p.level >= 40,
-    apply: (p) => { p.xpMultiplier = (p.xpMultiplier || 1.0) + 0.05; }
+    apply: (p) => { p.xpMultiplier = (p.xpMultiplier || 1.0) + 0.25; }
   },
   {
     id: 'crit_damage',
@@ -592,25 +619,10 @@ export const upgradeDatabase = [
         return count < 5;
     },
     icon: '<img src="assets/upgrades/lure-beacon.png" alt="icon">',
-    desc: '+10% Enemies, -5% XP.',
+    desc: '+10% Enemies, +25% XP.',
     apply: (p) => { 
         state.spawnRateMultiplier = (state.spawnRateMultiplier || 1.0) + 0.10;
-        p.xpMultiplier = (p.xpMultiplier || 1.0) - 0.05;
-    }
-  },
-  {
-    id: 'spawn_less_xp_more',
-    rarity: 'rare',
-    name: 'Active Camouflage',
-    isAvailable: (p) => {
-        const count = (p.acquiredUpgrades && p.acquiredUpgrades['spawn_less_xp_more']) ? p.acquiredUpgrades['spawn_less_xp_more'] : 0;
-        return count < 5;
-    },
-    icon: '<img src="assets/upgrades/active-camouflage.png" alt="icon">',
-    desc: '-5% Enemies, +10% XP.',
-    apply: (p) => { 
-        state.spawnRateMultiplier = Math.max(0.2, (state.spawnRateMultiplier || 1.0) - 0.05);
-        p.xpMultiplier = (p.xpMultiplier || 1.0) + 0.10;
+        p.xpMultiplier = (p.xpMultiplier || 1.0) + 0.25;
     }
   },
   {

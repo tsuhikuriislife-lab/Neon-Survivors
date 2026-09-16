@@ -838,22 +838,23 @@ export function loop(timestamp) {
         if (e.hp <= 0) return false;
         if (p.canHit && !p.canHit(e)) return false;
 
-        spawnExplosion(p.x, p.y, "#00ffff", 4, 2);
-        
         if (p.constructor.name === 'NovaProjectile') {
+          spawnExplosion(p.x, p.y, "#00ffff", 4, 2);
           audioManager.playSound('hit_nova', { volume: 0.5, throttleMs: 60 });
           const ang = Math.atan2(e.y - p.y, e.x - p.x);
           e.x += Math.cos(ang) * 10;
           e.y += Math.sin(ang) * 10;
           state.recordDamage('nova', p.damage);
+          e.takeDamage(p.damage, p.color);
         } else if (p.constructor.name === 'MissileProjectile') {
+          // El misil detona su propia explosión escalada en p.onHit() e inflige daño de área
           p.onHit();
         } else {
+          spawnExplosion(p.x, p.y, "#00ffff", 4, 2);
           audioManager.playSound('hit_main_gun', { volume: 0.4, throttleMs: 40 });
           state.recordDamage('blaster', p.damage);
+          e.takeDamage(p.damage, p.color);
         }
-
-        e.takeDamage(p.damage, p.color);
         
         if (!p.pierce) {
           if (p.destroy) p.destroy(); state.projectiles[i] = state.projectiles[state.projectiles.length - 1];
@@ -870,19 +871,20 @@ export function loop(timestamp) {
           if (dist(p.x, p.y, target.x, target.y) < p.radius + target.radius) {
             if (p.canHit && !p.canHit(target)) continue;
 
-            spawnExplosion(p.x, p.y, "#00ffff", 5, 2.5);
-
             if (p.constructor.name === 'NovaProjectile') {
+              spawnExplosion(p.x, p.y, "#00ffff", 5, 2.5);
               audioManager.playSound('hit_nova', { volume: 0.5, throttleMs: 60 });
               state.recordDamage('nova', p.damage);
+              target.takeDamage(p.damage, p.color);
             } else if (p.constructor.name === 'MissileProjectile') {
+              // El misil detona su propia explosión escalada en p.onHit() e inflige daño de área
               p.onHit();
             } else {
+              spawnExplosion(p.x, p.y, "#00ffff", 5, 2.5);
               audioManager.playSound('hit_main_gun', { volume: 0.4, throttleMs: 40 });
               state.recordDamage('blaster', p.damage);
+              target.takeDamage(p.damage, p.color);
             }
-
-            target.takeDamage(p.damage, p.color);
 
             if (!p.pierce) {
               if (p.destroy) p.destroy(); state.projectiles[i] = state.projectiles[state.projectiles.length - 1];

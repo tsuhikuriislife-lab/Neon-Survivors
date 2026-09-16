@@ -25,34 +25,10 @@ This repository contains a browser-based arena survival game ("Neon Survivors").
 - **Modifying UI**: Update HTML in `index.html`, styles in `css/styles.css`, and logic in `js/ui/UIManager.js`.
 
 ### Recent Implementations & System Mechanics
-- **Version 1.3.4 - The Weapon Rework Update (2026-09-15)**:
-  - **Shield Explosion Rework (`Player.js`, `Shockwave.js`)**: Massive radius increase (`400`), damage reduction (`600`), and extreme knockback (`80px`). Fixed duplicate instant-damage bug by delegating full sweep to the `Shockwave` entity.
-  - **Neon Blaster Smart Multi-Shot (`Player.js`)**: Firing multiple projectiles now dynamically scans for nearby enemies. It isolates up to `count` targets and distributes projectiles equitably (Round-Robin). Excess projectiles against fewer targets naturally fan out via localized spread angles.
-  - **Orbital Projectile Blocking System (`Player.js`)**: Orbitals can intercept physical hostile projectiles (excluding Lasers/Hazard Areas via `isUnblockable = true`). Blocks trigger a 1.5s disabled state (`disabledTimer: 90`), during which the orbital loses its trail, turns transparent, takes a 70% damage penalty, and temporarily ceases blocking duties.
-- **Version 1.3.3 - The Quality of Life Update (2026-09-11)**:
-  - **Geometric Laboratory Topology (metaUpgrades.js)**: Restructured the entire Laboratory tree into a perfect non-overlapping diamond fractal. The 4 core branches stem outwards in a '+' shape (Health X<0, Damage Y>0, Utility X>0, Economy Y<0). Sub-branches expand strictly diagonally via dx=±120, dy=±120 relative offsets, guaranteeing infinite expansion without quadrant line collisions.
-  - **8 New Meta-Upgrades Engine Integration**:
-    - **Health**: casco_electrificado (Thorns logic reflecting damage via Player.prototype.takeDamage()), protocolo_lazaro (Dynamically recalculates Extra Revives inside UIManager.js Game Over modal).
-    - **Damage**: refrigeracion_liquida (Global Weapon CDR via getEffectiveCooldownMult()), calibracion_anti_titanes (Multiplicative boss damage boost safely injected directly into all Boss ASTs).
-    - **Utility**: sobremarcha_propulsion (Dash Active Skill CDR modifier), sintesis_biologica (Passive healOnLevelUp), inyeccion_codigo (Migrated from a boolean reroll to a full rerollsUsedThisLevel counter pool tracking base rerolls).
-    - **Economy**: caza_recompensas (Injects guaranteed chips into Game.js when a boss is defeated), secuencia_arranque (Hooks into initGame() granting start XP to new Player()), soborno_sistema (1% passive discount calculated in real-time within Laboratory.js checkout logic).
-- **Version 1.2 - The Temporal Twins Update (2026-09-10)**:
-  - **New Bosses (The Twins)**: Added Present, Past, and Future (Cerbero). Implemented tether drag physics, predictive aiming, and compound HP scaling fixes.
-  - **Core Hack & Mechanics**: Reworked Core Hack to dynamically combat boss scaling. Added Blaster Velocity and Advanced Optics upgrades.
-- **Version 1.1 - The Martian Moons Update (2026-09-09)**:
-  - **Renaming**: 'Devourer of Tax' is now **Mars**, 'Carlos' is **Deimos**, and 'Sebastian' is **Fobos**.
-  - **Size Scaling**: Fobos increased by +25% radius, Deimos decreased by -25% radius. Textures updated dynamically.
-  - **Deimos Rework (Sniper Satellite)**: Removed `SEEK_EXIT` map escape. Deimos now intercepts trajectory and flies in a wide arc (Orbit/Pass-by ~350px distance) without direct ramming. Shoots accelerating projectiles directly aimed at the player with strict tail-in-bounds firing logic to prevent wasted shots.
-  - **Fobos Rework (Comet Rammer)**: Uses a pure Burst Dash mechanic identical to the player. Triggers exactly on 5s cooldown when aligned. Accelerates to massive speed (24.0) for precisely 40 frames, leaving 6 acid pools in its wake, followed by a terrible deceleration drift (friction 0.25) causing it to skid vastly past the player.
-  - **Snake Boss Visibility**: All Snake segments dynamically hide (`visible = false`) upon exiting the map bounds + their radius, creating true visual uncertainty for perimeter re-entry attacks.
-- **Visual & Mechanics Refactor (Projectiles, Waves, Orbitals, Drops)**:
-  - **Projectile Trail Particles (`Pool.js`, `Player.js`, `Projectiles.js`)**: Integrated per-frame zero-GC particle emission trails for all projectiles (Player's `PooledProjectile`, `Nova`, `Missile`, `Accelerating`) and `Orbitals`. Evaluated 65% random emission chance with fast decay to simulate glowing stardust. Orbitals emit Magenta (`#ff00ff`) trails matching their 12px/8px textures.
-  - **Orbital Continuous Collision Fix (`Player.js`)**: Eliminated the legacy 10-frame `tickInterval` gap that allowed fast enemies to pass through Orbitals unharmed. Implemented true per-frame spatial grid collision with `cooldownSeconds` tracked flawlessly in the target's `hitCooldowns` WeakMap to prevent double-damage.
-  - **Wave Loop Fix (`WaveManager.js`, `Game.js`)**: Corrected `dt` frame conversions (`duration * 60`) so 30-second waves actually last 30 real seconds instead of 0.5 seconds. Prevented endless wave-looping by removing premature `waveTriggeredEnFase` resets, ensuring strictly ONE wave triggers exactly at 2:30.
-  - **Amalgam Boss Drop Bloat Fix (`AmalgamNode.js`)**: Removed intermediate `checkDropThresholds` drops that caused exponential reward spam (up to 45 drops). Full boss rewards (Gems/Health) are now cleanly consolidated into a 35% chance per final-stage node death.
-  - **Red Enemy Projectile Normalization (`TextureCache.js`)**: Unified and forcefully baked all hostile projectile textures (`proj_enemy_*`, `proj_accelerating*`) to strictly `#ff0000` Red, eliminating ambiguous Cyan/Green defaults previously buried in procedural texture generation.
-  - **Menu DOM Swallow & Timer Fix (`index.html`, `UIManager.js`)**: Removed a rogue unclosed `<div class="hp-bar-bg">` that caused the main menu to be swallowed and visually hidden inside the non-displayed UI layer. Relocated the 5-minute background timer into a clear, unified DOM overlay underneath the XP bar.
-
+- **Version 1.3.5 - Seismic Pulse Overhaul & Missile Impact AoE Scaling (`Player.js`, `upgrades.js`, `MissileProjectile.js`, `Game.js`, `Pool.js`)**:
+  - Added Legendary upgrade `Chaotic Resonance` (`shockwave_unbound`): Unchains Seismic Pulse from the player, detonating randomly across the 1920x1920 arena with 4x fire rate, 50% damage, and 50% radius.
+  - Added Rare upgrade `Seismic Aftershocks` (`shockwave_count`, max 3): Fires +1 pulse per burst in cascading sequence (4-frame stagger). Uses rejection sampling to guarantee that pulses never spawn inside each other's radius (distance $\ge 2 \times \text{finalRadius}$).
+  - Fixed missile impact explosion: Particles scale dynamically in size and reach based on `aoeRadius`, originating from the impact site rather than relying on enemy death explosions. Eliminated double damage and cyan sparks in `Game.js`.
 - **Upgrade Asset Preloading & Mobile Offline Cache Integrity (`TextureCache.js`, `main.js`)**:
   - `preloadUpgradeIcons(upgradeDatabase)` scans all upgrade definitions and preloads all 41 PNG sprites asynchronously into a `preloadedUpgradeImages` Map at initial module load time (`main.js`).
   - Guarantees that on mobile devices over local Wi-Fi/LAN, all sprites are cached in browser memory upon initial page launch, preventing missing asset placeholders (`alt="icon"`) if connectivity fluctuates or drops during gameplay.
@@ -90,7 +66,7 @@ This repository contains a browser-based arena survival game ("Neon Survivors").
     - Pushes back nearby swarming enemies within 260px by 140px to grant breathing room upon revival.
     - Implemented invulnerability visual blinking in `Player.prototype.update` (flickering ship sprite alpha at ~14 Hz while `invulnerabilityTimer > 0`).
     - Calls `resetInputState()` to eliminate stuck movement keys.
-- **Boss Mechanics & Snake Movement Architecture (`MarsBoss`, `DeimosMinion`, `FobosMinion`)**: 
+- **Boss Mechanics & Snake Movement Architecture (`DevourerOfTaxBoss`, `CarlosMinion`, `SebastianMinion`)**: 
   - **Eater of Worlds Kinematics, Speed Zones & Low-Speed Exit State Machine**: 
     - **Inside Arena (`ATTACK`)**: Enters at maximum high speed (`outsideSpeed: 14.0` for Devourer, `13.0 - 13.2` for Minions) in a high-momentum dive towards the player. Applies progressive friction (`friction: 0.045 / frame`) down towards `minSpeed: 2.8`.
     - **Low-Speed Exit Trigger (`SEEK_EXIT`)**: When the snake's speed decays to `minSpeed + 0.3`, it switches target away from the player to navigate directly towards the nearest outside map boundary to initiate a new dive loop.
@@ -102,33 +78,22 @@ This repository contains a browser-based arena survival game ("Neon Survivors").
   - **Snake-to-Snake Repulsion & Flanking Separation (`applySnakeRepulsion`)**: 
     - Active snakes continuously calculate head-to-head and head-to-body proximity vectors (`separationDist = radius * 3.0`).
     - Applies soft physical displacement and smooth angular steering deflection ($0.4 \times \Delta\theta_{\text{repel}}$) to prevent snakes from following identical trajectories or superimposing on top of each other.
-    - Deimos and Fobos maintain complementary flanking offsets ($\pm 0.4\pi$ around the player) and divergent perimeter exit points during `SEEK_EXIT`.
-    - **Deimos Salvo Sequence**: Fires accelerating projectiles (`AcceleratingProjectile`) in a progressive wave from the tip of the tail (`segmentCount - 1`) forward to the head (`0`).
-  - **Cerbero Boss Mechanics (Presente, Pasado, Futuro)**:
-    - **Phase 1 Invulnerability**: `CerberoBossRoot` (Presente) handles the anchor tether (600px radius). It excludes itself from `getTargetables()` until Phase 2 to prevent auto-aim weapons from wasting DPS.
-    - **LaserBeam Target Compatibility**: To ensure piercing lasers (`LaserBeam.js`) can properly strike standalone boss components, `getTargetables()` must return `this` (the entity instance) instead of a `{ x, y, takeDamage }` proxy object. The `LaserBeam.js` global logic was patched to stop auto-canceling damage when `target === actualTarget`.
-    - **Projectile Override Architecture**: The engine strictly evaluates `!ep.update()` in `Game.js`. To add custom projectile despawn conditions (like the Flamethrower range limits or Vortex black hole absorption), we override `.update()` directly on the projectile instance (e.g., `vortexProj.update = function() { const alive = origUpdate(); ... };`), bypassing the default bounds.
-    - **Perimeter Projectile Spawning**: Vortex projectiles use perimeter-spawning (like Swarmers) rather than circular radius spawning, bypassing immediate despawn from engine bounding limits.
-  - **Parent-Child Delegation Pattern & Unified Rewards (`MarsBoss`, `KyrenBoss`)**:
-    - When complex bosses split, the parent sets its own body to `dead = true` but remains active in `state.bosses` as a hidden controller updating its children (`this.deimos`, `this.fobos`, `this.denzel`).
+    - Carlos and Sebastian maintain complementary flanking offsets ($\pm 0.4\pi$ around the player) and divergent perimeter exit points during `SEEK_EXIT`.
+    - **Carlos Salvo Sequence**: Fires accelerating projectiles (`AcceleratingProjectile`) in a progressive wave from the tip of the tail (`segmentCount - 1`) forward to the head (`0`).
+  - **Parent-Child Delegation Pattern & Unified Rewards (`DevourerOfTaxBoss`, `KyrenBoss`)**:
+    - When complex bosses split, the parent sets its own body to `dead = true` but remains active in `state.bosses` as a hidden controller updating its children (`this.carlos`, `this.sebastian`, `this.denzel`).
     - `getTargetables()` combines the active segments of the parent and any surviving children. `Game.js` only removes the boss and triggers the Reward Modal when `getTargetables().length === 0` (i.e. the entire family is defeated).
-  - **Impulse Split Spawn**: When Mars splits at 50% HP (or upon quick lethal damage), Deimos and Fobos spawn directly on top of Devourer with high-velocity initial impulses (`initialSpeed = 12.0`) along divergent random angles.
+  - **Impulse Split Spawn**: When Devourer of Tax splits at 50% HP (or upon quick lethal damage), Carlos and Sebastian spawn directly on top of Devourer with high-velocity initial impulses (`initialSpeed = 12.0`) along divergent random angles.
   - **DenzelBoss Trajectory Tuning**: `targetY` is kept high (`300`) to ensure parabolic `FallingProjectile` (gravity = 0.12) arcs stay safely within the arena's visible bounds and do not despawn prematurely by hitting the top margin.
   - **Amalgam Memory Leak & Cross-Spawn Protection**: `AmalgamBossRoot` properly cleans itself up by monitoring `nodes.length` and setting `dead = true`. `AmalgamNode` subdivisions append children to `this.root.nodes` (preventing array contamination when multiple Amalgams spawn simultaneously).
 - **Projectiles & Weapons (`Projectiles.js`, `LaserBeam.js` & `Player.js`)**:
   - **Multiplicative Damage System**: Final damage computation strictly follows `Base Damage * Weapon Multiplier * Global Multiplier * Active Shield Bonus * Critical Hit`. Upgrades synergize multiplicatively (e.g. Shield Power damage bonuses multiply the entire stack, not just adding flat percentages).
   - **Laser Cannon Damage Falloff**: Piercing laser beam calculates enemies sorted by distance along the beam path. Applies a progressive -5% damage falloff per enemy struck (1st enemy: 100%, 2nd: 95%, 3rd: 90% down to a 10% floor).
-  - **Laser Cannon Heat Anti-Exploit System**:
-    - **Exponential Heating**: Holding the trigger progressively multiplies heat generated per frame by `1.4^n` (where `n` increments every 2 seconds / 120 frames). This limits infinite firing in the late-game, mathematically capping max continuous fire to ~22s regardless of battery size.
-    - **Decoupled Cooling**: Heat dissipation is a flat rate that accelerates over time (up to 5.0x) for every second the player rests the weapon after a 1.5s cooling delay.
-    - **Trade-off Heat Penalties**: Destructive upgrades passively increase base heat generation (Sub-lasers: +50%, Damage/Width: +10% per upgrade), making high-DPS lasers burn out faster.
-    - **Micro-Release Prevention**: To stop players from resetting the exponential multiplier by releasing the trigger for 1 frame, `timeFiring` decays smoothly rather than resetting instantly.
   - Missiles use a queue system (`missilesQueue`, `missileFireTimer`) to fire sequentially with a 0.2s delay instead of all at once.
   - Enemy projectiles ignore time-to-live (`life`) checks and only despawn when leaving the screen bounds.
   - The player's main blaster supports a `homingStrength` mechanic for subtly tracking targets.
   - The `NovaProjectile` class supports a spiral-outward travel pattern if `isSpiral` is passed as true, utilized by the `Tornado Nova` upgrade.
   - The `MissileProjectile` handles its own AoE damage via an `onHit()` method. `Game.js` will trigger this when an enemy collision occurs before despawning the non-piercing projectile.
-  - **Standardized Enemy Projectile Colors**: All hostile projectiles, falling projectiles, accelerating projectiles, and hazard areas (acid pools, toxic smoke) emitted by standard enemies and bosses are strictly unified to red (`#ff0000`). This ensures unambiguous visual clarity for the player against the myriad of colorful player weapons.
 - **Upgrade Balancing & Caps**: Many upgrades in `upgrades.js` have strict maximum limits implemented via `isAvailable` functions checking counters inside `Player.js` (e.g., max 4 upgrades for blaster count/rate and magnet). Weapons like Shockwave, Orbitals (Satellites), and Missiles are split into an unlock card and separate progressive stat upgrades (range, size, speed, etc.).
 - **Upgrade Rarities & Infinite Scaling**:
   - Upgrades are categorized by rarity (`common` 60%, `uncommon` 20%, `rare` 15%, `legendary` 5%).
@@ -139,9 +104,7 @@ This repository contains a browser-based arena survival game ("Neon Survivors").
 - **Boss Scaling & Reward Mechanics**:
   - Bosses cannot spawn twice in a row (`state.lastBossName` tracking).
   - Defeating a boss permanently scales its specific base HP by +70% for future spawns via `state.bossScaling`.
-  - Defeating a boss triggers a 5-card face-down Reward Modal. Players pick 1 (or 2 with a 20% chance). First pick has a 5% "Jackpot" chance to grant all remaining cards.
-  - **Boss Reward Rebalancing**: Boss rewards exclusively grant 'Uncommon' or higher upgrades (0% Common, 60% Uncommon, 30% Rare, 10% Legendary).
-  - **Out-of-Bounds XP Gem Teleportation**: If any gem-dropping Boss (e.g., `MarsBoss`, `DeimosMinion`, `KyrenBoss`, `AmalgamNode`) is killed outside the visible arena bounds, its burst of XP gems is automatically teleported to the center of the field (`state.width / 2`, `state.height / 2`) with slight randomness to guarantee player access.
+  - Defeating a boss triggers a 5-card face-down Reward Modal. Players pick 1 (or 2 with a 20% chance). First pick has a 5% "Jackpot" chance to grant all remaining cards with a CSS confetti particle effect.
   - **Boss Spawn Sequence (5 Seconds Anticipation)**: Boss spawns trigger a HUD warning banner (`#boss-warning-banner`), a spawn warning SFX, and render a pulsing red holographic beacon with concentric rotating rings in the arena. After 5.0 seconds, the beacon detonates in neon particles and instantiates the boss.
 - **Arena Dimensions & Camera**:
   - Fixed square arena dimensions of `1920 x 1920` with canonical center at `(960, 960)`.
@@ -219,32 +182,3 @@ This repository contains a browser-based arena survival game ("Neon Survivors").
   - **Upgrade Database Integrity**: All cards in `upgrades.js` have clear English names and descriptions (e.g. `Vector Thrusters`, `Magnetic Attraction`, `Nova Discharge`, `Orbital Plasma Shield`, `Force Field`, `Core Hack`, etc.) while strictly retaining internal `id` strings to ensure full backward compatibility.
   - **Developer & Admin Modals**: Spawn sub-menus (`SPAWN ENEMY`, `RECEIVE UPGRADE`), reset cards (`RESET UPGRADES`), and game over actions (`REVIVE (1 PER GAME)`) are standardized in English.
   - **Enemy & Boss Registries**: Central registries supply English names and tactical category identifiers (`Small`, `Medium`, `Large`, `Swarmer`, `Ranger`, `Mother`, `Mother Larva`; `Standard`, `Special`, `Ranged`, `Tank`).
-
-- **Additive Stat Multipliers & Math Refactor (`Player.js`, `upgrades.js`)**:
-  - Replaced legacy "compound interest" logic (`*= 1.15`) on percentage upgrades with a stable additive multiplier system (`+= 0.15`).
-  - Added dedicated `*Mult` variables (`speedMult`, `pickupRadiusMult`, `cooldownMult`, `damageMult`, `xpMultiplier`) to `Player.js` constructor, weapon objects, and `resetUpgrades()`.
-  - Cooldowns are now dynamically calculated using division by their respective rate multipliers (`w.cooldown / (w.cooldownMult || 1.0) * this.getEffectiveCooldownMult()`), capping their acceleration safely and linearly.
-  - **XP Fractional Accumulation**: Removed `Math.round()` from internal XP calculations in `Player.js`, allowing decimal XP multipliers to function properly on low-value gems (preventing total bonus loss due to truncation). Decimals are only rounded via `Math.floor()` for visual floating UI text.
-- **Weapon Hit Cooldown Inversion (`Enemy.js`, `Bosses.js`, Piercing Weapons)**:
-  - Migrated hit cooldown memory (`this.hitCooldowns = new Map()`) from individual piercing projectiles (Orbitals, Nova, Laser) directly into the hit targets (`Enemy.js`, `Bosses.js`).
-  - Enables piercing weapons to damage multiple overlapping enemies simultaneously without arbitrary cooldown delays. 
-  - Satellite orbitals dynamically scale their hit cooldown inversely with their `speedRatio` so faster satellites tick damage more frequently instead of passing harmlessly through hitboxes.
-- **Automated Headless Smoke Testing (`test.js`, Puppeteer)**:
-  - Implemented a headless Node.js Puppeteer test script (`npm test`) that automatically launches the game, starts a match, triggers the Quick Test panel to max out all upgrades, and verifies runtime stability over 10 seconds.
-  - Hard-fails on unhandled `TypeError`s, `SyntaxError`s, or any browser console errors, guaranteeing robust refactors without manual QA verification.
-- **Cinematic Pause System (`state.isCinematic`, `WaveManager.js`, `Game.js`)**:
-  - Automatically isolates visual, environment, and camera updates from the core gameplay loop.
-  - Pauses player movement, enemy logic, projectiles, and wave timers without invoking the UI Pause Menu.
-  - During Boss Spawns (`WaveManager`), the camera focuses on the spawn beacon for 1.4s, and smoothly unpauses gameplay exactly when the camera finishes returning to the player.
-- **Dynamic Asset Integration (`TextureCache.js`, `upgrades.js`)**:
-  - Replaced legacy emoji upgrade icons with standard HTML image tags `<img src="assets/upgrades/...png" alt="icon">`.
-  - `preloadUpgradeIcons` dynamically parses `src` attributes, extracting paths to preload new PNG assets directly into `preloadedUpgradeImages` at startup without hardcoded lists.
-- **PWA & TWA (Bubblewrap) Architecture**:
-  - **Dynamic Cache Versioning (`sw.js`)**: Integrated explicit `CACHE_VERSION` management (e.g., `1.0.24`). The Service Worker `activate` event actively deletes obsolete caches to prevent conflicts. Incorporates a `SKIP_WAITING` postMessage listener and `self.clients.claim()` for seamless updates on demand.
-  - **HTTP Cache Bypass**: Implemented `{ cache: 'reload' }` within `cache.addAll()` requests during the Service Worker install phase, strictly bypassing the browser's HTTP CDN cache to guarantee extraction of fresh files instead of storing stale versions.
-  - **Global Loading Screen**: Added a native, render-blocking `<div id="global-loading-screen">` spinner in the DOM body, simultaneously adding `defer` to PixiJS `<script>` tags to unblock HTML parsing. It provides immediate visual feedback on first-paint, automatically hiding once `main.js` and fonts fully initialize.
-  - **Update Notification Overlay**: The game actively listens to the Service Worker's `updatefound` event and `navigator.serviceWorker.controller` to detect new versions downloaded in the background. It surfaces a non-intrusive `#update-available-overlay` prompting the user to safely `"RESTART GAME"` and apply the update without abrupt interruptions.
-  - Implemented `manifest.json` and `sw.js` (Service Worker) to cache all vital assets, fulfilling the technical requirements for a Progressive Web App (PWA) with offline support.
-  - Adapted routing paths (`start_url: "/Neon-Survivors/index.html"`) for compatibility with GitHub Pages subdirectory hosting.
-  - Configured `@bubblewrap/cli` (`twa-manifest.json`) to generate an installable Android APK, effectively wrapping the web game in a Trusted Web Activity.
-  - Implemented strict Git hygiene via `.gitignore` to prevent sensitive certificates (`android.keystore`) and heavy Gradle build artifacts (`.gradle/`, `app/build/`) from leaking into public repositories while maintaining the compiled `.apk` for direct downloads.
