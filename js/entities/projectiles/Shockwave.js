@@ -4,13 +4,14 @@ import { Projectile } from './Projectile.js';
 import { worldLayer } from '../../main.js';
 
 export class Shockwave extends Projectile {
-  constructor(x, y, maxRadius, damage, color = "#00ffb4", weaponType = 'shockwave') {
+  constructor(x, y, maxRadius, damage, color = "#00ffb4", weaponType = 'shockwave', knockback = 22) {
     super(x, y, 0, 0, damage, color, 10, false, 0);
     this.currentRadius = 10;
     this.maxRadius = maxRadius;
     this.damage = damage;
     this.color = color;
     this.weaponType = weaponType;
+    this.knockback = knockback;
     this.alpha = 1;
     this.hitTargets = new Set();
     
@@ -37,9 +38,12 @@ export class Shockwave extends Projectile {
         e.takeDamage(this.damage, this.color);
         state.recordDamage(this.weaponType, this.damage);
         this.hitTargets.add(e);
-        const ang = Math.atan2(e.y - this.y, e.x - this.x);
-        e.x += Math.cos(ang) * 22;
-        e.y += Math.sin(ang) * 22;
+        
+        if (this.knockback > 0) {
+          const ang = Math.atan2(e.y - this.y, e.x - this.x);
+          e.x += Math.cos(ang) * this.knockback;
+          e.y += Math.sin(ang) * this.knockback;
+        }
       }
     });
 

@@ -25,6 +25,10 @@ This repository contains a browser-based arena survival game ("Neon Survivors").
 - **Modifying UI**: Update HTML in `index.html`, styles in `css/styles.css`, and logic in `js/ui/UIManager.js`.
 
 ### Recent Implementations & System Mechanics
+- **Version 1.3.4 - The Weapon Rework Update (2026-09-15)**:
+  - **Shield Explosion Rework (`Player.js`, `Shockwave.js`)**: Massive radius increase (`400`), damage reduction (`600`), and extreme knockback (`80px`). Fixed duplicate instant-damage bug by delegating full sweep to the `Shockwave` entity.
+  - **Neon Blaster Smart Multi-Shot (`Player.js`)**: Firing multiple projectiles now dynamically scans for nearby enemies. It isolates up to `count` targets and distributes projectiles equitably (Round-Robin). Excess projectiles against fewer targets naturally fan out via localized spread angles.
+  - **Orbital Projectile Blocking System (`Player.js`)**: Orbitals can intercept physical hostile projectiles (excluding Lasers/Hazard Areas via `isUnblockable = true`). Blocks trigger a 1.5s disabled state (`disabledTimer: 90`), during which the orbital loses its trail, turns transparent, takes a 70% damage penalty, and temporarily ceases blocking duties.
 - **Version 1.3.3 - The Quality of Life Update (2026-09-11)**:
   - **Geometric Laboratory Topology (metaUpgrades.js)**: Restructured the entire Laboratory tree into a perfect non-overlapping diamond fractal. The 4 core branches stem outwards in a '+' shape (Health X<0, Damage Y>0, Utility X>0, Economy Y<0). Sub-branches expand strictly diagonally via dx=±120, dy=±120 relative offsets, guaranteeing infinite expansion without quadrant line collisions.
   - **8 New Meta-Upgrades Engine Integration**:
@@ -114,6 +118,11 @@ This repository contains a browser-based arena survival game ("Neon Survivors").
 - **Projectiles & Weapons (`Projectiles.js`, `LaserBeam.js` & `Player.js`)**:
   - **Multiplicative Damage System**: Final damage computation strictly follows `Base Damage * Weapon Multiplier * Global Multiplier * Active Shield Bonus * Critical Hit`. Upgrades synergize multiplicatively (e.g. Shield Power damage bonuses multiply the entire stack, not just adding flat percentages).
   - **Laser Cannon Damage Falloff**: Piercing laser beam calculates enemies sorted by distance along the beam path. Applies a progressive -5% damage falloff per enemy struck (1st enemy: 100%, 2nd: 95%, 3rd: 90% down to a 10% floor).
+  - **Laser Cannon Heat Anti-Exploit System**:
+    - **Exponential Heating**: Holding the trigger progressively multiplies heat generated per frame by `1.4^n` (where `n` increments every 2 seconds / 120 frames). This limits infinite firing in the late-game, mathematically capping max continuous fire to ~22s regardless of battery size.
+    - **Decoupled Cooling**: Heat dissipation is a flat rate that accelerates over time (up to 5.0x) for every second the player rests the weapon after a 1.5s cooling delay.
+    - **Trade-off Heat Penalties**: Destructive upgrades passively increase base heat generation (Sub-lasers: +50%, Damage/Width: +10% per upgrade), making high-DPS lasers burn out faster.
+    - **Micro-Release Prevention**: To stop players from resetting the exponential multiplier by releasing the trigger for 1 frame, `timeFiring` decays smoothly rather than resetting instantly.
   - Missiles use a queue system (`missilesQueue`, `missileFireTimer`) to fire sequentially with a 0.2s delay instead of all at once.
   - Enemy projectiles ignore time-to-live (`life`) checks and only despawn when leaving the screen bounds.
   - The player's main blaster supports a `homingStrength` mechanic for subtly tracking targets.

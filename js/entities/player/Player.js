@@ -127,8 +127,8 @@ export class Player {
       rateBonusUpgrades: 0,
       rechargeUpgrades: 0,
       explodeOnBreak: false,
-      explodeRadius: 240,
-      explodeDamage: 1200,
+      explodeRadius: 400,
+      explodeDamage: 600,
       saveChargeChance: 0.0,
       saveChanceUpgrades: 0,
       extraChargesUpgrades: 0
@@ -136,7 +136,7 @@ export class Player {
 
     this.weapons = {
 
-      blaster: { level: 1, timer: 0, cooldown: 60, cooldownMult: 1.0, projectileCount: 1, damage: 22, range: 500, speed: 12, homing: 0, homingUpgrades: 0 },
+      blaster: { level: 1, timer: 0, cooldown: 30, cooldownMult: 1.0, projectileCount: 1, damage: 10, range: 500, speed: 12, homing: 0, homingUpgrades: 0 },
       orbitals: { level: 0, count: 2, radius: 120, angle: 0, speed: 0.05, speedMult: 1.0, damage: 35, tickTimer: 0, tickInterval: 10, size: 12, sizeMult: 1.0, countUpgrades: 0, sizeUpgrades: 0, speedUpgrades: 0 },
       nova: { level: 0, count: 6, timer: 0, cooldown: 400, speed: 6, speedMult: 1.0, spiral: false },
       shockwave: { level: 0, timer: 0, cooldown: 230, cooldownMult: 1.0, radius: 175, radiusMult: 1.0, damage: 150, rangeUpgrades: 0, rateUpgrades: 0 },
@@ -434,31 +434,28 @@ export class Player {
   fireBlaster() {
     const w = this.weapons.blaster;
     const effectiveRange = w.range * (w.rangeMult || 1.0);
-    let closest = state.spatialGrid.getNearest(this.x, this.y, effectiveRange);
-    let minD = effectiveRange;
-
-    if (closest) {
-      minD = dist(this.x, this.y, closest.x, closest.y);
-    }
-
-    // Also check boss targets if closer
-    for (let b of state.bosses) {
-      for (let target of b.getTargetables()) {
-        const d = dist(this.x, this.y, target.x, target.y);
-        if (d < minD) {
-          minD = d;
-          closest = target;
-        }
-      }
-    }
-
-    const baseAngle = closest ? Math.atan2(closest.y - this.y, closest.x - this.x) : this.angle;
     const count = w.projectileCount;
     const dmg = w.damage * this.getEffectiveDamageMult();
     const homing = w.homing || 0;
 
-    for (let i = 0; i < count; i++) {
-      const spread = count > 1 ? (i - (count - 1) / 2) * 0.09 : 0;
+    // 1. Recolectar a todos los objetivos potenciales
+    let potentialTargets = [];
+    state.spatialGrid.queryRadius(this.x, this.y, effectiveRange, (e) => {
+      if (e.hp > 0) potentialTargets.push(e);
+    });
+
+    for (let b of state.bosses) {
+      for (let target of b.getTargetables()) {
+        const d = dist(this.x, this.y, target.x, target.y);
+        if (d <= effectiveRange) {
+          potentialTargets.push(target);
+        }
+      }
+    }
+
+    // 2. Función auxiliar para disparar un proyectil individual
+    const spawnProj = (baseAngle, spreadIndex, totalSpreadShots) => {
+      const spread = totalSpreadShots > 1 ? (spreadIndex - (totalSpreadShots - 1) / 2) * 0.09 : 0;
       const finalAngle = baseAngle + spread;
       const effectiveSpeed = w.speed * (w.speedMult || 1.0);
       const vx = Math.cos(finalAngle) * effectiveSpeed;
@@ -469,8 +466,40 @@ export class Player {
       } else {
         state.projectiles.push(new Projectile(this.x, this.y, vx, vy, dmg, "#00ffff", 4, false, homing));
       }
+    };
+
+    // 3. Si no hay enemigos, disparar todo al frente
+    if (potentialTargets.length === 0) {
+      for (let i = 0; i < count; i++) {
+        spawnProj(this.angle, i, count);
+      }
+    } else {
+      // 4. Ordenar por distancia y seleccionar los objetivos más cercanos
+      let targetDistances = potentialTargets.map(t => ({
+        entity: t,
+        d: dist(this.x, this.y, t.x, t.y)
+      }));
+      targetDistances.sort((a, b) => a.d - b.d);
+      
+      // Tomamos como máximo "count" enemigos (uno para cada proyectil)
+      let validTargets = targetDistances.map(t => t.entity).slice(0, count);
+      
+      // 5. Repartir los proyectiles de forma equitativa (Round-Robin)
+      let targetCounts = new Map();
+      for (let i = 0; i < count; i++) {
+        let t = validTargets[i % validTargets.length];
+        targetCounts.set(t, (targetCounts.get(t) || 0) + 1);
+      }
+      
+      // 6. Disparar a cada objetivo con spread local si recibe múltiples disparos
+      targetCounts.forEach((shots, target) => {
+        const targetAngle = Math.atan2(target.y - this.y, target.x - this.x);
+        for (let i = 0; i < shots; i++) {
+          spawnProj(targetAngle, i, shots);
+        }
+      });
     }
-    
+
     audioManager.playSound('fire_main_gun', { volume: 0.3, throttleMs: 100 });
   }
 
@@ -481,6 +510,10 @@ export class Player {
     w.angle = this.orbitalsAngle;
 
     if (!w.timers) w.timers = [];
+    if (!w.states) w.states = [];
+    while (w.states.length < w.count) {
+      w.states.push({ disabledTimer: 0 });
+    }
 
     // Sync PIXI Sprites for orbitals
     const effSize = w.size * w.sizeMult;
@@ -495,6 +528,7 @@ export class Player {
         const sprite = this.orbitalSprites.pop();
         this.orbitalContainer.removeChild(sprite);
         sprite.destroy();
+        w.states.pop();
     }
     for (let i = 0; i < w.count; i++) {
         const sprite = this.orbitalSprites[i];
@@ -513,18 +547,75 @@ export class Player {
     }
 
     for (let i = 0; i < w.count; i++) {
+      const stateObj = w.states[i];
+      if (stateObj.disabledTimer > 0) stateObj.disabledTimer--;
+
       const curAng = w.angle + (i * 2 * Math.PI) / w.count;
       const ox = this.x + Math.cos(curAng) * w.radius;
       const oy = this.y + Math.sin(curAng) * w.radius;
       const orbRadius = effSize;
-      const orbDmg = w.damage * this.getEffectiveDamageMult();
-      const sourceSprite = this.orbitalSprites[i];
       
-      // Orbital Trail
-      if (state.particlePool && Math.random() < 0.65) {
+      const sourceSprite = this.orbitalSprites[i];
+      const isDisabled = stateObj.disabledTimer > 0;
+      const orbDmg = (w.damage * this.getEffectiveDamageMult()) * (isDisabled ? 0.3 : 1.0);
+
+      // Visuals: Transparency and Blink
+      if (isDisabled) {
+        if (stateObj.disabledTimer <= 30 && stateObj.disabledTimer % 10 < 5) {
+          sourceSprite.alpha = 0.8; // Blink
+        } else {
+          sourceSprite.alpha = 0.3; // Transparent
+        }
+      } else {
+        sourceSprite.alpha = 1.0;
+      }
+      
+      // Orbital Trail (only if active)
+      if (!isDisabled && state.particlePool && Math.random() < 0.65) {
         state.particlePool.acquire(ox, oy, "#ff00ff", 0.3, 0.12, orbRadius * 0.7);
       }
       
+      // Block Enemy Projectiles
+      if (!isDisabled) {
+        let blocked = false;
+        
+        // Build a dynamic array of all projectile lists to check
+        const projLists = [state.enemyProjectiles, state.acceleratingProjectiles, state.fallingProjectiles];
+        if (state.projectilePool && state.projectilePool.pool) {
+          projLists.push(state.projectilePool.pool);
+        }
+
+        for (let list of projLists) {
+          if (!list) continue;
+          for (let p of list) {
+            // Must be active
+            if (p.active === false || p.isUnblockable) continue;
+            // If it's a pooled projectile, we only block enemy ones
+            if (p.isEnemy === false) continue;
+            
+            if (dist(ox, oy, p.x, p.y) < orbRadius + (p.radius || 10)) {
+              if (p.hasOwnProperty('active')) {
+                p.active = false;
+              } else {
+                p.x = -99999; // Force out of bounds so Game.js removes it
+              }
+              if (p.sprite) p.sprite.visible = false;
+              if (typeof p.destroy === 'function') p.destroy();
+              blocked = true;
+              break;
+            }
+          }
+          if (blocked) break;
+        }
+
+        if (blocked) {
+          stateObj.disabledTimer = 90; // Disable for 1.5s
+          spawnExplosion(ox, oy, "#ffffff", 8, 2.5); // Block Spark
+          audioManager.playSound('hit_satellite', { volume: 0.5, throttleMs: 50 });
+          continue; // Skip damage query for this frame
+        }
+      }
+
       const speedRatio = (w.speed * w.speedMult) / 0.05; 
       const cooldownSeconds = (w.tickInterval / 60.0) / speedRatio;
 
@@ -646,87 +737,162 @@ export class Player {
       w.activeSubLasers = [];
       w.tickDamage = true; // Force tick damage for continuous beams
       w.duration = 9999;
+      w.chargeTimer = 0;
+      w.chargeRequired = 90; // 1.5 seconds at 60fps
+      w.timeNotFiring = 0;
+      w.timeFiring = 0;
     }
 
     const isFiring = (mouse.down || aimInput.active);
 
     if (isFiring && !w.overheated) {
-      // Heating up
-      const heatRate = this.hasActiveShield() ? (1 - (this.shield.rateBonusUpgrades || 0) * 0.05) : 1;
-      w.heat += 1.0 * heatRate * (w.heatGenMult || 1.0); // Heating is faster now
-      
-      if (w.heat >= w.maxHeat) {
-        // Overheat trigger
-        w.heat = w.maxHeat; // lock at exactly max
-        w.overheated = true;
-        w.overheatLockTimer = 120; // 2 seconds locked in red
+      w.timeNotFiring = 0;
+      if (w.chargeTimer < w.chargeRequired) {
+        // Charging phase
+        w.chargeTimer++;
+        
+        // Ensure laser is off while charging
         this.destroyActiveLasers(w);
         if (state.camera && typeof state.camera.setAimOffset === 'function') state.camera.setAimOffset(0, 0);
-        audioManager.playSound('error', { volume: 0.5, throttleMs: 200 }); // Error/Overheat sound
-      } else {
-        // Firing logic
-        let angle = this.angle; // The ship is now turning slowly, the laser must follow the ship's physical rotation
 
-        if (state.camera && typeof state.camera.setAimOffset === 'function') {
-           const aimDist = 160;
-           state.camera.setAimOffset(Math.cos(angle) * aimDist, Math.sin(angle) * aimDist);
-        }
-
-        const effectiveLaserDmg = (w.damage * w.damageMult * this.getEffectiveDamageMult()) * 0.5; // Scaled down per tick since it hits 12 times/sec
-
-        if (!w.activeLaser) {
-           w.activeLaser = new LaserBeam(this.x, this.y, angle, effectiveLaserDmg, w.width * w.widthMult, 9999, false, w.dot ? w.dotDamage : 0, w.dot ? w.dotDuration : 0, true);
-           state.laserBeams.push(w.activeLaser);
-           
-           if (w.subLasers) {
-             const subWidth = (w.width * w.widthMult) * 0.25;
-             const subDmg = effectiveLaserDmg * 0.25;
-             w.activeSubLasers = [
-               new LaserBeam(this.x, this.y, angle - Math.PI / 6, subDmg, subWidth, 9999, true, w.dot ? w.dotDamage : 0, w.dot ? w.dotDuration : 0, true),
-               new LaserBeam(this.x, this.y, angle + Math.PI / 6, subDmg, subWidth, 9999, true, w.dot ? w.dotDamage : 0, w.dot ? w.dotDuration : 0, true)
-             ];
-             state.laserBeams.push(...w.activeSubLasers);
-           }
-        } else {
-           // Update coordinates of continuous beam
-           w.activeLaser.startX = this.x;
-           w.activeLaser.startY = this.y;
-           w.activeLaser.angle = angle;
-           w.activeLaser.damage = effectiveLaserDmg;
-           w.activeLaser.life = 9999;
-           
-           if (w.subLasers && w.activeSubLasers && w.activeSubLasers.length === 2) {
-             w.activeSubLasers[0].startX = this.x; w.activeSubLasers[0].startY = this.y; w.activeSubLasers[0].angle = angle - Math.PI / 6; w.activeSubLasers[0].life = 9999; w.activeSubLasers[0].damage = effectiveLaserDmg * 0.25;
-             w.activeSubLasers[1].startX = this.x; w.activeSubLasers[1].startY = this.y; w.activeSubLasers[1].angle = angle + Math.PI / 6; w.activeSubLasers[1].life = 9999; w.activeSubLasers[1].damage = effectiveLaserDmg * 0.25;
-           }
+        // Calculate and draw expanding circle
+        if (!this.laserChargeGraphics) {
+          this.laserChargeGraphics = new PIXI.Graphics();
+          if (this.container) this.container.addChild(this.laserChargeGraphics);
         }
         
-        // Firing particles & sound
-        if (state.particlePool && Math.random() < 0.2) {
-           const p = state.particlePool.acquire(this.x, this.y, "#00ff00", 3, 0.05, 3);
-           if (p) {
-             p.vx = Math.cos(angle + (Math.random()-0.5)) * 4;
-             p.vy = Math.sin(angle + (Math.random()-0.5)) * 4;
-           }
+        this.laserChargeGraphics.clear();
+        const radius = (w.chargeTimer / w.chargeRequired) * 20; // Max radius 40
+        
+        // El circulo debe salir de la punta donde está mirando el jugador
+        const tipX = Math.cos(this.angle) * this.radius;
+        const tipY = Math.sin(this.angle) * this.radius;
+        
+        this.laserChargeGraphics.beginFill(0xffff00, 0.8); // Color amarillo rellenado
+        this.laserChargeGraphics.drawCircle(tipX, tipY, radius);
+        this.laserChargeGraphics.endFill();
+      } else {
+        // Firing phase
+        if (this.laserChargeGraphics) {
+          this.laserChargeGraphics.clear();
         }
-        audioManager.playSound('hit_laser_cannon', { volume: 0.2, throttleMs: 80 }); 
+
+        // Heating up
+        w.timeFiring = (w.timeFiring || 0) + 1;
+        const n = Math.floor(w.timeFiring / 120); // n aumenta cada 2 segundos (120 frames)
+        const exponentialHeat = Math.pow(1.4, n);
+
+        // Trade-offs: Las mejoras aumentan el costo de calor
+        const tradeOffMult = 1.0 
+                             + (w.subLasers ? 0.5 : 0) // +50% calor por sub-láseres
+                             + ((w.dmgUpgrades || 0) * 0.1) // +10% calor por cada mejora de daño
+                             + ((w.widthUpgrades || 0) * 0.1); // +10% calor por cada mejora de tamaño
+
+        const heatRate = this.hasActiveShield() ? (1 - (this.shield.rateBonusUpgrades || 0) * 0.05) : 1;
+        
+        w.heat += 1.0 * heatRate * (w.heatGenMult || 1.0) * tradeOffMult * exponentialHeat;
+        
+        if (w.heat >= w.maxHeat) {
+          // Overheat trigger
+          w.heat = w.maxHeat; // lock at exactly max
+          w.overheated = true;
+          // Option B: Castigo severo progresivo. Inicia en 2s (120 frames) para la base (240 heat).
+          const batteryRatio = w.maxHeat / 240;
+          w.overheatLockTimer = Math.floor(120 * batteryRatio); 
+          this.destroyActiveLasers(w);
+          if (state.camera && typeof state.camera.setAimOffset === 'function') state.camera.setAimOffset(0, 0);
+          audioManager.playSound('error', { volume: 0.5, throttleMs: 200 }); // Error/Overheat sound
+        } else {
+          // Firing logic
+          let angle = this.angle; // The ship is now turning slowly, the laser must follow the ship's physical rotation
+
+          if (state.camera && typeof state.camera.setAimOffset === 'function') {
+             const aimDist = 160;
+             state.camera.setAimOffset(Math.cos(angle) * aimDist, Math.sin(angle) * aimDist);
+          }
+
+          const effectiveLaserDmg = (w.damage * w.damageMult * this.getEffectiveDamageMult()) * 0.5; // Scaled down per tick since it hits 12 times/sec
+
+          if (!w.activeLaser) {
+             w.activeLaser = new LaserBeam(this.x, this.y, angle, effectiveLaserDmg, w.width * w.widthMult, 9999, false, w.dot ? w.dotDamage : 0, w.dot ? w.dotDuration : 0, true);
+             state.laserBeams.push(w.activeLaser);
+             
+             if (w.subLasers) {
+               const subWidth = (w.width * w.widthMult) * 0.25;
+               const subDmg = effectiveLaserDmg * 0.25;
+               w.activeSubLasers = [
+                 new LaserBeam(this.x, this.y, angle - Math.PI / 6, subDmg, subWidth, 9999, true, w.dot ? w.dotDamage : 0, w.dot ? w.dotDuration : 0, true),
+                 new LaserBeam(this.x, this.y, angle + Math.PI / 6, subDmg, subWidth, 9999, true, w.dot ? w.dotDamage : 0, w.dot ? w.dotDuration : 0, true)
+               ];
+               state.laserBeams.push(...w.activeSubLasers);
+             }
+          } else {
+             // Update coordinates of continuous beam
+             w.activeLaser.startX = this.x;
+             w.activeLaser.startY = this.y;
+             w.activeLaser.angle = angle;
+             w.activeLaser.damage = effectiveLaserDmg;
+             w.activeLaser.life = 9999;
+             
+             if (w.subLasers && w.activeSubLasers && w.activeSubLasers.length === 2) {
+               w.activeSubLasers[0].startX = this.x; w.activeSubLasers[0].startY = this.y; w.activeSubLasers[0].angle = angle - Math.PI / 6; w.activeSubLasers[0].life = 9999; w.activeSubLasers[0].damage = effectiveLaserDmg * 0.25;
+               w.activeSubLasers[1].startX = this.x; w.activeSubLasers[1].startY = this.y; w.activeSubLasers[1].angle = angle + Math.PI / 6; w.activeSubLasers[1].life = 9999; w.activeSubLasers[1].damage = effectiveLaserDmg * 0.25;
+             }
+          }
+          
+          // Firing particles & sound
+          if (state.particlePool && Math.random() < 0.2) {
+             const p = state.particlePool.acquire(this.x, this.y, "#00ff00", 3, 0.05, 3);
+             if (p) {
+               p.vx = Math.cos(angle + (Math.random()-0.5)) * 4;
+               p.vy = Math.sin(angle + (Math.random()-0.5)) * 4;
+             }
+          }
+          audioManager.playSound('hit_laser_cannon', { volume: 0.2, throttleMs: 80 }); 
+        }
       }
     } else {
-      // Cooling down
+      // Cooling down or not firing
+      w.chargeTimer = 0; // Reset charge if not firing or overheated
+      if (this.laserChargeGraphics) {
+        this.laserChargeGraphics.clear();
+      }
+
       if (state.camera && typeof state.camera.setAimOffset === 'function') {
          state.camera.setAimOffset(0, 0);
       }
       this.destroyActiveLasers(w);
+      w.timeNotFiring++; // Track time without firing
       
+      // Disminuimos progresivamente timeFiring cuando no dispara para evitar
+      // el exploit de soltar el clic 1 frame y reiniciar el multiplicador exponencial.
+      w.timeFiring = Math.max(0, (w.timeFiring || 0) - 2);
+
       if (w.overheated && w.overheatLockTimer > 0) {
         w.overheatLockTimer--; // stays locked at maxHeat
       } else {
-        // Convert flat cooling to percentage of maxHeat so larger battery doesn't mean longer cooldown time
-        const baseCoolPct = w.overheated ? (0.35 / 240) : (0.75 / 240);
-        const coolRate = (w.maxHeat * baseCoolPct) * (w.coolantInstalled ? 2.0 : 1.0);
-        w.heat = Math.max(0, w.heat - coolRate);
-        if (w.heat === 0) {
-          w.overheated = false;
+        // Option C: Retraso de enfriamiento de 1.5s (90 frames)
+        // If overheated, the delay was the lock timer itself, so we don't apply an extra delay.
+        if (!w.overheated && w.timeNotFiring < 90) {
+          // Aún reteniendo calor...
+        } else {
+          // Option A: Enfriamiento Desvinculado (Valor Plano)
+          let baseCoolRate = w.overheated ? 0.35 : 0.75;
+          if (w.coolantInstalled) baseCoolRate *= 2.0;
+
+          // Aceleración de enfriamiento: 
+          // Por cada segundo (60 frames) que pase sin disparar (después del retraso inicial), aumenta 25% la velocidad.
+          const extraFrames = Math.max(0, w.timeNotFiring - (w.overheated ? 0 : 90));
+          let acceleration = 1.0 + (extraFrames / 60) * 0.25;
+          acceleration = Math.min(acceleration, 5.0); // Limitamos a un máximo de 5x para que no sea instantáneo
+
+          const finalCoolRate = baseCoolRate * acceleration;
+          w.heat = Math.max(0, w.heat - finalCoolRate);
+          
+          if (w.heat === 0) {
+            w.overheated = false;
+            w.timeFiring = 0; // Se reinicia completamente el multiplicador al enfriar al 100%
+          }
         }
       }
     }
@@ -833,37 +999,17 @@ export class Player {
   }
 
   triggerShieldExplosion(color) {
-    const explosionRadius = this.shield.explodeRadius || 240;
-    const explosionDamage = (this.shield.explodeDamage || 1200) * this.getEffectiveDamageMult();
+    // Increase size and decrease damage
+    const explosionRadius = this.shield.explodeRadius || 400; // Increased from 240
+    const explosionDamage = (this.shield.explodeDamage || 600) * this.getEffectiveDamageMult(); // Decreased from 1200
+    const knockback = 80; // Massive knockback for the shield
 
     // Visual Explosion in matching charge color
     spawnExplosion(this.x, this.y, color, 35, 4.5);
     
-    // Add expanding visual shockwave in charge color
-    state.shockwaves.push(new Shockwave(this.x, this.y, explosionRadius, explosionDamage, color, 'shield'));
+    // Shockwave entity handles BOTH damage and knockback accurately over time as it expands
+    state.shockwaves.push(new Shockwave(this.x, this.y, explosionRadius, explosionDamage, color, 'shield', knockback));
     audioManager.playSound('fire_shockwave', { volume: 0.8, throttleMs: 50 });
-    
-    // Query spatial grid for enemies
-    state.spatialGrid.queryRadius(this.x, this.y, explosionRadius, (e) => {
-      if (e.hp <= 0) return;
-      e.takeDamage(explosionDamage, color);
-      state.recordDamage('shield', explosionDamage);
-    });
-
-    // Check Bosses
-    for (let b of state.bosses) {
-      const damagedParents = new Set();
-      for (let t of b.getTargetables()) {
-        const actualTarget = t.parent || t;
-        if (damagedParents.has(actualTarget)) continue;
-
-        if (dist(this.x, this.y, t.x, t.y) < explosionRadius + t.radius) {
-          t.takeDamage(explosionDamage, color);
-          state.recordDamage('shield', explosionDamage);
-          damagedParents.add(actualTarget);
-        }
-      }
-    }
   }
 
   grantUpgradeInvulnerability() {
@@ -990,8 +1136,8 @@ export class Player {
       rateBonusUpgrades: 0,
       rechargeUpgrades: 0,
       explodeOnBreak: false,
-      explodeRadius: 240,
-      explodeDamage: 1200,
+      explodeRadius: 400,
+      explodeDamage: 600,
       saveChargeChance: 0.0,
       saveChanceUpgrades: 0,
       extraChargesUpgrades: 0
@@ -1179,6 +1325,7 @@ export class Player {
       this.orbitalContainer = null;
       this.shieldGraphics = null;
       this.uiGraphics = null;
+      this.laserChargeGraphics = null;
     }
   }
 }

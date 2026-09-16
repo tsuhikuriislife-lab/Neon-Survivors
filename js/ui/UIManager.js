@@ -1051,10 +1051,17 @@ function updateTestingPanelHUD() {
   const totalDPS = state.gameTime > 0 ? (totalDamage / state.gameTime).toFixed(1) : "0.0";
   const roundedDmg = Math.round(totalDamage);
 
+  const p = state.player;
+  const w = p && p.weapons && p.weapons.laserCannon;
+
   // Firma ligera para dirty check
   let testSig = `${roundedDmg}_${totalDPS}`;
   for (let key in state.damageStats) {
     testSig += `_${Math.round(state.damageStats[key])}`;
+  }
+  
+  if (w && w.level > 0) {
+    testSig += `_L_${Math.round(w.heat || 0)}_${w.overheated}_${w.overheatLockTimer}_${w.chargeTimer}_${w.timeFiring}_${w.timeNotFiring}`;
   }
 
   if (_uiCache.testSignature === testSig) return;
@@ -1092,6 +1099,50 @@ function updateTestingPanelHUD() {
       `;
     }
   }
+
+  if (w && w.level > 0) {
+    const n = Math.floor((w.timeFiring || 0) / 120);
+    const expMult = Math.pow(1.4, n).toFixed(2);
+    const tradeOffMult = 1.0 + (w.subLasers ? 0.5 : 0) + ((w.dmgUpgrades || 0) * 0.1) + ((w.widthUpgrades || 0) * 0.1);
+    
+    const heatRate = p.hasActiveShield() ? (1 - (p.shield.rateBonusUpgrades || 0) * 0.05) : 1;
+    const finalHeatGen = (1.0 * heatRate * (w.heatGenMult || 1.0) * tradeOffMult * Math.pow(1.4, n)).toFixed(3);
+
+    let baseCoolRate = w.overheated ? 0.35 : 0.75;
+    if (w.coolantInstalled) baseCoolRate *= 2.0;
+    const extraFrames = Math.max(0, (w.timeNotFiring || 0) - (w.overheated ? 0 : 90));
+    let acceleration = 1.0 + (extraFrames / 60) * 0.25;
+    acceleration = Math.min(acceleration, 5.0);
+    const finalCoolRate = (baseCoolRate * acceleration).toFixed(3);
+
+    let stateText = '<span style="color:lime">READY</span>';
+    if (w.overheated) stateText = '<span style="color:red">OVERHEATED</span>';
+    else if (w.chargeTimer < w.chargeRequired && w.chargeTimer > 0) stateText = '<span style="color:yellow">CHARGING</span>';
+
+    weaponsHtml += `
+      <div style="margin-top: 12px; font-size: 10px; color: #ccc; background: rgba(0,0,0,0.6); padding: 8px; border-radius: 4px; border: 1px solid #444;">
+        <div style="color: #00ff66; font-weight: bold; margin-bottom: 4px;">[LASER HEAT DEBUG]</div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px;">
+          <div><b>Heat:</b> ${Math.round(w.heat || 0)} / ${w.maxHeat}</div>
+          <div><b>State:</b> ${stateText}</div>
+          <div><b>Charge:</b> ${w.chargeTimer} / ${w.chargeRequired}</div>
+          <div><b>LockTimer:</b> ${w.overheatLockTimer || 0}</div>
+          <div><b>timeFiring:</b> ${w.timeFiring || 0}</div>
+          <div><b>Exp Mult:</b> x${expMult}</div>
+          <div><b>timeNotFiring:</b> ${w.timeNotFiring || 0}</div>
+          <div><b>Accel Mult:</b> x${acceleration.toFixed(2)}</div>
+        </div>
+        <hr style="border: 0; border-top: 1px solid #555; margin: 6px 0;" />
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px;">
+          <div><b>TradeOff:</b> x${tradeOffMult.toFixed(2)}</div>
+          <div><b>BaseGen:</b> x${(w.heatGenMult || 1.0).toFixed(2)}</div>
+          <div style="color:#ff6666"><b>Heat Gen:</b> +${finalHeatGen}/f</div>
+          <div style="color:#66ff66"><b>Cool Rate:</b> -${finalCoolRate}/f</div>
+        </div>
+      </div>
+    `;
+  }
+
   d.weaponsContainer.innerHTML = weaponsHtml;
 }
 
