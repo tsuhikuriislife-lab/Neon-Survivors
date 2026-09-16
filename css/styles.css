@@ -1532,3 +1532,21 @@
 #adminConsoleSubmit:hover {
   background: #00cccc;
 }
+
+.options-btn {
+  background: none;
+  border: 2px solid #ff0055;
+  color: #ff0055;
+  padding: 10px 20px;
+  font-family: 'Courier New', Courier, monospace;
+  font-weight: bold;
+  font-size: 16px;
+  cursor: pointer;
+  text-transform: uppercase;
+  transition: all 0.2s ease;
+  border-radius: 4px;
+}
+.options-btn:hover {
+  background: rgba(255, 0, 85, 0.2);
+  box-shadow: 0 0 10px currentColor;
+}

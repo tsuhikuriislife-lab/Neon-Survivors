@@ -2,6 +2,8 @@ import { bitmapFont } from "./engine/BitmapFont.js";
 import { state } from './engine/gameState.js';
 import { initInput } from './engine/Input.js';
 import { initUIListeners } from './ui/UIManager.js';
+import { initCustomizeMenu } from './ui/CustomizeMenu.js';
+
 import { Laboratory } from './ui/Laboratory.js';
 import { initGame, loop } from './engine/Game.js';
 import { audioManager } from './engine/AudioManager.js';
@@ -181,6 +183,7 @@ window.addEventListener('touchend', startAudio, { passive: true });
 
 initInput();
 initUIListeners();
+  initCustomizeMenu();
 Laboratory.init();
 
 // Hide the global loading screen once the engine is ready

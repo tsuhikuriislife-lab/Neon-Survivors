@@ -34,6 +34,7 @@ export class KyrenBoss extends Boss {
     this.color = "#00ffcc";
     this.angle = 0;
     this.innerAngle = 0;
+    this.orbitDirection = 1;
 
     this.state = 0;
     this.stateTimer = 0;
@@ -53,6 +54,28 @@ export class KyrenBoss extends Boss {
     this.innerSprite = new PIXI.Sprite(this.textureInner);
     this.innerSprite.anchor.set(0.5);
     worldLayer.addChild(this.innerSprite);
+
+    // Graphic for dashed orbit path
+    this.orbitPathGraphics = new PIXI.Graphics();
+    this.orbitPathGraphics.x = cx;
+    this.orbitPathGraphics.y = cy;
+    this.orbitPathGraphics.lineStyle(4, 0x00ffcc, 0.25);
+    const dashCount = 24;
+    const dashLen = (Math.PI * 2) / (dashCount * 2);
+    for (let i = 0; i < dashCount; i++) {
+      const startAng = i * dashLen * 2;
+      const endAng = startAng + dashLen;
+      
+      const startX = Math.cos(startAng) * this.orbitRadius;
+      const startY = Math.sin(startAng) * this.orbitRadius;
+      this.orbitPathGraphics.moveTo(startX, startY);
+      this.orbitPathGraphics.arc(0, 0, this.orbitRadius, startAng, endAng);
+    }
+    worldLayer.addChild(this.orbitPathGraphics); // Put it behind the boss
+
+    // Graphic for dash indicator
+    this.dashIndicatorGraphics = new PIXI.Graphics();
+    worldLayer.addChild(this.dashIndicatorGraphics);
   }
 
   getTargetables() {
@@ -143,18 +166,36 @@ export class KyrenBoss extends Boss {
 
     if (this.dead) return;
 
+    if (this.orbitPathGraphics) {
+      this.orbitPathGraphics.rotation += 0.003 * this.orbitDirection;
+    }
+
     this.stateTimer++;
     const cx = state.width / 2;
     const cy = state.height / 2;
 
     if (this.state === 0) {
-      this.orbitAngle += 0.015;
+      this.orbitAngle += 0.015 * this.orbitDirection;
       this.x = cx + Math.cos(this.orbitAngle) * this.orbitRadius;
       this.y = cy + Math.sin(this.orbitAngle) * this.orbitRadius;
 
-      if (this.stateTimer % 100 === 0) {
-        this.fireWave();
-      }
+      if (this.dashIndicatorGraphics) this.dashIndicatorGraphics.clear();
+
+      // Fire a burst of 4 waves
+      const checkBurst = (startFrame) => {
+        const delay = 15; // Delay between waves in the burst
+        if (this.stateTimer >= startFrame && this.stateTimer <= startFrame + delay * 3) {
+          const diff = this.stateTimer - startFrame;
+          if (diff % delay === 0) {
+            const waveIndex = diff / delay; // 0, 1, 2, 3
+            // Apply a slight rotation to each consecutive wave for a cool spiral effect
+            this.fireWave(waveIndex * 0.15 * this.orbitDirection);
+          }
+        }
+      };
+
+      checkBurst(100);
+      checkBurst(240);
 
       if (this.stateTimer >= 380) {
         this.state = 1;
@@ -166,10 +207,27 @@ export class KyrenBoss extends Boss {
         this.chargeTargetY = cy + Math.sin(oppositeAngle) * this.orbitRadius;
       }
     } else if (this.state === 1) {
+      
+      if (this.dashIndicatorGraphics) {
+        this.dashIndicatorGraphics.clear();
+        const progress = this.stateTimer / 90.0;
+        const pulse = 0.5 + Math.sin(this.stateTimer * 0.5) * 0.5;
+        const alpha = 0.2 + (progress * 0.4) + (pulse * 0.4);
+        
+        this.dashIndicatorGraphics.lineStyle(4, 0xff3333, alpha);
+        this.dashIndicatorGraphics.moveTo(this.x, this.y);
+        this.dashIndicatorGraphics.lineTo(this.chargeTargetX, this.chargeTargetY);
+        
+        this.dashIndicatorGraphics.beginFill(0xff3333, alpha * 0.3);
+        this.dashIndicatorGraphics.drawCircle(this.chargeTargetX, this.chargeTargetY, this.radius);
+        this.dashIndicatorGraphics.endFill();
+      }
+
       if (this.stateTimer >= 90) {
         this.state = 2;
         this.stateTimer = 0;
         audioManager.playSound('enemy_dash', { volume: 0.8, throttleMs: 100 });
+        if (this.dashIndicatorGraphics) this.dashIndicatorGraphics.clear();
       }
     } else if (this.state === 2) {
       const progress = Math.min(1, this.stateTimer / 25);
@@ -180,13 +238,15 @@ export class KyrenBoss extends Boss {
         this.state = 0;
         this.stateTimer = 0;
         this.orbitAngle = Math.atan2(this.y - cy, this.x - cx);
+        this.orbitDirection *= -1; // Reverse orbit direction
       }
     }
 
     if (dist(this.x, this.y, player.x, player.y) < this.radius + player.radius) {
       player.takeDamage(35, this.color, this);
     }
-        if (this.innerSprite) {
+    
+    if (this.innerSprite) {
       this.innerSprite.x = this.x;
       this.innerSprite.y = this.y;
       this.innerSprite.rotation = this.innerAngle;
@@ -195,10 +255,10 @@ export class KyrenBoss extends Boss {
     super.update(player);
   }
 
-  fireWave() {
+  fireWave(offsetAngle = 0) {
     const count = 15;
     for (let i = 0; i < count; i++) {
-      const a = (i * 2 * Math.PI) / count;
+      const a = offsetAngle + (i * 2 * Math.PI) / count;
       const vx = Math.cos(a) * 4;
       const vy = Math.sin(a) * 4;
       if (state.projectilePool) {
@@ -215,6 +275,16 @@ export class KyrenBoss extends Boss {
       if (this.innerSprite.parent) this.innerSprite.parent.removeChild(this.innerSprite);
       this.innerSprite.destroy();
       this.innerSprite = null;
+    }
+    if (this.orbitPathGraphics) {
+      if (this.orbitPathGraphics.parent) this.orbitPathGraphics.parent.removeChild(this.orbitPathGraphics);
+      this.orbitPathGraphics.destroy();
+      this.orbitPathGraphics = null;
+    }
+    if (this.dashIndicatorGraphics) {
+      if (this.dashIndicatorGraphics.parent) this.dashIndicatorGraphics.parent.removeChild(this.dashIndicatorGraphics);
+      this.dashIndicatorGraphics.destroy();
+      this.dashIndicatorGraphics = null;
     }
     super.die();
   }

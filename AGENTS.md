@@ -25,6 +25,16 @@ This repository contains a browser-based arena survival game ("Neon Survivors").
 - **Modifying UI**: Update HTML in `index.html`, styles in `css/styles.css`, and logic in `js/ui/UIManager.js`.
 
 ### Recent Implementations & System Mechanics
+- **Version 1.3.6 - Cluster Missiles, Tesla Nova & Customization**:
+  - **Cluster Bomb Missiles** (Legendary): Upgrades missiles to split into shrapnel upon impact, functioning as fire-and-forget depth charges.
+  - **Tesla Nova** (Legendary): Nova bursts trigger chain lightning with a random path (up to 300px), paralyzing enemies (60 frames) and dealing 50% damage per bounce. Prevents overlap by selecting random targets within radius instead of strictly the closest.
+  - **Ship Customization**: Added live 2D preview canvas in the main menu allowing selection of , , , and . Fully persists via .
+
+- **Version 1.3.6 - Cluster Missiles, Tesla Nova & Customization**:
+  - **Cluster Bomb Missiles** (Legendary): Upgrades missiles to split into shrapnel upon impact, functioning as fire-and-forget depth charges.
+  - **Tesla Nova** (Legendary): Nova bursts trigger chain lightning with a random path (up to 300px), paralyzing enemies (60 frames) and dealing 50% damage per bounce. Prevents overlap by selecting random targets within radius instead of strictly the closest.
+  - **Ship Customization**: Added live 2D preview canvas in the main menu allowing selection of shipColor, engineColor, blasterColor, and blasterParticleColor. Fully persists via SaveManager.
+
 - **Version 1.3.5 - Seismic Pulse Overhaul & Missile Impact AoE Scaling (`Player.js`, `upgrades.js`, `MissileProjectile.js`, `Game.js`, `Pool.js`)**:
   - Added Legendary upgrade `Chaotic Resonance` (`shockwave_unbound`): Unchains Seismic Pulse from the player, detonating randomly across the 1920x1920 arena with 4x fire rate, 50% damage, and 50% radius.
   - Added Rare upgrade `Seismic Aftershocks` (`shockwave_count`, max 3): Fires +1 pulse per burst in cascading sequence (4-frame stagger). Uses rejection sampling to guarantee that pulses never spawn inside each other's radius (distance $\ge 2 \times \text{finalRadius}$).

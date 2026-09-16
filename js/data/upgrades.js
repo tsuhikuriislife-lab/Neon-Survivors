@@ -158,13 +158,24 @@ export const upgradeDatabase = [
   },
   {
     id: 'nova_spiral',
-    rarity: 'legendary',
+    rarity: 'rare',
     name: 'Angular Vortex',
     icon: '<img src="assets/upgrades/nova-discharge-spiral.png" alt="icon">',
     desc: 'Nova projectiles retain their expansion while spinning continuously in a spiral.',
     isAvailable: (p) => p.weapons.nova.level > 0 && !p.weapons.nova.spiral,
     apply: (p) => {
       p.weapons.nova.spiral = true;
+    }
+  },
+  {
+    id: 'nova_lightning',
+    rarity: 'legendary',
+    name: 'Tesla Nova',
+    icon: '<img src="assets/upgrades/nova-discharge-spiral.png" alt="icon" style="filter: hue-rotate(-90deg) brightness(1.5);">',
+    desc: 'Nova impacts have a 25% chance to release chain lightning (max 3 bounces) that paralyzes normal enemies.',
+    isAvailable: (p) => p.weapons.nova.level > 0 && !p.weapons.nova.isLightning,
+    apply: (p) => {
+      p.weapons.nova.isLightning = true;
     }
   },
   {
@@ -213,6 +224,17 @@ export const upgradeDatabase = [
     apply: (p) => {
       p.weapons.orbitals.speedMult += 0.15;
       p.weapons.orbitals.speedUpgrades = (p.weapons.orbitals.speedUpgrades || 0) + 1;
+    }
+  },
+  {
+    id: 'orbital_dual',
+    rarity: 'legendary',
+    name: 'Dual Orbit',
+    icon: '<img src="assets/upgrades/orbital-plasma-shield.png" alt="icon" style="filter: hue-rotate(180deg);">',
+    desc: 'Creates a second, wider ring of satellites spinning in the opposite direction.',
+    isAvailable: (p) => p.weapons.orbitals.level > 0 && !p.weapons.orbitals.dualOrbit,
+    apply: (p) => {
+      p.weapons.orbitals.dualOrbit = true;
     }
   },
   {
@@ -334,6 +356,19 @@ export const upgradeDatabase = [
     apply: (p) => {
       p.weapons.missiles.aoeMult += 0.30;
       p.weapons.missiles.aoeUpgrades = (p.weapons.missiles.aoeUpgrades || 0) + 1;
+    }
+  },
+  {
+    id: 'missiles_cluster',
+    rarity: 'legendary',
+    name: 'Cluster Warhead',
+    icon: '<img src="assets/upgrades/missile-battery-aoe-size.png" alt="icon" style="filter: hue-rotate(90deg) brightness(1.2);">',
+    desc: 'Missiles deploy non-homing shrapnel on impact. +25% Base Damage & AoE.',
+    isAvailable: (p) => p.weapons.missiles.level > 0 && !p.weapons.missiles.isCluster,
+    apply: (p) => {
+      p.weapons.missiles.isCluster = true;
+      p.weapons.missiles.damage *= 1.25;
+      p.weapons.missiles.aoeMult += 0.25;
     }
   },
   {

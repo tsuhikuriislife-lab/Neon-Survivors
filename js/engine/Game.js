@@ -735,7 +735,17 @@ export function loop(timestamp) {
     // 1. Update Enemies & Cleanup Dead Enemies via Swap-and-Pop
     for (let i = state.enemies.length - 1; i >= 0; i--) {
       const e = state.enemies[i];
-      e.update(state.player);
+      
+      if (e.stunTimer && e.stunTimer > 0) {
+        e.stunTimer--;
+        if (e.sprite) {
+          e.sprite.x = e.x;
+          e.sprite.y = e.y;
+        }
+      } else {
+        e.update(state.player);
+      }
+      
       if (e.hp <= 0) {
         if (typeof e.destroy === 'function') e.destroy();
         state.enemies[i] = state.enemies[state.enemies.length - 1];
@@ -785,7 +795,7 @@ export function loop(timestamp) {
           state.spatialGrid.queryRadius(p.x, p.y, p.radius, (e) => {
             if (e.hp <= 0) return false;
 
-            spawnExplosion(p.x, p.y, "#00ffff", 4, 2);
+            spawnExplosion(p.x, p.y, p.color, 4, 2);
             audioManager.playSound('hit_main_gun', { volume: 0.4, throttleMs: 40 });
             state.recordDamage('blaster', p.damage);
 
@@ -802,7 +812,7 @@ export function loop(timestamp) {
           for (let b of state.bosses) {
             for (let target of b.getTargetables()) {
               if (dist(p.x, p.y, target.x, target.y) < p.radius + target.radius) {
-                spawnExplosion(p.x, p.y, "#00ffff", 5, 2.5);
+                spawnExplosion(p.x, p.y, p.color, 5, 2.5);
                 audioManager.playSound('hit_main_gun', { volume: 0.4, throttleMs: 40 });
                 state.recordDamage('blaster', p.damage);
                 target.takeDamage(p.damage, p.color);
@@ -839,18 +849,29 @@ export function loop(timestamp) {
         if (p.canHit && !p.canHit(e)) return false;
 
         if (p.constructor.name === 'NovaProjectile') {
-          spawnExplosion(p.x, p.y, "#00ffff", 4, 2);
+          spawnExplosion(p.x, p.y, p.color, 4, 2);
           audioManager.playSound('hit_nova', { volume: 0.5, throttleMs: 60 });
           const ang = Math.atan2(e.y - p.y, e.x - p.x);
           e.x += Math.cos(ang) * 10;
           e.y += Math.sin(ang) * 10;
           state.recordDamage('nova', p.damage);
           e.takeDamage(p.damage, p.color);
-        } else if (p.constructor.name === 'MissileProjectile') {
+          
+          if (state.player && state.player.weapons.nova.isLightning) {
+              if (!state.lightningQueue) state.lightningQueue = [];
+              state.lightningQueue.push({
+                  currentTarget: e,
+                  damage: p.damage * 0.5,
+                  bouncesLeft: 3,
+                  damagedSet: new Set([e]),
+                  delayTimer: 2
+              });
+          }
+        } else if (p.constructor.name === 'MissileProjectile' || p.constructor.name === 'ClusterBombMissile') {
           // El misil detona su propia explosión escalada en p.onHit() e inflige daño de área
           p.onHit();
         } else {
-          spawnExplosion(p.x, p.y, "#00ffff", 4, 2);
+          spawnExplosion(p.x, p.y, p.color, 4, 2);
           audioManager.playSound('hit_main_gun', { volume: 0.4, throttleMs: 40 });
           state.recordDamage('blaster', p.damage);
           e.takeDamage(p.damage, p.color);
@@ -872,15 +893,27 @@ export function loop(timestamp) {
             if (p.canHit && !p.canHit(target)) continue;
 
             if (p.constructor.name === 'NovaProjectile') {
-              spawnExplosion(p.x, p.y, "#00ffff", 5, 2.5);
+              spawnExplosion(p.x, p.y, p.color, 5, 2.5);
               audioManager.playSound('hit_nova', { volume: 0.5, throttleMs: 60 });
               state.recordDamage('nova', p.damage);
               target.takeDamage(p.damage, p.color);
-            } else if (p.constructor.name === 'MissileProjectile') {
+              
+              if (state.player && state.player.weapons.nova.isLightning && Math.random() < 0.25) {
+                  if (!state.lightningQueue) state.lightningQueue = [];
+                  const actualTarget = target.parent || target;
+                  state.lightningQueue.push({
+                      currentTarget: actualTarget,
+                      damage: p.damage * 0.5,
+                      bouncesLeft: 3,
+                      damagedSet: new Set([actualTarget]),
+                      delayTimer: 2
+                  });
+              }
+            } else if (p.constructor.name === 'MissileProjectile' || p.constructor.name === 'ClusterBombMissile') {
               // El misil detona su propia explosión escalada en p.onHit() e inflige daño de área
               p.onHit();
             } else {
-              spawnExplosion(p.x, p.y, "#00ffff", 5, 2.5);
+              spawnExplosion(p.x, p.y, p.color, 5, 2.5);
               audioManager.playSound('hit_main_gun', { volume: 0.4, throttleMs: 40 });
               state.recordDamage('blaster', p.damage);
               target.takeDamage(p.damage, p.color);
@@ -1036,6 +1069,109 @@ export function loop(timestamp) {
       }
     }
 
+
+    // Process Lightning Jumps
+    if (state.lightningQueue) {
+        for (let i = state.lightningQueue.length - 1; i >= 0; i--) {
+            let task = state.lightningQueue[i];
+            if (task.delayTimer > 0) {
+                task.delayTimer--;
+                continue;
+            }
+            
+            let sourceX = task.currentTarget.x;
+            let sourceY = task.currentTarget.y;
+
+            let candidates = [];
+            
+            if (state.spatialGrid) {
+                state.spatialGrid.queryRadius(sourceX, sourceY, 300, (candidate) => {
+                    if (candidate.hp <= 0 || candidate.dead) return;
+                    const actualTarget = candidate.parent || candidate;
+                    if (task.damagedSet.has(actualTarget)) return;
+                    
+                    let d = dist(sourceX, sourceY, actualTarget.x, actualTarget.y);
+                    if (d <= 300) {
+                        candidates.push(actualTarget);
+                    }
+                });
+            }
+            // Also check bosses
+            for (let b of state.bosses) {
+                for (let t of b.getTargetables()) {
+                    const actualTarget = t.parent || t;
+                    if (actualTarget.hp <= 0 || actualTarget.dead) continue;
+                    if (task.damagedSet.has(actualTarget)) continue;
+                    let d = dist(sourceX, sourceY, actualTarget.x, actualTarget.y);
+                    if (d <= 300) {
+                        candidates.push(actualTarget);
+                    }
+                }
+            }
+
+            let nextTarget = null;
+            if (candidates.length > 0) {
+                // Pick a random valid target to prevent multiple lightnings from perfectly overlapping paths
+                nextTarget = candidates[Math.floor(Math.random() * candidates.length)];
+            }
+
+            if (nextTarget) {
+                task.damagedSet.add(nextTarget);
+                nextTarget.takeDamage(task.damage, "#ffff00");
+                
+                let isBoss = state.bosses.some(b => b === nextTarget || (b.getTargetables && b.getTargetables().some(t => t.parent === nextTarget || t === nextTarget)));
+                if (!isBoss) {
+                    nextTarget.stunTimer = 60;
+                }
+                
+                if (!state.lightningEffects) state.lightningEffects = [];
+                state.lightningEffects.push({
+                    x1: sourceX, y1: sourceY,
+                    x2: nextTarget.x, y2: nextTarget.y,
+                    timer: 15,
+                    color: 0xffff00
+                });
+                
+                audioManager.playSound('hit_nova', { volume: 0.3, throttleMs: 30 });
+
+                task.bouncesLeft--;
+                task.currentTarget = nextTarget;
+                task.delayTimer = 2; // delay for next jump
+                
+                if (task.bouncesLeft <= 0) {
+                    state.lightningQueue.splice(i, 1);
+                }
+            } else {
+                state.lightningQueue.splice(i, 1);
+            }
+        }
+    }
+
+    // Draw Lightning Effects
+    if (!state.lightningLayer && typeof worldLayer !== 'undefined') {
+        state.lightningLayer = new PIXI.Graphics();
+        worldLayer.addChild(state.lightningLayer);
+    }
+    if (state.lightningLayer) {
+        state.lightningLayer.clear();
+        if (state.lightningEffects) {
+            for (let i = state.lightningEffects.length - 1; i >= 0; i--) {
+                let eff = state.lightningEffects[i];
+                eff.timer--;
+                if (eff.timer <= 0) {
+                    state.lightningEffects.splice(i, 1);
+                } else {
+                    state.lightningLayer.lineStyle(3, eff.color, eff.timer / 15);
+                    state.lightningLayer.moveTo(eff.x1, eff.y1);
+                    const midX = (eff.x1 + eff.x2) / 2 + (Math.random() * 20 - 10);
+                    const midY = (eff.y1 + eff.y2) / 2 + (Math.random() * 20 - 10);
+                    state.lightningLayer.lineTo(midX, midY);
+                    state.lightningLayer.lineTo(eff.x2, eff.y2);
+                }
+            }
+        }
+    }
+    
     // Update Object Pools (Zero GC Churn)
     if (state.gemPool) state.gemPool.update(state.player);
     // Legacy arrays update if any

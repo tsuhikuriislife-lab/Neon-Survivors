@@ -1,3 +1,4 @@
+import { SaveManager } from './SaveManager.js';
 // ============================================================================
 // TextureCache.js - Pre-rendered Offscreen Textures for Maximum 60FPS Performance
 // ============================================================================
@@ -104,10 +105,25 @@ const dynamicPolygonCache = new Map();
 const dynamicCircleCache = new Map();
 
 export function initTextureCache() {
+  const profile = SaveManager.loadProfile();
+  const c = profile.customization || { shipColor: '#00ffff', blasterColor: '#00ffff' };
+  
+  // Convert hex string to rgba for fill
+  const hexToRgba = (hex, alpha) => {
+    let h = hex.replace('#', '');
+    if (h.length === 3) h = h.split('').map(x => x+x).join('');
+    const r = parseInt(h.substring(0,2), 16);
+    const g = parseInt(h.substring(2,4), 16);
+    const b = parseInt(h.substring(4,6), 16);
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+  };
+
   // Player & weapons
-  textures['player_ship'] = createPolygonTexture(16, 3, "#00ffff", 15, "rgba(0, 255, 255, 0.2)", 2.5);
+  textures['player_ship'] = createPolygonTexture(16, 3, c.shipColor, 15, hexToRgba(c.shipColor, 0.2), 2.5);
   textures['player_orbital_8'] = createPolygonTexture(8, 6, "#ff00ff", 12, "rgba(255, 0, 255, 0.4)", 2.5);
   textures['player_orbital_12'] = createPolygonTexture(12, 6, "#ff00ff", 12, "rgba(255, 0, 255, 0.4)", 2.5);
+  textures['player_orbital_8_green'] = createPolygonTexture(8, 6, "#00ff00", 12, "rgba(0, 255, 0, 0.4)", 2.5);
+  textures['player_orbital_12_green'] = createPolygonTexture(12, 6, "#00ff00", 12, "rgba(0, 255, 0, 0.4)", 2.5);
 
   // Standard enemies
   textures['enemy_standard_small'] = createPolygonTexture(15, 3, "#ff3366", 8, "rgba(255, 51, 102, 0.2)", 2.5);
@@ -126,8 +142,9 @@ export function initTextureCache() {
   textures['gem_yellow'] = createPolygonTexture(6, 4, "#ffaa00", 8, "rgba(255,255,255,0.2)", 2.5);
 
   // Projectiles
-  textures['proj_blaster'] = createCircleTexture(4, "#00ffff", "#ffffff", 10, 2);
+  textures['proj_blaster'] = createCircleTexture(4, c.blasterColor, "#ffffff", 10, 2);
   textures['proj_nova'] = createPolygonTexture(14, 4, "#0088ff", 12, "rgba(0, 136, 255, 0.5)", 2.5);
+  textures['proj_nova_lightning'] = createPolygonTexture(14, 4, "#ffff00", 12, "rgba(255, 255, 0, 0.5)", 2.5);
   textures['proj_missile'] = createMissileTexture("#ff4400", 10);
   textures['proj_accelerating'] = createCircleTexture(5, "#ff0000", "#ffffff", 10, 2);
   textures['proj_accelerating_amalgam'] = createCircleTexture(5, "#ff0000", "#ffffff", 10, 2);

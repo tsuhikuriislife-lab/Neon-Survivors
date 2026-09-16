@@ -1,7 +1,7 @@
 import { state } from '../../engine/gameState.js';
 import { dist } from '../../engine/Utils.js';
 import { spawnExplosion } from '../effects/spawnExplosion.js';
-import { FallingProjectile } from '../projectiles/FallingProjectile.js';
+import { ClusterProjectile } from '../projectiles/ClusterProjectile.js';
 import { audioManager } from '../../engine/AudioManager.js';
 import { Boss } from './Boss.js';
 import { getOrCachePolygon, textures, drawCachedTexture } from '../../engine/TextureCache.js';
@@ -80,10 +80,20 @@ export class DenzelBoss extends Boss {
     }
 
     this.fireTimer++;
-    if (this.fireTimer >= 100) {
+    if (this.fireTimer >= 240) {
       this.fireTimer = 0;
       for (let i = -1; i <= 1; i++) {
-        state.fallingProjectiles.push(new FallingProjectile(this.x, this.y, i * 2.2, -7, 18, "#ff0000"));
+        // Randomize the fuseTimer so it explodes higher or lower in the arena
+        const randomFuse = 180 + Math.floor(Math.random() * 60 - 30);
+        // Randomize the horizontal velocity slightly for lateral spread
+        const randomVx = (i * 2.2) + (Math.random() * 0.8 - 0.4);
+        
+        state.fallingProjectiles.push(new ClusterProjectile(
+          this.x, this.y, 
+          randomVx, -7, 
+          18, "#ff0000", 
+          { gravity: 0.12, fuseTimer: randomFuse, clusterCount: 8, radius: 10 }
+        ));
       }
       audioManager.playSound('enemy_projectile', { volume: 0.6, throttleMs: 100 });
     }

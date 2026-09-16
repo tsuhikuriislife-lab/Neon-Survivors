@@ -6,6 +6,7 @@ import { Projectile } from '../projectiles/Projectile.js';
 import { Shockwave } from '../projectiles/Shockwave.js';
 import { NovaProjectile } from '../projectiles/NovaProjectile.js';
 import { MissileProjectile } from '../projectiles/MissileProjectile.js';
+import { ClusterBombMissile } from '../projectiles/ClusterBombMissile.js';
 import { LaserBeam } from '../projectiles/LaserBeam.js';
 import { showUpgradeMenu, triggerGameOver, updateHUD } from '../../ui/UIManager.js';
 import { audioManager } from '../../engine/AudioManager.js';
@@ -19,6 +20,15 @@ export class Player {
     this.x = state.width / 2;
     this.y = state.height / 2;
     this.radius = 16;
+     
+    const profile = SaveManager.loadProfile();
+    this.customization = profile.customization || {
+        shipColor: '#00ffff',
+        engineColor: '#00ffff',
+        blasterColor: '#00ffff',
+        blasterParticleColor: '#00ffff'
+    };
+
     this.baseSpeed = 4.2;
     this.speedMult = 1.0;
     this.speed = 3.8;
@@ -51,6 +61,11 @@ export class Player {
     this.orbitalContainer = new PIXI.Container();
     this.container.addChild(this.orbitalContainer);
     this.orbitalSprites = [];
+
+    // Second orbital container for Dual Orbit
+    this.orbitalContainer2 = new PIXI.Container();
+    this.container.addChild(this.orbitalContainer2);
+    this.orbitalSprites2 = [];
 
     // Shield Aura Graphics
     this.shieldGraphics = new PIXI.Graphics();
@@ -148,7 +163,7 @@ export class Player {
     };
 
     // --- Apply Meta Upgrades ---
-    const profile = SaveManager.loadProfile();
+     
     for (const key in metaUpgradesTree) {
       const node = metaUpgradesTree[key];
       const level = profile.upgrades[key];
@@ -346,7 +361,7 @@ export class Player {
       this.angle += diff * 0.3; // Rotación fluida en lugar de snap instantáneo
       
       if (Math.random() < 0.35 && state.particlePool) {
-        state.particlePool.acquire(this.x, this.y, "#00f0ff", 1, 0.05, 2);
+        state.particlePool.acquire(this.x, this.y, this.customization.engineColor, 1, 0.05, 2);
       }
     }
 
@@ -363,6 +378,9 @@ export class Player {
     this.container.y = this.y;
     this.sprite.rotation = this.angle;
     this.orbitalContainer.rotation = this.orbitalsAngle;
+    if (this.orbitalContainer2) {
+      this.orbitalContainer2.rotation = -this.orbitalsAngle;
+    }
     
     this.updateShieldAura();
     this.updateUIBars();
@@ -465,9 +483,9 @@ export class Player {
       const vy = Math.sin(finalAngle) * effectiveSpeed;
 
       if (state.projectilePool) {
-        state.projectilePool.acquire(this.x, this.y, vx, vy, dmg, "#00ffff", 4, false, homing);
+        state.projectilePool.acquire(this.x, this.y, vx, vy, dmg, this.customization.blasterParticleColor, 4, false, homing);
       } else {
-        state.projectiles.push(new Projectile(this.x, this.y, vx, vy, dmg, "#00ffff", 4, false, homing));
+        state.projectiles.push(new Projectile(this.x, this.y, vx, vy, dmg, this.customization.blasterParticleColor, 4, false, homing));
       }
     };
 
@@ -512,143 +530,151 @@ export class Player {
     this.orbitalsAngle += w.speed * w.speedMult;
     w.angle = this.orbitalsAngle;
 
-    if (!w.timers) w.timers = [];
+    const numOrbits = w.dualOrbit ? 2 : 1;
+    
     if (!w.states) w.states = [];
-    while (w.states.length < w.count) {
-      w.states.push({ disabledTimer: 0 });
-    }
+    if (!w.states2) w.states2 = [];
 
-    // Sync PIXI Sprites for orbitals
+    const syncStatesAndSprites = (spritesArray, statesArray, container, targetCount, texName, effSize, orbitRadius) => {
+        while (statesArray.length < targetCount) {
+            statesArray.push({ disabledTimer: 0 });
+        }
+        while (spritesArray.length < targetCount) {
+            const sprite = new PIXI.Sprite(textures[texName]);
+            sprite.anchor.set(0.5);
+            spritesArray.push(sprite);
+            container.addChild(sprite);
+        }
+        while (spritesArray.length > targetCount) {
+            const sprite = spritesArray.pop();
+            container.removeChild(sprite);
+            sprite.destroy();
+            statesArray.pop();
+        }
+        for (let i = 0; i < targetCount; i++) {
+            const sprite = spritesArray[i];
+            sprite.texture = textures[texName];
+            const curAng = (i * 2 * Math.PI) / targetCount;
+            sprite.x = Math.cos(curAng) * orbitRadius;
+            sprite.y = Math.sin(curAng) * orbitRadius;
+            const scaleFactor = effSize / 12;
+            sprite.scale.set(scaleFactor, scaleFactor);
+            sprite.rotation = curAng * 2;
+            sprite.tint = 0xffffff;
+        }
+    };
+
     const effSize = w.size * w.sizeMult;
     const texName = effSize > 10 ? 'player_orbital_12' : 'player_orbital_8';
-    while (this.orbitalSprites.length < w.count) {
-        const sprite = new PIXI.Sprite(textures[texName]);
-        sprite.anchor.set(0.5);
-        this.orbitalSprites.push(sprite);
-        this.orbitalContainer.addChild(sprite);
-    }
-    while (this.orbitalSprites.length > w.count) {
-        const sprite = this.orbitalSprites.pop();
-        this.orbitalContainer.removeChild(sprite);
-        sprite.destroy();
-        w.states.pop();
-    }
-    for (let i = 0; i < w.count; i++) {
-        const sprite = this.orbitalSprites[i];
-        sprite.texture = textures[texName];
-        // Distribute them evenly around the player
-        const curAng = (i * 2 * Math.PI) / w.count;
-        sprite.x = Math.cos(curAng) * w.radius;
-        sprite.y = Math.sin(curAng) * w.radius;
-        
-        // Scale the sprite dynamically based on its physical size (base texture is 12px)
-        const scaleFactor = effSize / 12;
-        sprite.scale.set(scaleFactor, scaleFactor);
-        
-        // Counter-rotate if we want them facing outward or spinning independently
-        sprite.rotation = curAng * 2;
-    }
 
-    for (let i = 0; i < w.count; i++) {
-      const stateObj = w.states[i];
-      if (stateObj.disabledTimer > 0) stateObj.disabledTimer--;
-
-      const curAng = w.angle + (i * 2 * Math.PI) / w.count;
-      const ox = this.x + Math.cos(curAng) * w.radius;
-      const oy = this.y + Math.sin(curAng) * w.radius;
-      const orbRadius = effSize;
-      
-      const sourceSprite = this.orbitalSprites[i];
-      const isDisabled = stateObj.disabledTimer > 0;
-      const orbDmg = (w.damage * this.getEffectiveDamageMult()) * (isDisabled ? 0.3 : 1.0);
-
-      // Visuals: Transparency and Blink
-      if (isDisabled) {
-        if (stateObj.disabledTimer <= 30 && stateObj.disabledTimer % 10 < 5) {
-          sourceSprite.alpha = 0.8; // Blink
-        } else {
-          sourceSprite.alpha = 0.3; // Transparent
+    syncStatesAndSprites(this.orbitalSprites, w.states, this.orbitalContainer, w.count, texName, effSize, w.radius);
+    
+    if (w.dualOrbit) {
+        syncStatesAndSprites(this.orbitalSprites2, w.states2, this.orbitalContainer2, w.count, texName + '_green', effSize, w.radius + 60);
+    } else {
+        // Clear second orbit if it was somehow deactivated
+        while (this.orbitalSprites2.length > 0) {
+            const sprite = this.orbitalSprites2.pop();
+            this.orbitalContainer2.removeChild(sprite);
+            sprite.destroy();
         }
-      } else {
-        sourceSprite.alpha = 1.0;
-      }
-      
-      // Orbital Trail (only if active)
-      if (!isDisabled && state.particlePool && Math.random() < 0.65) {
-        state.particlePool.acquire(ox, oy, "#ff00ff", 0.3, 0.12, orbRadius * 0.7);
-      }
-      
-      // Block Enemy Projectiles
-      if (!isDisabled) {
-        let blocked = false;
-        
-        // Build a dynamic array of all projectile lists to check
-        const projLists = [state.enemyProjectiles, state.acceleratingProjectiles, state.fallingProjectiles];
-        if (state.projectilePool && state.projectilePool.pool) {
-          projLists.push(state.projectilePool.pool);
-        }
+        w.states2 = [];
+    }
 
-        for (let list of projLists) {
-          if (!list) continue;
-          for (let p of list) {
-            // Must be active
-            if (p.active === false || p.isUnblockable) continue;
-            // If it's a pooled projectile, we only block enemy ones
-            if (p.isEnemy === false) continue;
+    const processCollisions = (spritesArray, statesArray, orbitAngleOffset, orbitRadius, colorHexStr) => {
+        for (let i = 0; i < spritesArray.length; i++) {
+            const stateObj = statesArray[i];
+            if (stateObj.disabledTimer > 0) stateObj.disabledTimer--;
+
+            const curAng = orbitAngleOffset + (i * 2 * Math.PI) / spritesArray.length;
+            const ox = this.x + Math.cos(curAng) * orbitRadius;
+            const oy = this.y + Math.sin(curAng) * orbitRadius;
+            const orbRadius = effSize;
             
-            if (dist(ox, oy, p.x, p.y) < orbRadius + (p.radius || 10)) {
-              if (p.hasOwnProperty('active')) {
-                p.active = false;
-              } else {
-                p.x = -99999; // Force out of bounds so Game.js removes it
-              }
-              if (p.sprite) p.sprite.visible = false;
-              if (typeof p.destroy === 'function') p.destroy();
-              blocked = true;
-              break;
+            const sourceSprite = spritesArray[i];
+            const isDisabled = stateObj.disabledTimer > 0;
+            const orbDmg = (w.damage * this.getEffectiveDamageMult()) * (isDisabled ? 0.3 : 1.0);
+
+            if (isDisabled) {
+                if (stateObj.disabledTimer <= 30 && stateObj.disabledTimer % 10 < 5) {
+                    sourceSprite.alpha = 0.8;
+                } else {
+                    sourceSprite.alpha = 0.3;
+                }
+            } else {
+                sourceSprite.alpha = 1.0;
             }
-          }
-          if (blocked) break;
-        }
-
-        if (blocked) {
-          stateObj.disabledTimer = 90; // Disable for 1.5s
-          spawnExplosion(ox, oy, "#ffffff", 8, 2.5); // Block Spark
-          audioManager.playSound('hit_satellite', { volume: 0.5, throttleMs: 50 });
-          continue; // Skip damage query for this frame
-        }
-      }
-
-      const speedRatio = (w.speed * w.speedMult) / 0.05; 
-      const cooldownSeconds = (w.tickInterval / 60.0) / speedRatio;
-
-      // Query spatial grid for nearby enemies
-      state.spatialGrid.queryRadius(ox, oy, orbRadius, (e) => {
-        if (e.hp <= 0) return;
-        const actualTarget = e.parent || e;
-        if (actualTarget.canBeHitBy && actualTarget.canBeHitBy(sourceSprite, cooldownSeconds)) {
-          e.takeDamage(orbDmg, "#ff00ff");
-          state.recordDamage('orbitals', orbDmg);
-          spawnExplosion(ox, oy, "#ff00ff", 3, 1.5);
-          audioManager.playSound('hit_satellite', { volume: 0.5, throttleMs: 50 });
-        }
-      });
-
-      // Check bosses
-      for (let b of state.bosses) {
-        for (let t of b.getTargetables()) {
-          const actualTarget = t.parent || t;
-
-          if (dist(ox, oy, t.x, t.y) < orbRadius + t.radius) {
-            if (actualTarget.canBeHitBy && actualTarget.canBeHitBy(sourceSprite, cooldownSeconds)) {
-              t.takeDamage(orbDmg, "#ff00ff");
-              state.recordDamage('orbitals', orbDmg);
-              spawnExplosion(ox, oy, "#ff00ff", 3, 1.5);
-              audioManager.playSound('hit_satellite', { volume: 0.5, throttleMs: 50 });
+            
+            if (!isDisabled && state.particlePool && Math.random() < 0.65) {
+                state.particlePool.acquire(ox, oy, colorHexStr, 0.3, 0.12, orbRadius * 0.7);
             }
-          }
+            
+            if (!isDisabled) {
+                let blocked = false;
+                const projLists = [state.enemyProjectiles, state.acceleratingProjectiles, state.fallingProjectiles];
+                if (state.projectilePool && state.projectilePool.pool) {
+                    projLists.push(state.projectilePool.pool);
+                }
+
+                for (let list of projLists) {
+                    if (!list) continue;
+                    for (let p of list) {
+                        if (p.active === false || p.isUnblockable) continue;
+                        if (p.isEnemy === false) continue;
+                        
+                        if (dist(ox, oy, p.x, p.y) < orbRadius + (p.radius || 10)) {
+                            if (p.hasOwnProperty('active')) p.active = false;
+                            else p.x = -99999;
+                            if (p.sprite) p.sprite.visible = false;
+                            if (typeof p.destroy === 'function') p.destroy();
+                            blocked = true;
+                            break;
+                        }
+                    }
+                    if (blocked) break;
+                }
+
+                if (blocked) {
+                    stateObj.disabledTimer = 90;
+                    spawnExplosion(ox, oy, "#ffffff", 8, 2.5);
+                    audioManager.playSound('hit_satellite', { volume: 0.5, throttleMs: 50 });
+                    continue;
+                }
+            }
+
+            const speedRatio = (w.speed * w.speedMult) / 0.05; 
+            const cooldownSeconds = (w.tickInterval / 60.0) / speedRatio;
+
+            state.spatialGrid.queryRadius(ox, oy, orbRadius, (e) => {
+                if (e.hp <= 0) return;
+                const actualTarget = e.parent || e;
+                if (actualTarget.canBeHitBy && actualTarget.canBeHitBy(sourceSprite, cooldownSeconds)) {
+                    e.takeDamage(orbDmg, colorHexStr);
+                    state.recordDamage('orbitals', orbDmg);
+                    spawnExplosion(ox, oy, colorHexStr, 3, 1.5);
+                    audioManager.playSound('hit_satellite', { volume: 0.5, throttleMs: 50 });
+                }
+            });
+
+            for (let b of state.bosses) {
+                for (let t of b.getTargetables()) {
+                    const actualTarget = t.parent || t;
+                    if (dist(ox, oy, t.x, t.y) < orbRadius + t.radius) {
+                        if (actualTarget.canBeHitBy && actualTarget.canBeHitBy(sourceSprite, cooldownSeconds)) {
+                            t.takeDamage(orbDmg, colorHexStr);
+                            state.recordDamage('orbitals', orbDmg);
+                            spawnExplosion(ox, oy, colorHexStr, 3, 1.5);
+                            audioManager.playSound('hit_satellite', { volume: 0.5, throttleMs: 50 });
+                        }
+                    }
+                }
+            }
         }
-      }
+    };
+
+    processCollisions(this.orbitalSprites, w.states, w.angle, w.radius, "#ff00ff");
+    if (w.dualOrbit) {
+        processCollisions(this.orbitalSprites2, w.states2, -w.angle, w.radius + 60, "#00ff00");
     }
   }
 
@@ -747,6 +773,8 @@ export class Player {
     const w = this.weapons.nova;
     const damage = this.weapons.blaster.damage * 1.5 * this.getEffectiveDamageMult();
     const effSpeed = w.speed * w.speedMult;
+    const color = w.isLightning ? "#ffff00" : "#0088ff";
+    
     for (let i = 0; i < w.count; i++) {
       const a = (i * 2 * Math.PI) / w.count;
       state.projectiles.push(new NovaProjectile(
@@ -755,7 +783,8 @@ export class Player {
         Math.cos(a) * effSpeed, 
         Math.sin(a) * effSpeed, 
         damage,
-        w.spiral
+        w.spiral,
+        color
       ));
     }
     audioManager.playSound('fire_nova', { volume: 0.6, throttleMs: 100 });
@@ -786,7 +815,10 @@ export class Player {
     const w = this.weapons.missiles;
     const angle = Math.random() * Math.PI * 2;
     const effSpeed = w.speed * w.speedMult;
-    state.projectiles.push(new MissileProjectile(
+    
+    const MissileClass = w.isCluster ? ClusterBombMissile : MissileProjectile;
+    
+    state.projectiles.push(new MissileClass(
       this.x,
       this.y,
       Math.cos(angle) * effSpeed,
@@ -1258,6 +1290,13 @@ export class Player {
         sprite.destroy();
       }
     }
+    if (this.orbitalSprites2) {
+      while (this.orbitalSprites2.length > 0) {
+        const sprite = this.orbitalSprites2.pop();
+        if (sprite.parent) sprite.parent.removeChild(sprite);
+        sprite.destroy();
+      }
+    }
 
     updateAimJoystickUI();
   }
@@ -1401,6 +1440,13 @@ export class Player {
         if (s && s.destroy) s.destroy();
       }
     }
+    if (this.orbitalSprites2) {
+      while (this.orbitalSprites2.length > 0) {
+        const s = this.orbitalSprites2.pop();
+        if (s && s.parent) s.parent.removeChild(s);
+        if (s && s.destroy) s.destroy();
+      }
+    }
     if (this.container) {
       if (this.container.parent) {
         this.container.parent.removeChild(this.container);
@@ -1409,6 +1455,7 @@ export class Player {
       this.container = null;
       this.sprite = null;
       this.orbitalContainer = null;
+      this.orbitalContainer2 = null;
       this.shieldGraphics = null;
       this.uiGraphics = null;
       this.laserChargeGraphics = null;

@@ -99,12 +99,32 @@ export class SaveManager {
   static loadProfile() {
     try {
       const data = localStorage.getItem(this.PROFILE_KEY);
-      if (data) return JSON.parse(data);
+      if (data) {
+        let p = JSON.parse(data);
+        if (!p.customization) {
+          p.customization = {
+            shipColor: '#00ffff',
+            engineColor: '#00ffff',
+            blasterColor: '#00ffff',
+            blasterParticleColor: '#00ffff'
+          };
+        }
+        return p;
+      }
     } catch (e) {
       console.error("Failed to load profile:", e);
     }
     // Default profile
-    return { chips: 0, upgrades: {} };
+    return { 
+      chips: 0, 
+      upgrades: {},
+      customization: {
+        shipColor: '#00ffff',
+        engineColor: '#00ffff',
+        blasterColor: '#00ffff',
+        blasterParticleColor: '#00ffff'
+      }
+    };
   }
 
   static saveProfile(profile) {
