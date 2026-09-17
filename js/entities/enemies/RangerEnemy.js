@@ -15,11 +15,11 @@ export class RangerEnemy extends Enemy {
     this.sides = 4;
     const scaleLevel = state.bossDefeatTimes.kyren ? Math.floor((state.gameTime - state.bossDefeatTimes.kyren) / 150) : 0;
     this.speed = 1.0 + (scaleLevel * 0.2);
-    this.maxHp = 60 + state.gameTime * 0.1;
+    this.maxHp = 60;
     this.hp = this.maxHp;
     this.color = "#00ccff";
     this.rgb = { r: 0, g: 204, b: 255 };
-    this.xpValue = 6; 
+    this.xpValue = 20; 
     this.damage = 15;
     this.fireRate = Math.max(30, 90 - (scaleLevel * 10)); 
     this.fireTimer = this.fireRate;

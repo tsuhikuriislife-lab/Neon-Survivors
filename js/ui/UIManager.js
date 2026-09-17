@@ -1,4 +1,44 @@
 import { state } from '../engine/gameState.js';
+function getDynamicRarityRoll(finiteAvailable, isBoss = false) {
+    let probs = isBoss ? {
+        legendary: 0.10,
+        rare: 0.30,
+        uncommon: 0.60,
+        common: 0.0
+    } : {
+        legendary: 0.05,
+        rare: 0.15,
+        uncommon: 0.20,
+        common: 0.60
+    };
+
+    let activeRarities = Object.keys(probs).filter(r => 
+        probs[r] > 0 && finiteAvailable.some(u => u.rarity === r)
+    );
+
+    if (activeRarities.length === 0) {
+        // Fallback to infinite upgrades probabilities if no finite upgrades are left
+        activeRarities = Object.keys(probs).filter(r => probs[r] > 0);
+    } else {
+        // Distribute probabilities of exhausted rarities equally among active ones
+        const inactiveRarities = Object.keys(probs).filter(r => probs[r] > 0 && !activeRarities.includes(r));
+        let leftoverProb = inactiveRarities.reduce((sum, r) => sum + probs[r], 0);
+        
+        if (leftoverProb > 0) {
+            const addPerActive = leftoverProb / activeRarities.length;
+            activeRarities.forEach(r => probs[r] += addPerActive);
+        }
+    }
+
+    const roll = Math.random();
+    let cumulative = 0;
+    for (let rarity of activeRarities) {
+        cumulative += probs[rarity];
+        if (roll < cumulative) return rarity;
+    }
+    return activeRarities[activeRarities.length - 1]; // safety fallback
+}
+
 import { cancelAiming, resetInputState } from '../engine/Input.js';
 import { formatTime, drawPolygon, enterFullscreen } from '../engine/Utils.js';
 import { upgradeDatabase } from '../data/upgrades.js';
@@ -145,21 +185,21 @@ export function showUpgradeMenu() {
 
   const available = upgradeDatabase.filter(u => !u.isAvailable || u.isAvailable(state.player));
 
-  const getRarityRoll = () => {
-    const r = Math.random();
-    if (r < 0.05) return 'legendary';
-    if (r < 0.20) return 'rare';
-    if (r < 0.40) return 'uncommon';
-    return 'common';
-  };
-
   const choices = [];
   for (let i = 0; i < 3; i++) {
-    const r = getRarityRoll();
-    let pool = available.filter(u => u.rarity === r && !choices.includes(u) && !u.isInfinite);
-    if (pool.length === 0) pool = available.filter(u => u.rarity === r && !choices.includes(u) && u.isInfinite);
-    if (pool.length === 0) pool = available.filter(u => !choices.includes(u) && !u.isInfinite);
-    if (pool.length === 0) pool = available.filter(u => !choices.includes(u) && u.isInfinite);
+    const finiteAvailable = available.filter(u => !u.isInfinite && !choices.includes(u));
+    const r = getDynamicRarityRoll(finiteAvailable, false);
+    
+    let pool;
+    if (finiteAvailable.length > 0) {
+       pool = finiteAvailable.filter(u => u.rarity === r);
+    } else {
+       // Sólo permitir infinitas cuando TODAS las finitas se agotaron
+       pool = available.filter(u => u.isInfinite && !choices.includes(u) && u.rarity === r);
+       if (pool.length === 0) {
+          pool = available.filter(u => u.isInfinite && !choices.includes(u));
+       }
+    }
     
     if (pool.length > 0) {
       const upg = pool[Math.floor(Math.random() * pool.length)];
@@ -1325,22 +1365,20 @@ export function showBossRewardMenu(bossName) {
 
   const available = upgradeDatabase.filter(u => !u.isAvailable || u.isAvailable(state.player));
 
-  const getRarityRoll = () => {
-    const r = Math.random();
-    // No 'common' upgrades in Boss Rewards.
-    // 10% Legendary, 30% Rare, 60% Uncommon.
-    if (r < 0.10) return 'legendary';
-    if (r < 0.40) return 'rare';
-    return 'uncommon';
-  };
-
   const choices = [];
   for (let i = 0; i < 5; i++) {
-    const r = getRarityRoll();
-    let pool = available.filter(u => u.rarity === r && !choices.includes(u) && !u.isInfinite);
-    if (pool.length === 0) pool = available.filter(u => u.rarity === r && !choices.includes(u) && u.isInfinite);
-    if (pool.length === 0) pool = available.filter(u => !choices.includes(u) && !u.isInfinite);
-    if (pool.length === 0) pool = available.filter(u => !choices.includes(u) && u.isInfinite);
+    const finiteAvailable = available.filter(u => !u.isInfinite && !choices.includes(u));
+    const r = getDynamicRarityRoll(finiteAvailable, true); // true = isBoss
+    
+    let pool;
+    if (finiteAvailable.length > 0) {
+       pool = finiteAvailable.filter(u => u.rarity === r);
+    } else {
+       pool = available.filter(u => u.isInfinite && !choices.includes(u) && u.rarity === r);
+       if (pool.length === 0) {
+          pool = available.filter(u => u.isInfinite && !choices.includes(u));
+       }
+    }
     
     if (pool.length > 0) {
       choices.push(pool[Math.floor(Math.random() * pool.length)]);

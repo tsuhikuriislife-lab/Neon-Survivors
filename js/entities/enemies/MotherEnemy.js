@@ -12,11 +12,11 @@ export class MotherEnemy extends Enemy {
     this.radius = 60;
     this.sides = 8;
     this.speed = 0.8;
-    this.maxHp = 300 + state.gameTime * 0.5;
+    this.maxHp = 300;
     this.hp = this.maxHp;
     this.color = "#004400";
     this.rgb = { r: 0, g: 68, b: 0 };
-    this.xpValue = 0; 
+    this.xpValue = 70; 
     this.damage = 50;
     this.deathSoundKey = 'enemy_death_big';
     this.texture = textures['enemy_mother'];

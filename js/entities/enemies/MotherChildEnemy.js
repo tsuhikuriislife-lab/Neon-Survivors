@@ -12,11 +12,11 @@ export class MotherChildEnemy extends Enemy {
     this.radius = 10;
     this.sides = 3;
     this.speed = 3.5;
-    this.maxHp = 25 + state.gameTime * 0.05;
+    this.maxHp = 25;
     this.hp = this.maxHp;
     this.color = "#00ff00";
     this.rgb = { r: 0, g: 255, b: 0 };
-    this.xpValue = 2; 
+    this.xpValue = 10; 
     this.damage = 15;
     this.directionChangeTimer = 0;
     this.targetAngle = 0;

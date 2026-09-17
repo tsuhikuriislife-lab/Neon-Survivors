@@ -1121,7 +1121,12 @@ export function loop(timestamp) {
                 
                 let isBoss = state.bosses.some(b => b === nextTarget || (b.getTargetables && b.getTargetables().some(t => t.parent === nextTarget || t === nextTarget)));
                 if (!isBoss) {
-                    nextTarget.stunTimer = 60;
+                    let stun = 60;
+                    if (nextTarget.type === 'medium' || nextTarget.type === 'ranger') stun = 30;
+                    else if (nextTarget.type === 'large') stun = 15;
+                    else if (nextTarget.type === 'mother') stun = 5;
+                    
+                    nextTarget.stunTimer = Math.max(nextTarget.stunTimer || 0, stun);
                 }
                 
                 if (!state.lightningEffects) state.lightningEffects = [];

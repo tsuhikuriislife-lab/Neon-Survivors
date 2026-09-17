@@ -383,7 +383,7 @@ export function handleSpawning() {
     
     // 1. Oleada Kamikaze de Enjambradores (Swarmers)
     // Entran en línea desde un borde aleatorio y cruzan el mapa entero.
-    if (state.bossDefeatTimes.first && Math.random() < 0.16) {
+    if (state.bossDefeatTimes.first && Math.random() < 0.04) {
        const count = 6 + Math.floor(Math.random() * 5);
        const margin = 100;
        const edge = Math.floor(Math.random() * 4); // 0: Top, 1: Right, 2: Bottom, 3: Left
@@ -410,11 +410,11 @@ export function handleSpawning() {
     }
 
     // 2. Enemigos Especiales Avanzados (Desbloqueados por progreso de jefes)
-    if (state.bossDefeatTimes.kyren && Math.random() < 0.22) {
+    if (state.bossDefeatTimes.kyren && Math.random() < 0.05) {
        state.enemies.push(applyEnemyScaling(new RangerEnemy()));
        return;
     }
-    if (state.bossDefeatTimes.amalgam && Math.random() < 0.08) {
+    if (state.bossDefeatTimes.amalgam && Math.random() < 0.02) {
        state.enemies.push(applyEnemyScaling(new MotherEnemy()));
        return;
     }

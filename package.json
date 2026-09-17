@@ -1,6 +1,6 @@
 {
   "name": "juego",
-  "version": "1.3.6",
+  "version": "1.3.7",
   "description": "A browser-based arena survival shooter with a layered ES6 module architecture.",
   "main": "index.js",
   "scripts": {

@@ -13,10 +13,10 @@ export class StandardEnemy extends Enemy {
       this.radius = 15;
       this.sides = 3;
       this.speed = 2.4 + Math.random() * 0.4;
-      this.maxHp = 16 + state.gameTime * 0.05;
+      this.maxHp = 16;
       this.color = "#ff3366";
       this.rgb = { r: 255, g: 51, b: 102 };
-      this.xpValue = 2;
+      this.xpValue = 5;
       this.damage = 10;
       this.deathSoundKey = 'enemy_death_small';
       this.texture = textures['enemy_standard_small'];
@@ -24,10 +24,10 @@ export class StandardEnemy extends Enemy {
       this.radius = 21;
       this.sides = 5;
       this.speed = 1.7 + Math.random() * 0.3;
-      this.maxHp = 50 + (state.gameTime - 180) * 0.15;
+      this.maxHp = 50;
       this.color = "#ffbb00";
       this.rgb = { r: 255, g: 187, b: 0 };
-      this.xpValue = 6;
+      this.xpValue = 20;
       this.damage = 20;
       this.deathSoundKey = 'enemy_death_medium';
       this.texture = textures['enemy_standard_medium'];
@@ -35,11 +35,11 @@ export class StandardEnemy extends Enemy {
       this.radius = 45;
       this.sides = 6;
       this.speed = 1.1;
-      this.maxHp = 180 + (state.gameTime - 480) * 0.3;
+      this.maxHp = 180;
       this.color = "#a855f7";
       this.rgb = { r: 168, g: 85, b: 247 };
       this.xpValue = 15;
-      this.damage = 40;
+      this.damage = 100;
       this.deathSoundKey = 'enemy_death_big';
       this.texture = textures['enemy_standard_large'];
     }

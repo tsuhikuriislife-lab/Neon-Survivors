@@ -25,10 +25,22 @@ This repository contains a browser-based arena survival game ("Neon Survivors").
 - **Modifying UI**: Update HTML in `index.html`, styles in `css/styles.css`, and logic in `js/ui/UIManager.js`.
 
 ### Recent Implementations & System Mechanics
+- **Version 1.3.7 - Pacing, Scaling, & UI Integrity**:
+  - **Dynamic Upgrade Rarity Allocation**: Implemented `getDynamicRarityRoll` in `UIManager.js`. Prevents infinite upgrades from appearing until 100% of finite upgrades are consumed. Exhausted finite rarity probabilities are mathematically redistributed to remaining active rarities.
+  - **Enemy Scaling Unification**: Removed legacy linear `gameTime` HP scaling from `StandardEnemy`, `SwarmerEnemy`, `RangerEnemy`, `MotherEnemy`, and `MotherChildEnemy` constructors, strictly deferring all health and damage scaling to `applyEnemyScaling()` via phase multipliers (caps at ~6.2x HP at 30 min).
+  - **Special Enemy Spawn Reduction**: Drastically reduced WaveManager spawn rates for Swarmers (4%), Rangers (5%), and Mothers (2%) to relegate them to occasional elite threats rather than horde majorities.
+  - **Dynamic Stun Resistance**: Lightning stun duration from Tesla Nova now scales inversely with enemy tier (`small/swarmer`: 60 frames, `medium/ranger`: 30, `large`: 15, `mother`: 5). Bosses remain immune.
+
 - **Version 1.3.6 - Cluster Missiles, Tesla Nova & Customization**:
   - **Cluster Bomb Missiles** (Legendary): Upgrades missiles to split into shrapnel upon impact, functioning as fire-and-forget depth charges.
   - **Tesla Nova** (Legendary): Nova bursts trigger chain lightning with a random path (up to 300px), paralyzing enemies (60 frames) and dealing 50% damage per bounce. Prevents overlap by selecting random targets within radius instead of strictly the closest.
   - **Ship Customization**: Added live 2D preview canvas in the main menu allowing selection of , , , and . Fully persists via .
+
+- **Version 1.3.7 - Pacing, Scaling, & UI Integrity**:
+  - **Dynamic Upgrade Rarity Allocation**: Implemented `getDynamicRarityRoll` in `UIManager.js`. Prevents infinite upgrades from appearing until 100% of finite upgrades are consumed. Exhausted finite rarity probabilities are mathematically redistributed to remaining active rarities.
+  - **Enemy Scaling Unification**: Removed legacy linear `gameTime` HP scaling from `StandardEnemy`, `SwarmerEnemy`, `RangerEnemy`, `MotherEnemy`, and `MotherChildEnemy` constructors, strictly deferring all health and damage scaling to `applyEnemyScaling()` via phase multipliers (caps at ~6.2x HP at 30 min).
+  - **Special Enemy Spawn Reduction**: Drastically reduced WaveManager spawn rates for Swarmers (4%), Rangers (5%), and Mothers (2%) to relegate them to occasional elite threats rather than horde majorities.
+  - **Dynamic Stun Resistance**: Lightning stun duration from Tesla Nova now scales inversely with enemy tier (`small/swarmer`: 60 frames, `medium/ranger`: 30, `large`: 15, `mother`: 5). Bosses remain immune.
 
 - **Version 1.3.6 - Cluster Missiles, Tesla Nova & Customization**:
   - **Cluster Bomb Missiles** (Legendary): Upgrades missiles to split into shrapnel upon impact, functioning as fire-and-forget depth charges.

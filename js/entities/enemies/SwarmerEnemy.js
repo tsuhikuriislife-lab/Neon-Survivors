@@ -11,11 +11,11 @@ export class SwarmerEnemy extends Enemy {
     this.radius = 12;
     this.sides = 3;
     this.speed = 3.2 + Math.random() * 0.8;
-    this.maxHp = 10 + state.gameTime * 0.04;
+    this.maxHp = 10;
     this.hp = this.maxHp;
     this.color = "#ff9900";
     this.rgb = { r: 255, g: 153, b: 0 };
-    this.xpValue = 2;
+    this.xpValue = 5;
     this.damage = 12;
     this.deathSoundKey = 'enemy_death_small';
     this.texture = textures['enemy_swarmer'];
