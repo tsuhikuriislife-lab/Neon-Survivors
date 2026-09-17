@@ -70,6 +70,19 @@
       box-shadow: 0 0 10px #00ffff;
       transition: width 0.15s ease-out;
     }
+    .xp-text {
+      position: absolute;
+      top: clamp(22px, 3.4cqh, 40px);
+      left: calc(50% + clamp(70px, 19cqw, 325px));
+      transform: translateX(-100%);
+      color: #00ffff;
+      font-size: clamp(9px, 1cqw, 12px);
+      font-weight: 700;
+      text-shadow: 0 0 5px rgba(0, 255, 255, 0.5);
+      pointer-events: none;
+      z-index: 30;
+      font-family: monospace;
+    }
     .boss-warning-banner {
       position: absolute;
       top: clamp(32px, 4.8cqh, 48px);
@@ -1305,6 +1318,70 @@
 }
 
 /* ================= LABORATORY ================= */
+.lab-layout {
+  display: flex;
+  width: 100%;
+  height: 100%;
+}
+.lab-sidebar {
+  width: 250px;
+  background: rgba(10, 15, 30, 0.95);
+  border-right: 2px solid #00ffff;
+  display: flex;
+  flex-direction: column;
+  padding: 20px 10px;
+  box-shadow: 2px 0 15px rgba(0, 255, 255, 0.2);
+  z-index: 20;
+}
+.lab-sidebar-header {
+  font-size: 24px;
+  font-weight: 900;
+  color: #00ffff;
+  text-align: center;
+  margin-bottom: 20px;
+  text-shadow: 0 0 15px #00ffff;
+  letter-spacing: 2px;
+}
+.lab-chips-info {
+  font-size: 20px;
+  color: #ffaa00;
+  text-shadow: 0 0 10px #ffaa00;
+  text-align: center;
+  margin-bottom: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.lab-tabs {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+.lab-tab-btn {
+  background: linear-gradient(90deg, #1e1e2d, #2d1e3d);
+  border: 1px solid #7928ca;
+  color: #cbd5e0;
+  padding: 12px 15px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: all 0.2s;
+  text-align: left;
+  letter-spacing: 1px;
+}
+.lab-tab-btn:hover {
+  background: linear-gradient(90deg, #2d2d42, #412b58);
+  border-color: #00ffff;
+  box-shadow: 0 0 10px rgba(0, 255, 255, 0.3);
+}
+.lab-tab-btn.active {
+  background: linear-gradient(90deg, rgba(0,255,255,0.2), rgba(0,128,255,0.2));
+  border-color: #00ffff;
+  color: #00ffff;
+  box-shadow: 0 0 15px rgba(0, 255, 255, 0.5);
+}
+
 .lab-viewport {
   position: absolute;
   top: 0;

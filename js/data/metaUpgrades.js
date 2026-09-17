@@ -364,3 +364,33 @@ export const metaUpgradesTree = {
     }
   }
 };
+
+export const classUpgradesTree = {
+  root_class: {
+    id: "root_class",
+    name: "Clase Base",
+    description: "Nodo central del árbol de clases.",
+    icon: "assets/upgrades/forcefield-battery.png",
+    maxLevel: 1,
+    baseCost: 0,
+    costMultiplier: 1,
+    x: 0, y: 0,
+    requires: [],
+    apply: (player, level) => {}
+  }
+};
+
+export const weaponUpgradesTree = {
+  root_weapon: {
+    id: "root_weapon",
+    name: "Armamento Base",
+    description: "Nodo central del árbol de armas.",
+    icon: "assets/upgrades/weapon-tuning.png",
+    maxLevel: 1,
+    baseCost: 0,
+    costMultiplier: 1,
+    x: 0, y: 0,
+    requires: [],
+    apply: (player, level) => {}
+  }
+};

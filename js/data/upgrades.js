@@ -125,7 +125,7 @@ export const upgradeDatabase = [
     name: 'Hull Reinforcement',
     icon: '<img src="assets/upgrades/hull-reinforcement.png" alt="icon">',
     desc: 'Restores 50 HP and gives +25 max HP.',
-    isAvailable: (p) => (p.hullUpgradesCount || 0) < 5,
+    isAvailable: (p) => (p.hullUpgradesCount || 0) < 6,
     apply: (p) => { 
       p.maxHp += 25; 
       p.hp = Math.min(p.maxHp, p.hp + 50);

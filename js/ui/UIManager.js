@@ -60,6 +60,7 @@ export function initDOM() {
   DOM = {
     hudLevel: document.getElementById("hudLevel"),
     hudXpBar: document.getElementById("hudXpBar"),
+    hudXpText: document.getElementById("hudXpText"),
     hudHpBar: document.getElementById("hudHpBar"),
     hudOverhealthBar: document.getElementById("hudOverhealthBar"),
     hudHpText: document.getElementById("hudHpText"),
@@ -84,6 +85,7 @@ export function initDOM() {
 const _uiCache = {
   level: -1,
   xpPct: -1,
+  xpTextStr: '',
   hpPct: -1,
   hpText: '',
   timeText: '',
@@ -1233,11 +1235,16 @@ export function triggerHUDUpdate() {
     if (d.hudLevel) d.hudLevel.textContent = `LVL ${player.level}`;
   }
 
-  // 2. XP Bar (Dirty checked)
+  // 2. XP Bar & Text (Dirty checked)
   const xpPct = Math.min(100, (player.xp / player.nextXp) * 100).toFixed(1);
+  const xpTextStr = `${Math.floor(player.xp)} / ${player.nextXp}`;
   if (_uiCache.xpPct !== xpPct) {
     _uiCache.xpPct = xpPct;
     if (d.hudXpBar) d.hudXpBar.style.width = `${xpPct}%`;
+  }
+  if (_uiCache.xpTextStr !== xpTextStr) {
+    _uiCache.xpTextStr = xpTextStr;
+    if (d.hudXpText) d.hudXpText.textContent = xpTextStr;
   }
 
   // 3. HP Bar & Text (Dirty checked)

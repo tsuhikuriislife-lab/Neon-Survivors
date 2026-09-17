@@ -1,4 +1,4 @@
-import { metaUpgradesTree } from '../data/metaUpgrades.js';
+import { metaUpgradesTree, classUpgradesTree, weaponUpgradesTree } from '../data/metaUpgrades.js';
 import { SaveManager } from '../engine/SaveManager.js';
 import { enterFullscreen } from '../engine/Utils.js';
 
@@ -12,6 +12,7 @@ export class Laboratory {
   static hasDragged = false;
   static initialPinchDistance = null;
   static initialScale = 1;
+  static currentTree = metaUpgradesTree;
 
   static init() {
     this.modal = document.getElementById("labModal");
@@ -21,6 +22,24 @@ export class Laboratory {
     this.treeContainer = document.getElementById("labTreeContainer");
     this.svgLines = document.getElementById("labLinesSvg");
     this.chipsText = document.getElementById("labChipsTotal");
+
+    document.querySelectorAll('.lab-tab-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        document.querySelectorAll('.lab-tab-btn').forEach(b => b.classList.remove('active'));
+        e.target.classList.add('active');
+        const treeType = e.target.getAttribute('data-tree');
+        if (treeType === 'main') this.currentTree = metaUpgradesTree;
+        else if (treeType === 'class') this.currentTree = classUpgradesTree;
+        else if (treeType === 'weapon') this.currentTree = weaponUpgradesTree;
+        
+        this.panX = 0;
+        this.panY = 0;
+        this.scale = 1;
+        this.updateTransform();
+        this.renderTree();
+        this.closePopover();
+      });
+    });
 
     this.profile = SaveManager.loadProfile();
     if (this.btnOpen) {
@@ -167,14 +186,14 @@ export class Laboratory {
     const center = { x: 400, y: 400 };
 
     // Draw lines first so they are underneath
-    for (const key in metaUpgradesTree) {
-      const nodeData = metaUpgradesTree[key];
+    for (const key in this.currentTree) {
+      const nodeData = this.currentTree[key];
       if (nodeData.requires && nodeData.requires.length > 0) {
         nodeData.requires.forEach(req => {
-          const parentData = metaUpgradesTree[req.id];
+          const parentData = this.currentTree[req.id];
           if (parentData) {
             // A line is visually active only if the requirement is MET.
-            const reqMet = req.id === "root_core" || (this.profile.upgrades[req.id] || 0) >= req.level;
+            const reqMet = req.id.startsWith("root_") || (this.profile.upgrades[req.id] || 0) >= req.level;
             this.drawLine(
               center.x + parentData.x, center.y + parentData.y,
               center.x + nodeData.x, center.y + nodeData.y,
@@ -187,8 +206,8 @@ export class Laboratory {
     }
 
     // Draw nodes
-    for (const key in metaUpgradesTree) {
-      const nodeData = metaUpgradesTree[key];
+    for (const key in this.currentTree) {
+      const nodeData = this.currentTree[key];
       this.createNode(nodeData, center);
     }
   }
@@ -253,7 +272,7 @@ export class Laboratory {
     const level = this.profile.upgrades[data.id] || 0;
     const isLocked = !this.canUnlock(data);
     const isMaxed = level >= data.maxLevel;
-    const isUnlocked = level > 0 || data.id === "root_core";
+    const isUnlocked = level > 0 || data.id.startsWith("root_");
 
     const node = document.createElement("div");
     node.className = "lab-node";
@@ -288,24 +307,24 @@ export class Laboratory {
   }
 
   static canUnlock(data) {
-    if (data.id === "root_core") return true;
+    if (data.id.startsWith("root_")) return true;
     if (!data.requires || data.requires.length === 0) return true;
     return data.requires.every(req => {
-      if (req.id === "root_core") return true;
+      if (req.id.startsWith("root_")) return true;
       return (this.profile.upgrades[req.id] || 0) >= req.level;
     });
   }
 
   static isUnlocked(nodeId) {
-    if (nodeId === "root_core") return true;
+    if (nodeId.startsWith("root_")) return true;
     return (this.profile.upgrades[nodeId] || 0) > 0;
   }
 
   static calculateTotalInvested() {
     let total = 0;
-    for (const key in metaUpgradesTree) {
-      if (key === "root_core") continue;
-      const data = metaUpgradesTree[key];
+    for (const key in this.currentTree) {
+      if (key.startsWith("root_")) continue;
+      const data = this.currentTree[key];
       const currentLevel = this.profile.upgrades[key] || 0;
             const sobornoLevel = this.profile.upgrades.soborno_sistema || 0;
       const discount = 1 - (sobornoLevel * 0.01);
@@ -318,7 +337,10 @@ export class Laboratory {
 
   static resetTree(refundAmount) {
     this.profile.chips = (this.profile.chips || 0) + refundAmount;
-    this.profile.upgrades = {};
+    for (const key in this.currentTree) {
+      if (key.startsWith("root_")) continue;
+      delete this.profile.upgrades[key];
+    }
     SaveManager.saveProfile(this.profile);
     this.chipsText.innerText = this.profile.chips;
     this.renderTree();
@@ -351,7 +373,7 @@ export class Laboratory {
       </div>
     `;
 
-    if (data.id !== "root_core") {
+    if (!data.id.startsWith("root_")) {
       if (isMaxed) {
         popover.innerHTML += `<div class="lab-price affordable">MAXED OUT</div>`;
       } else if (isLocked) {
