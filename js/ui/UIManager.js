@@ -42,6 +42,7 @@ function getDynamicRarityRoll(finiteAvailable, isBoss = false) {
 import { cancelAiming, resetInputState } from '../engine/Input.js';
 import { formatTime, drawPolygon, enterFullscreen } from '../engine/Utils.js';
 import { upgradeDatabase } from '../data/upgrades.js';
+import { acquireUpgrade, canAcquireUpgrade, getUpgradeCount, getUpgradeMaxCount } from '../data/upgradeUtils.js';
 import { initGame, resumeGame } from '../engine/Game.js';
 import { SaveManager } from '../engine/SaveManager.js';
 import { Enemy } from '../entities/enemies/Enemy.js';
@@ -54,6 +55,47 @@ import { TestingBoss } from "../entities/bosses/TestingBoss.js";
 
 
 let DOM = null;
+let adminToolsEnabled = false;
+let endRunTimer = null;
+let pendingRewardTimers = new Set();
+let runActionGeneration = 0;
+
+/** Cancela acciones UI diferidas para que no afecten una partida posterior. */
+export function clearPendingUIActions() {
+  runActionGeneration++;
+  if (endRunTimer !== null) {
+    clearTimeout(endRunTimer);
+    endRunTimer = null;
+  }
+  for (const timer of pendingRewardTimers) clearTimeout(timer);
+  pendingRewardTimers.clear();
+}
+
+/** Restablece elementos visuales que pertenecen a una sola partida. */
+export function resetRunUI() {
+  const runModalIds = [
+    "levelModal", "bossRewardModal", "optionsModal", "adminModal",
+    "adminSubModal", "acquiredUpgradesModal", "revivePromptModal", "gameOverModal"
+  ];
+  for (const id of runModalIds) {
+    const modal = document.getElementById(id);
+    if (modal) modal.style.display = "none";
+  }
+
+  const testingPanel = document.getElementById("testing-panel");
+  if (testingPanel) testingPanel.style.display = "none";
+  const testingToggle = document.getElementById("adminToggleTestingPanel");
+  if (testingToggle) testingToggle.checked = false;
+  for (const id of ["adminGodMode", "adminDisableSpawns", "adminDisableBossSpawns", "adminDisableEnemyCollisions"]) {
+    const toggle = document.getElementById(id);
+    if (toggle) toggle.checked = false;
+  }
+  const progress = document.getElementById("optionsBtnEndRunProgress");
+  if (progress) {
+    progress.style.transition = 'none';
+    progress.style.width = '0%';
+  }
+}
 
 export function initDOM() {
   if (DOM) return;
@@ -185,7 +227,7 @@ export function showUpgradeMenu() {
 
   container.innerHTML = "";
 
-  const available = upgradeDatabase.filter(u => !u.isAvailable || u.isAvailable(state.player));
+  const available = upgradeDatabase.filter(u => canAcquireUpgrade(u, state.player));
 
   const choices = [];
   for (let i = 0; i < 3; i++) {
@@ -212,15 +254,15 @@ export function showUpgradeMenu() {
   choices.forEach(upg => {
     const card = document.createElement("div");
     card.className = "card rarity-" + (upg.rarity || 'common');
+    const currentCount = getUpgradeCount(upg, state.player);
     card.innerHTML = `
       <div class="card-icon">${upg.icon}</div>
       <div class="card-name">${upg.name}</div>
       <div class="card-desc">${upg.desc}</div>
+      <div class="upgrade-count">Current: ${currentCount}${getUpgradeMaxCount(upg) !== null ? `/${getUpgradeMaxCount(upg)}` : ''}</div>
     `;
     card.onclick = () => {
-      upg.apply(state.player);
-      state.player.acquiredUpgrades = state.player.acquiredUpgrades || {};
-      state.player.acquiredUpgrades[upg.id] = (state.player.acquiredUpgrades[upg.id] || 0) + 1;
+      if (!acquireUpgrade(upg, state.player)) return;
       if (state.player && typeof state.player.grantUpgradeInvulnerability === 'function') {
         state.player.grantUpgradeInvulnerability();
       }
@@ -231,30 +273,41 @@ export function showUpgradeMenu() {
     container.appendChild(card);
   });
 
-  const currentPanel = document.getElementById("currentUpgradesPanel");
-  if (currentPanel) {
-    currentPanel.innerHTML = "";
-    if (state.player.acquiredUpgrades && Object.keys(state.player.acquiredUpgrades).length > 0) {
-      currentPanel.style.display = "flex";
-      for (let id in state.player.acquiredUpgrades) {
-        const count = state.player.acquiredUpgrades[id];
-        const upgDef = upgradeDatabase.find(u => u.id === id);
-        if (upgDef) {
-          const iconDiv = document.createElement("div");
-          iconDiv.className = "current-upgrade-icon";
-          iconDiv.title = upgDef.name;
-          iconDiv.innerHTML = `${upgDef.icon}<div class="badge">${count}</div>`;
-          currentPanel.appendChild(iconDiv);
-        }
-      }
-    } else {
-      currentPanel.style.display = "none";
-    }
-  }
-
   modal.style.display = "flex";
   audioManager.playSound('level_up', { volume: 0.8, throttleMs: 500, randomPitch: false });
   audioManager.setMusicMuffled(true);
+}
+
+function renderAcquiredUpgradeCards(container, context) {
+  if (!container) return;
+  container.replaceChildren();
+  const acquired = state.player?.acquiredUpgrades || {};
+  for (const [id, count] of Object.entries(acquired)) {
+    if (count <= 0) continue;
+    const definition = upgradeDatabase.find(upgrade => upgrade.id === id);
+    if (!definition) continue;
+    const card = document.createElement("div");
+    card.className = `card acquired-upgrade-card rarity-${definition.rarity || 'common'} ${context}`;
+    card.innerHTML = `<div class="card-icon">${definition.icon}</div><div class="card-name">${definition.name}</div><div class="card-desc">${definition.desc || ''}</div><div class="upgrade-count">Current: ${count}${getUpgradeMaxCount(definition) !== null ? `/${getUpgradeMaxCount(definition)}` : ''}</div>`;
+    card.title = definition.name;
+    container.appendChild(card);
+  }
+  if (container.childElementCount === 0) {
+    const empty = document.createElement("div");
+    empty.className = "upgrade-inventory-empty";
+    empty.textContent = "No upgrades acquired yet.";
+    container.appendChild(empty);
+  }
+}
+
+/**
+ * Abre el inventario modal y actualiza las cartas con las mejoras actuales.
+ * @returns {void}
+ */
+function openAcquiredUpgradesModal() {
+  const modal = document.getElementById("acquiredUpgradesModal");
+  renderAcquiredUpgradeCards(document.getElementById("acquiredUpgradesCards"), "inventory-modal");
+  if (modal) modal.style.display = "flex";
 }
 
 export function startGame() {
@@ -278,6 +331,9 @@ export function startGame() {
 }
 
 export function returnToMainMenu() {
+  clearPendingUIActions();
+  resetRunUI();
+  resetInputState();
   SaveManager.clearSaveGame();
   state.isInMenu = true;
   state.isPaused = false;
@@ -290,6 +346,7 @@ export function returnToMainMenu() {
   const optionsModal = document.getElementById("optionsModal");
   const adminModal = document.getElementById("adminModal");
   const adminSubModal = document.getElementById("adminSubModal");
+  const acquiredUpgradesModal = document.getElementById("acquiredUpgradesModal");
   const uiLayer = document.getElementById("ui-layer");
   const startOverlay = document.getElementById("start-screen-overlay");
   const revivePromptModal = document.getElementById("revivePromptModal");
@@ -301,6 +358,7 @@ export function returnToMainMenu() {
   if (optionsModal) optionsModal.style.display = "none";
   if (adminModal) adminModal.style.display = "none";
   if (adminSubModal) adminSubModal.style.display = "none";
+  if (acquiredUpgradesModal) acquiredUpgradesModal.style.display = "none";
   
   if (uiLayer) uiLayer.style.display = "none";
   if (startOverlay) startOverlay.style.display = "flex";
@@ -440,12 +498,7 @@ export function initUIListeners() {
       safetyCounter++;
       upgraded = false;
       upgradeDatabase.forEach(upg => {
-        if (upg.isAvailable && !upg.isInfinite && upg.isAvailable(state.player)) {
-          upg.apply(state.player);
-          state.player.acquiredUpgrades = state.player.acquiredUpgrades || {};
-          state.player.acquiredUpgrades[upg.id] = (state.player.acquiredUpgrades[upg.id] || 0) + 1;
-          upgraded = true;
-        }
+        if (!upg.isInfinite && acquireUpgrade(upg, state.player)) upgraded = true;
       });
     }
 
@@ -453,9 +506,7 @@ export function initUIListeners() {
     upgradeDatabase.forEach(upg => {
       if (upg.isInfinite) {
         for (let i = 0; i < 10; i++) {
-          upg.apply(state.player);
-          state.player.acquiredUpgrades = state.player.acquiredUpgrades || {};
-          state.player.acquiredUpgrades[upg.id] = (state.player.acquiredUpgrades[upg.id] || 0) + 1;
+          acquireUpgrade(upg, state.player, { force: true });
         }
       }
     });
@@ -474,9 +525,16 @@ export function initUIListeners() {
   const quickTestBtn = document.getElementById("quick-test-btn");
   if (quickTestBtn) {
     quickTestBtn.onclick = () => {
-      executeQuickTest();
+      if (adminToolsEnabled) executeQuickTest();
     };
   }
+
+  const inventoryButton = document.getElementById("levelUpInventoryButton");
+  const inventoryModal = document.getElementById("acquiredUpgradesModal");
+  const inventoryClose = document.getElementById("acquiredUpgradesClose");
+  if (inventoryButton) inventoryButton.onclick = (event) => { event.stopPropagation(); openAcquiredUpgradesModal(); };
+  if (inventoryClose) inventoryClose.onclick = () => { if (inventoryModal) inventoryModal.style.display = "none"; };
+  if (inventoryModal) inventoryModal.onclick = (event) => { if (event.target === inventoryModal) inventoryModal.style.display = "none"; };
 
   const openPauseMenu = () => {
     if (state.isInMenu || state.isGameOver) return;
@@ -493,6 +551,7 @@ export function initUIListeners() {
     cancelAiming();
     resetInputState();
     optionsModal.style.display = "flex";
+    renderAcquiredUpgradeCards(document.getElementById("pauseUpgradeCards"), "pause-panel");
     audioManager.setMusicMuffled(true);
     
     bgmVol.value = audioManager.bgmVolume;
@@ -509,6 +568,8 @@ export function initUIListeners() {
   };
 
   const closePauseMenu = () => {
+    const acquiredModal = document.getElementById("acquiredUpgradesModal");
+    if (acquiredModal && acquiredModal.style.display === "flex") { acquiredModal.style.display = "none"; return; }
     if (adminSubModal && adminSubModal.style.display === "flex") {
       adminSubModal.style.display = "none";
       return;
@@ -528,7 +589,8 @@ export function initUIListeners() {
     const isOptionsOpen = optionsModal && optionsModal.style.display === "flex";
     const isAdminOpen = adminModal && adminModal.style.display === "flex";
     const isAdminSubOpen = adminSubModal && adminSubModal.style.display === "flex";
-    if (isOptionsOpen || isAdminOpen || isAdminSubOpen) {
+    const isInventoryOpen = document.getElementById("acquiredUpgradesModal")?.style.display === "flex";
+    if (isOptionsOpen || isAdminOpen || isAdminSubOpen || isInventoryOpen) {
       closePauseMenu();
     } else {
       openPauseMenu();
@@ -553,7 +615,6 @@ export function initUIListeners() {
 
   const endRunArea = document.getElementById("optionsBtnEndRunArea");
   if (endRunArea) {
-    let endRunTimer = null;
     const bar = document.getElementById("optionsBtnEndRunProgress");
 
     const startEndRun = (e) => {
@@ -568,7 +629,10 @@ export function initUIListeners() {
       bar.style.transition = 'width 1.5s ease-out';
       bar.style.width = '100%';
       
+      const playerAtConfirmationStart = state.player;
       endRunTimer = setTimeout(() => {
+        endRunTimer = null;
+        if (!playerAtConfirmationStart || state.player !== playerAtConfirmationStart || state.isInMenu) return;
         closePauseMenu();
         if (state.player && typeof state.player.die === 'function') {
            // Skip revive logic by forcing revivesUsed = max
@@ -610,6 +674,7 @@ export function initUIListeners() {
   const optionsBtnDev = document.getElementById("optionsBtnDev");
   if (optionsBtnDev) {
     optionsBtnDev.onclick = () => {
+      if (!adminToolsEnabled) return;
       optionsModal.style.display = "none";
       adminModal.style.display = "flex";
       
@@ -834,19 +899,19 @@ export function initUIListeners() {
     upgradeDatabase.forEach(upg => {
       const card = document.createElement("div");
       card.className = "card rarity-" + (upg.rarity || 'common');
+      const currentCount = getUpgradeCount(upg, state.player);
       card.innerHTML = `
         <div class="card-icon">${upg.icon}</div>
         <div class="card-name">${upg.name}</div>
         <div class="card-desc">${upg.desc}</div>
+        <div class="upgrade-count">Current: ${currentCount}${getUpgradeMaxCount(upg) !== null ? `/${getUpgradeMaxCount(upg)}` : ''}</div>
       `;
-      if (upg.isAvailable && !upg.isAvailable(state.player)) {
+      if (!canAcquireUpgrade(upg, state.player)) {
         card.style.opacity = "0.5";
         card.style.pointerEvents = "none";
       } else {
         card.onclick = () => {
-          upg.apply(state.player);
-          state.player.acquiredUpgrades = state.player.acquiredUpgrades || {};
-          state.player.acquiredUpgrades[upg.id] = (state.player.acquiredUpgrades[upg.id] || 0) + 1;
+          if (!acquireUpgrade(upg, state.player)) return;
           updateHUD();
           // Redraw the upgrades menu so newly unavailable upgrades are grayed out
           document.getElementById("adminBtnUpgrades").onclick();
@@ -894,6 +959,7 @@ export function initUIListeners() {
 }
 
 export function triggerGameOver() {
+  clearPendingUIActions();
   SaveManager.clearSaveGame();
   const btnResumeGame = document.getElementById("btnResumeGame");
   if (btnResumeGame) {
@@ -920,6 +986,8 @@ export function triggerGameOver() {
 }
 
 export function showGameOverStats() {
+  clearPendingUIActions();
+  state.clearLightningEffects();
   document.getElementById("revivePromptModal").style.display = "none";
   
   document.getElementById("finalTime").innerText = formatTime(state.gameTime);
@@ -1370,7 +1438,7 @@ export function showBossRewardMenu(bossName) {
   particles.innerHTML = "";
   instruction.innerText = "Boss Reward: Choose a card";
 
-  const available = upgradeDatabase.filter(u => !u.isAvailable || u.isAvailable(state.player));
+  const available = upgradeDatabase.filter(u => canAcquireUpgrade(u, state.player));
 
   const choices = [];
   for (let i = 0; i < 5; i++) {
@@ -1430,9 +1498,7 @@ export function showBossRewardMenu(bossName) {
       const applyCard = (wrap, upgObj) => {
         wrap.dataset.picked = "true";
         wrap.querySelector('.card-3d').classList.add("flipped");
-        upgObj.apply(state.player);
-        state.player.acquiredUpgrades = state.player.acquiredUpgrades || {};
-        state.player.acquiredUpgrades[upgObj.id] = (state.player.acquiredUpgrades[upgObj.id] || 0) + 1;
+        acquireUpgrade(upgObj, state.player);
         cardsProcessed++;
       };
 
@@ -1456,9 +1522,15 @@ export function showBossRewardMenu(bossName) {
           }
 
           // Apply all remaining unpicked cards
+          const generation = runActionGeneration;
           cardsElements.forEach((wrap, i) => {
              if (wrap.dataset.picked === "false") {
-               setTimeout(() => { applyCard(wrap, choices[i]); }, i * 150);
+               const timer = setTimeout(() => {
+                 pendingRewardTimers.delete(timer);
+                 if (generation !== runActionGeneration || !state.player || state.isInMenu || state.isGameOver) return;
+                 applyCard(wrap, choices[i]);
+               }, i * 150);
+               pendingRewardTimers.add(timer);
              }
           });
           return;
@@ -1538,6 +1610,12 @@ export function initAdminConsole() {
 
   if (!modal) return;
 
+  adminToolsEnabled = false;
+  const adminButton = document.getElementById("optionsBtnDev");
+  const quickTestButton = document.getElementById("quick-test-btn");
+  if (adminButton) adminButton.style.display = "none";
+  if (quickTestButton) quickTestButton.style.display = "none";
+
   function printLog(msg, type = 'info') {
     const p = document.createElement("p");
     p.className = `console-${type}`;
@@ -1571,6 +1649,7 @@ export function initAdminConsole() {
     '/addxp': { desc: "Añade experiencia al jugador actual.", usage: "/addxp [cantidad]" },
     '/sethp': { desc: "Modifica la vida actual y máxima del jugador.", usage: "/sethp [cantidad]" },
     '/setlevel': { desc: "Sube automáticamente al jugador hasta el nivel indicado.", usage: "/setlevel [nivel]" },
+    '/admin': { desc: "Activa o desactiva los botones de administración y testeo.", usage: "/admin [on|off]" },
     '/help': { desc: "Muestra esta ayuda o la de un comando específico.", usage: "/help [comando (opcional)]" }
   };
 
@@ -1583,9 +1662,20 @@ export function initAdminConsole() {
 
     if (args[1] && args[1].toLowerCase() === 'help') {
       const doc = commandDocs[cmd];
-      if (doc) {
-        return printLog(`${cmd} - Uso: ${doc.usage}`, "info");
+      if (doc) return printLog(`${cmd} - Uso: ${doc.usage}`, "info");
+    }
+
+    if (cmd === '/admin') {
+      const mode = args[1]?.toLowerCase();
+      adminToolsEnabled = mode === 'off' ? false : mode === 'on' ? true : !adminToolsEnabled;
+      if (adminButton) adminButton.style.display = adminToolsEnabled ? '' : 'none';
+      if (quickTestButton) quickTestButton.style.display = adminToolsEnabled ? '' : 'none';
+      if (!adminToolsEnabled) {
+        const adminModal = document.getElementById("adminModal");
+        if (adminModal) adminModal.style.display = "none";
       }
+      printLog(`Admin tools ${adminToolsEnabled ? 'enabled' : 'disabled'}.`, "success");
+      return;
     }
 
     if (cmd === '/setchips' || cmd === '/addchips') {

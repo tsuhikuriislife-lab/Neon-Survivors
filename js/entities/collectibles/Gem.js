@@ -36,7 +36,8 @@ export class Gem {
     this.angle += 0.05;
     const d = dist(this.x, this.y, player.x, player.y);
     if (d < player.pickupRadius * player.pickupRadiusMult) {
-      const speed = 7.5;
+      // Mantiene las gemas heredadas a la velocidad de Quantum Singularity.
+      const speed = 15.0;
       const a = Math.atan2(player.y - this.y, player.x - this.x);
       this.x += Math.cos(a) * speed;
       this.y += Math.sin(a) * speed;

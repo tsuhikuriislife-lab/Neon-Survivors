@@ -732,11 +732,13 @@
     .admin-cards-grid {
       display: grid !important;
       grid-template-columns: repeat(auto-fill, minmax(clamp(85px, 12cqw, 150px), 1fr));
+      grid-auto-rows: 1fr;
       gap: clamp(6px, 1cqw, 12px);
       max-height: 58cqh;
       overflow-y: auto;
       padding: 8px;
       box-sizing: border-box;
+      align-content: start;
     }
 
     .admin-cards-grid .card {
@@ -1626,4 +1628,144 @@
 .options-btn:hover {
   background: rgba(255, 0, 85, 0.2);
   box-shadow: 0 0 10px currentColor;
+}
+
+
+/* Acquired upgrade inventories in pause and level-up menus */
+.pause-menu-layout {
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  gap: clamp(12px, 2cqw, 28px);
+  width: min(96%, 1240px);
+  max-height: 88cqh;
+}
+.pause-menu-layout > .admin-box {
+  width: min(48%, 460px);
+  max-height: 88cqh;
+}
+.pause-upgrades-panel {
+  display: flex;
+  flex-direction: column;
+  width: min(48%, 740px);
+  min-width: 0;
+  max-height: 88cqh;
+  padding: clamp(12px, 1.8cqw, 22px);
+  background: rgba(10, 15, 30, 0.96);
+  border: 2px solid rgba(0, 255, 255, 0.65);
+  border-radius: 12px;
+  box-shadow: 0 0 28px rgba(0, 255, 255, 0.2);
+  box-sizing: border-box;
+}
+.pause-upgrades-panel h2, .acquired-upgrades-header h2 {
+  flex: 0 0 auto;
+  margin: 0 0 12px;
+  color: #00ffff;
+  font-size: clamp(16px, 1.8cqw, 24px);
+  text-align: center;
+  text-shadow: 0 0 12px #00ffff;
+}
+.acquired-upgrades-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-auto-rows: max-content;
+  align-content: start;
+  gap: clamp(6px, 0.8cqw, 12px);
+  min-height: 0;
+  overflow: auto;
+  padding: 3px;
+  scrollbar-width: thin;
+  scrollbar-color: #00aacc rgba(255,255,255,0.08);
+}
+.acquired-upgrade-card {
+  width: auto;
+  min-width: 0;
+  max-width: none;
+  min-height: 0;
+  padding: clamp(6px, 0.8cqw, 12px);
+  cursor: default;
+  overflow: hidden;
+}
+.acquired-upgrade-card:hover { transform: none; }
+.acquired-upgrade-card .card-icon { margin-bottom: 4px; }
+.acquired-upgrade-card .card-icon img { width: clamp(24px, 3cqw, 38px); height: clamp(24px, 3cqw, 38px); }
+.acquired-upgrade-card .card-name { font-size: clamp(9px, 0.9cqw, 13px); }
+.acquired-upgrade-card .card-desc { font-size: clamp(8px, 0.72cqw, 11px); }
+.upgrade-count {
+  margin-top: 7px;
+  color: #00ffff;
+  font: 700 clamp(9px, 0.8cqw, 12px) monospace;
+}
+.upgrade-inventory-empty {
+  grid-column: 1 / -1;
+  padding: 20px;
+  color: #a0aec0;
+  text-align: center;
+}
+.upgrade-inventory-button {
+  position: absolute;
+  right: clamp(12px, 2cqw, 28px);
+  bottom: clamp(12px, 2cqh, 24px);
+  width: clamp(42px, 5cqw, 62px);
+  height: clamp(42px, 5cqw, 62px);
+  border: 2px solid #00ffff;
+  border-radius: 50%;
+  background: rgba(5, 15, 30, 0.95);
+  color: #00ffff;
+  font-size: clamp(22px, 2.6cqw, 32px);
+  cursor: pointer;
+  box-shadow: 0 0 16px rgba(0,255,255,0.5);
+  z-index: 5;
+}
+.acquired-upgrades-modal { z-index: 120; padding: 0; }
+.acquired-upgrades-window {
+  display: flex;
+  flex-direction: column;
+  width: min(92vw, 1180px);
+  height: min(84vh, 760px);
+  padding: clamp(12px, 2cqw, 24px);
+  background: rgba(7, 10, 22, 0.99);
+  border: 2px solid #00ffff;
+  border-radius: 14px;
+  box-shadow: 0 0 35px rgba(0,255,255,0.3);
+  box-sizing: border-box;
+}
+.acquired-upgrades-header {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  min-height: 42px;
+}
+.acquired-upgrades-header h2 { margin-bottom: 14px; }
+.acquired-upgrades-header button {
+  position: absolute;
+  top: -5px;
+  right: 0;
+  width: 36px;
+  height: 36px;
+  border: 1px solid #ff0055;
+  border-radius: 50%;
+  background: transparent;
+  color: #ff6688;
+  font-size: 26px;
+  cursor: pointer;
+}
+.inventory-modal-grid {
+  flex: 1 1 auto;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+.acquired-upgrade-card.inventory-modal { padding: clamp(8px, 1cqw, 14px); }
+.acquired-upgrade-card.inventory-modal .card-name { font-size: clamp(11px, 1cqw, 15px); }
+.acquired-upgrade-card.inventory-modal .card-desc { font-size: clamp(9px, 0.8cqw, 12px); }
+#levelModal { position: absolute; }
+#levelUpInventoryButton { position: absolute; }
+@media (max-width: 760px) {
+  .pause-menu-layout { gap: 8px; width: 100%; }
+  .pause-menu-layout > .admin-box, .pause-upgrades-panel { width: 50%; padding: 8px; }
+  .pause-upgrades-panel h2 { font-size: 12px; }
+  .pause-panel-grid { gap: 4px; }
+  .acquired-upgrade-card { padding: 4px; }
+  .acquired-upgrades-window { width: 96vw; height: 88vh; padding: 8px; }
 }

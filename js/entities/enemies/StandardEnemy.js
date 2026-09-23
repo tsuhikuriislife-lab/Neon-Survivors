@@ -38,8 +38,8 @@ export class StandardEnemy extends Enemy {
       this.maxHp = 180;
       this.color = "#a855f7";
       this.rgb = { r: 168, g: 85, b: 247 };
-      this.xpValue = 15;
-      this.damage = 100;
+      this.xpValue = 100;
+      this.damage = 40;
       this.deathSoundKey = 'enemy_death_big';
       this.texture = textures['enemy_standard_large'];
     }

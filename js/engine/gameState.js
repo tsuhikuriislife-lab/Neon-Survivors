@@ -33,6 +33,8 @@ export const state = {
   disableSpawns: false,
   disableBossSpawns: false,
   disableEnemyCollisions: false,
+  showTestingPanel: false,
+  portraitPaused: false,
   spawnRateMultiplier: 1.0,
   
   bossScaling: {},
@@ -64,6 +66,9 @@ export const state = {
   environment: environment,
 
   pendingBossSpawn: null,
+  lightningQueue: [],
+  lightningEffects: [],
+  lightningLayer: null,
 
   player: null,
   enemies: [],
@@ -91,6 +96,21 @@ export const state = {
   gemPool,
   floatingTextPool,
 
+  /**
+   * Elimina las cadenas y trazos de rayos junto con su Graphics de PIXI.
+   * Se invoca al finalizar o reiniciar una partida para evitar efectos residuales.
+   * @returns {void}
+   */
+  clearLightningEffects() {
+    this.lightningQueue.length = 0;
+    this.lightningEffects.length = 0;
+    if (this.lightningLayer) {
+      if (this.lightningLayer.parent) this.lightningLayer.parent.removeChild(this.lightningLayer);
+      this.lightningLayer.destroy();
+      this.lightningLayer = null;
+    }
+  },
+
   reset() {
     const destroyEntity = (e) => {
       if (!e) return;
@@ -112,6 +132,7 @@ export const state = {
       }
     };
 
+    this.clearLightningEffects();
     if (this.player) {
       destroyEntity(this.player);
       this.player = null;
@@ -165,9 +186,18 @@ export const state = {
     this.waveTimer = 0;
     this.spawnTimer = 0;
     this.isPaused = false;
+    this.wasPaused = false;
     this.isCinematic = false;
     this.isGameOver = false;
     this.isAdPlaying = false;
+    this.portraitPaused = false;
+    this.godMode = false;
+    this.disableSpawns = false;
+    this.disableBossSpawns = false;
+    this.disableEnemyCollisions = false;
+    this.showTestingPanel = false;
+    this.waveDuration = 20;
+    this.lastFrameTime = performance.now();
     this.rerollsUsed = 0;
     this.bossScaling = {};
     this.lastBossName = null;

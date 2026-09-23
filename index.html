@@ -109,7 +109,7 @@
       </button>
 
       <!-- Quick Test Button -->
-      <div id="quick-test-btn">🚀 QUICK TEST</div>
+      <div id="quick-test-btn" style="display: none;">🚀 QUICK TEST</div>
     </div>
 
     <!-- Start Screen Overlay -->
@@ -127,7 +127,7 @@
         </button>
       </div>
       <button id="btn-customize" title="Customize Ship" style="position: absolute; bottom: 20px; right: 20px; background: none; border: 2px solid #ff00ff; border-radius: 50%; width: 50px; height: 50px; font-size: 24px; cursor: pointer; pointer-events: auto; color: #ff00ff; box-shadow: 0 0 10px rgba(255, 0, 255, 0.5); z-index: 10;">🎨</button>
-      <div class="version-indicator">v1.4.0</div>
+      <div class="version-indicator">v1.4.1</div>
     </div>
     
     <!-- Customize Modal -->
@@ -171,9 +171,16 @@
     <!-- Upgrade Modal -->
     <div class="modal-overlay" id="levelModal">
       <div class="modal-title">UPGRADE</div>
-      <div class="current-upgrades-panel" id="currentUpgradesPanel"></div>
       <div class="cards-container" id="cardsContainer"></div>
       <button class="btn-reroll" id="btnReroll">REROLL</button>
+      <button id="levelUpInventoryButton" class="upgrade-inventory-button" aria-label="View acquired upgrades">▦</button>
+    </div>
+
+    <div class="modal-overlay acquired-upgrades-modal" id="acquiredUpgradesModal" style="display: none;">
+      <div class="acquired-upgrades-window">
+        <div class="acquired-upgrades-header"><h2>ACQUIRED UPGRADES</h2><button id="acquiredUpgradesClose" aria-label="Close upgrades">×</button></div>
+        <div class="acquired-upgrades-grid inventory-modal-grid" id="acquiredUpgradesCards"></div>
+      </div>
     </div>
 
     <!-- Boss Reward Modal -->
@@ -240,6 +247,7 @@
 
     <!-- Options / Pause Modal -->
     <div class="modal-overlay" id="optionsModal">
+      <div class="pause-menu-layout">
       <div class="admin-box">
         <h2>⏸️ PAUSE</h2>
         <div class="admin-section">
@@ -264,12 +272,17 @@
         </div>
         <div class="admin-section">
           <h3>Tools</h3>
-          <button id="optionsBtnDev" class="admin-action-btn" style="border-color: #00ffff; color: #00ffff; background: rgba(0, 255, 255, 0.15);">🛠️ ADMIN / DEV PANEL</button>
+          <button id="optionsBtnDev" class="admin-action-btn" style="display: none; border-color: #00ffff; color: #00ffff; background: rgba(0, 255, 255, 0.15);">🛠️ ADMIN / DEV PANEL</button>
         </div>
         <div id="optionsBtnEndRunArea" style="position: relative; width: 100%; height: 40px; background: rgba(255,0,0,0.1); border: 2px solid #ff0055; border-radius: 4px; overflow: hidden; cursor: pointer; pointer-events: auto; user-select: none; margin-top: 15px;">
           <div id="optionsBtnEndRunProgress" style="position: absolute; top: 0; left: 0; height: 100%; width: 0%; background: rgba(255,0,85,0.5); pointer-events: none; transition: none;"></div>
           <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: #ff0055; font-weight: bold; font-size: 16px; pointer-events: none; text-shadow: 0 0 5px #ff0055; z-index: 2;">HOLD TO END RUN</div>
         </div>
+      </div>
+      <section class="pause-upgrades-panel">
+        <h2>ACQUIRED UPGRADES</h2>
+        <div class="acquired-upgrades-grid pause-panel-grid" id="pauseUpgradeCards"></div>
+      </section>
       </div>
     </div>
 

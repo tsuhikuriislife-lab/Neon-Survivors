@@ -70,32 +70,42 @@ export function hideWarningBanner(elementId) {
 }
 
 /**
- * Calcula y aplica el factor de escalado de dificultad basado en el tiempo de juego.
- * Mantiene un límite (cap) en el minuto 30 (1800 segundos) para que el juego siga
- * siendo matemáticamente posible.
+ * Calcula el escalado de enemigos según la fase actual.
+ * Conserva el crecimiento lineal hasta la fase 6 y luego continúa sin límite
+ * mediante un factor exponencial compartido, con la vida como estadística principal.
  */
 export function updateEnemyScaling() {
   if (!state.enemyScaling) {
     state.enemyScaling = { hp: 1.0, speed: 1.0, damage: 1.0 };
   }
-  
-  // Progreso normalizado: de 0.0 (inicio del juego) a 1.0 (minuto 30)
-  const progress = Math.min(1.0, Math.max(0, (state.gameTime || 0) / 1800));
-  
-  // Escalas máximas a los 30 min: HP x5.0, Velocidad x1.75, Daño x1.75
-  state.enemyScaling.hp = 1.0 + (progress * 2.5);
-  state.enemyScaling.speed = 1.0 + (progress * 0.75);
-  state.enemyScaling.damage = 1.0 + (progress * 0.75);
-  
-  const phaseBonus = (state.currentPhase - 1) * 0.4;
-  const waveBonus = state.waveTriggeredEnFase ? 0.2 : 0;
-  const totalScaling = phaseBonus + waveBonus;
-  
-  // NOTA: Se sobrescribe momentáneamente para herencia de versiones antiguas.
-  // Podría refactorizarse en el futuro para sumar `totalScaling` al base en vez de reemplazar.
-  state.enemyScaling.hp = 1.0 + (totalScaling * 2.0);
-  state.enemyScaling.speed = 1.0 + (totalScaling * 0.15);
-  state.enemyScaling.damage = 1.0 + (totalScaling * 0.25);
+
+  // La fase 6 conserva los valores lineales actuales como referencia exponencial.
+  const referencePhase = 6;
+  const phase = Math.max(1, state.currentPhase || 1);
+
+  if (phase <= referencePhase) {
+    // El escalado temprano mantiene el crecimiento lineal existente por fase.
+    // La oleada aumenta la cadencia de spawn, pero no suma otro bono de estadísticas.
+    const phaseBonus = (phase - 1) * 0.4;
+    state.enemyScaling.hp = 1.0 + (phaseBonus * 2.0);
+    state.enemyScaling.speed = 1.0 + (phaseBonus * 0.15);
+    state.enemyScaling.damage = 1.0 + (phaseBonus * 0.25);
+    return;
+  }
+
+  // El factor común de la vida se duplica cada tres fases después de la referencia.
+  const phasesPerHpDoubling = 3;
+  const phasesPastReference = phase - referencePhase;
+  const hpGrowthFactor = Math.pow(2, phasesPastReference / phasesPerHpDoubling);
+
+  // Daño y velocidad comparten las fases de crecimiento, con menor intensidad.
+  const damageGrowthFactor = Math.sqrt(hpGrowthFactor);
+  const speedGrowthFactor = Math.sqrt(damageGrowthFactor);
+
+  // Estos anclajes coinciden con los valores lineales de la fase 6: HP x5, daño x1.5, velocidad x1.3.
+  state.enemyScaling.hp = 5.0 * hpGrowthFactor;
+  state.enemyScaling.damage = 1.5 * damageGrowthFactor;
+  state.enemyScaling.speed = 1.3 * speedGrowthFactor;
 }
 
 /**

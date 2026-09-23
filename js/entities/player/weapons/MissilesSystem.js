@@ -8,7 +8,7 @@ export class MissilesSystem extends Weapon {
   constructor(player) {
     super(player);
     this.level = 0;
-    this.count = 6;
+    this.count = 2;
     this.timer = 0;
     this.cooldown = 220;
     this.cooldownMult = 1.0;

@@ -17,15 +17,17 @@ Cada mejora tiene la siguiente estructura que puedes modificar fácilmente:
 - `name`: Nombre en inglés que se muestra en la interfaz (ej. 'Vector Thrusters', 'Multi-Laser Fire Rate').
 - `icon`: Emoji o ícono representativo.
 - `desc`: Descripción de lo que hace la mejora.
-- `isAvailable(p)`: Función opcional que determina si la mejora puede aparecer en las opciones de subida de nivel. Se usa para establecer límites (ej. máximo 4 niveles). **Aquí puedes cambiar los topes máximos modificando el número en la condición.**
+- `maxCount`: Máximo de cartas que se pueden obtener. Si se omite, no hay límite de cartas. El conteo se lleva en `player.acquiredUpgrades` y lo consultan las vistas y el sistema de disponibilidad.
+- `isAvailable(p)`: Función opcional para requisitos propios de juego (por ejemplo, desbloquear primero un arma). Los topes generales van en `maxCount`.
 - `apply(p)`: Función que se ejecuta cuando el jugador selecciona la mejora. **Aquí puedes cambiar cuánto beneficia la mejora al jugador** (ej. cambiar `p.weapons.blaster.projectileCount += 1` a `+= 2`).
 
 **¿Qué puedo cambiar aquí?**
 - **Añadir nuevas mejoras:** Simplemente agrega un nuevo objeto al array `upgradeDatabase`.
 - **Modificar estadísticas:** Cambiar porcentajes de daño (`p.damageMult`), radio de recolección (`p.pickupRadius`), velocidad, etc., ajustando los números dentro de cada función `apply()`.
-- **Limitar mejoras:** Modificar la función `isAvailable` para aumentar o reducir la cantidad de veces que una mejora puede ser adquirida.
+- **Limitar mejoras:** Configurar `maxCount`; usar `isAvailable` para requisitos particulares.
 
 
 **Nuevas Propiedades Añadidas:**
 - `rarity`: Define la probabilidad de aparición de la carta (`common`: 60%, `uncommon`: 20%, `rare`: 15%, `legendary`: 5%).
-- `isInfinite`: Bandera (`true` o `false`) que indica si la mejora no tiene un tope máximo. El botón de Test Rápido ignora estas cartas para evitar congelar el juego.
+- `isInfinite`: Indica que la carta pertenece a la categoría de mejoras infinitas; no debe usarse como sustituto de `maxCount`.
+- `upgradeUtils.js`: API compartida para leer conteo/máximo, comprobar disponibilidad y conceder una carta registrándola una sola vez. Los flujos de nivel, recompensas, administración y pruebas usan esta API.

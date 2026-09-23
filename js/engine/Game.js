@@ -1,7 +1,7 @@
 import { state } from './gameState.js';
 import { resetInputState } from './Input.js';
 import { Player } from '../entities/player/Player.js';
-import { startUILoop, triggerHUDUpdate, showBossRewardMenu } from '../ui/UIManager.js';
+import { startUILoop, triggerHUDUpdate, showBossRewardMenu, clearPendingUIActions, resetRunUI } from '../ui/UIManager.js';
 import { bitmapFont } from "./BitmapFont.js";
 import { handleSpawning, spawnRandomBoss, updatePendingBossSpawn, updateWave, hideWarningBanner, updateEnemyScaling } from '../systems/WaveManager.js';
 import { dist } from './Utils.js';
@@ -16,6 +16,9 @@ export let menuShowcase = null;
 export let vectorTitle = null;
 
 export function initGame() {
+  clearPendingUIActions();
+  resetRunUI();
+  resetInputState();
   state.isInMenu = false;
   state.reset();
   updateEnemyScaling();
@@ -1220,6 +1223,9 @@ export function resumeGame() {
   audioManager.resumeAudioContext();
   audioManager.playSound('main_gun_fire', { volume: 0.7 });
   
+  clearPendingUIActions();
+  resetRunUI();
+  resetInputState();
   state.isInMenu = false;
   state.reset();
   lowHpWarningTransition = 0;

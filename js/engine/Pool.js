@@ -398,7 +398,8 @@ class PooledGem {
     } else if (this.type === 'chip') {
       // Chip gem logic
       if (this.isMagnetized || d < player.pickupRadius * player.pickupRadiusMult) {
-        const speed = this.isMagnetized ? 15.0 : 7.5;
+        // Quantum Singularity fija la velocidad compartida de todas las gemas atraídas.
+        const speed = 15.0;
         const a = Math.atan2(player.y - this.y, player.x - this.x);
         this.x += Math.cos(a) * speed;
         this.y += Math.sin(a) * speed;
@@ -412,7 +413,8 @@ class PooledGem {
     } else {
       // XP gem logic
       if (this.isMagnetized || d < player.pickupRadius * player.pickupRadiusMult) {
-        const speed = this.isMagnetized ? 15.0 : 7.5;
+        // Quantum Singularity fija la velocidad compartida de todas las gemas atraídas.
+        const speed = 15.0;
         const a = Math.atan2(player.y - this.y, player.x - this.x);
         this.x += Math.cos(a) * speed;
         this.y += Math.sin(a) * speed;
