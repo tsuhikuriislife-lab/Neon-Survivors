@@ -16,6 +16,7 @@ export const state = {
   droppedChips: 0,
   chipsAwardedThisRun: 0,
   lastFrameTime: performance.now(),
+  renderEpoch: 0,
   rerollsUsed: 0,
 
   // Phase System
@@ -112,6 +113,7 @@ export const state = {
   },
 
   reset() {
+    this.renderEpoch++;
     const destroyEntity = (e) => {
       if (!e) return;
       if (typeof e.destroy === 'function') {

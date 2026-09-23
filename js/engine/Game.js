@@ -9,11 +9,18 @@ import { spawnExplosion } from '../entities/effects/spawnExplosion.js';
 import { MenuBackgroundShowcase, VectorTitleRenderer } from './MenuScene.js';
 import { audioManager } from './AudioManager.js';
 import { worldLayer } from '../main.js';
+import { RenderInterpolator } from './RenderInterpolator.js';
+import { FixedStepClock } from './FixedStepClock.js';
 import { SaveManager } from './SaveManager.js';
 import { bossRegistry } from '../data/bossRegistry.js';
 
 export let menuShowcase = null;
 export let vectorTitle = null;
+
+const fixedStepClock = new FixedStepClock();
+const renderInterpolator = new RenderInterpolator();
+let lastRenderEpoch = state.renderEpoch;
+let wasAdPlaying = false;
 
 export function initGame() {
   clearPendingUIActions();
@@ -625,16 +632,67 @@ function handleMenuEvacuation(dt) {
 }
 
 export function loop(timestamp) {
-  // Freezes all game updates and canvas rendering while an ad is active
-  // releasing 100% of CPU and GPU resources to the video ad player
+  // Ads discard elapsed time so resuming never triggers a burst of catch-up steps.
   if (state.isAdPlaying) {
+    if (!wasAdPlaying) renderInterpolator.snapToCurrent(worldLayer);
+    wasAdPlaying = true;
     state.lastFrameTime = timestamp;
+    fixedStepClock.reset();
     return;
   }
+  if (wasAdPlaying) {
+    renderInterpolator.snapToCurrent(worldLayer);
+    wasAdPlaying = false;
+  }
 
-  const dt = Math.min(0.1, (timestamp - state.lastFrameTime) / 1000);
+  if (lastRenderEpoch !== state.renderEpoch) {
+    if (state.camera) state.camera.applyToLayer(worldLayer);
+    fixedStepClock.reset();
+    renderInterpolator.reset(worldLayer);
+    lastRenderEpoch = state.renderEpoch;
+  }
+
+  const frameDelta = Math.max(0, (timestamp - state.lastFrameTime) / 1000);
   state.lastFrameTime = timestamp;
+  syncPauseTransition();
 
+  // Keep paused gameplay frozen while allowing the menu to continue animating.
+  if (state.isPaused && !state.isInMenu) {
+    fixedStepClock.reset();
+  } else {
+    fixedStepClock.advance(frameDelta, updateFixedStep);
+  }
+
+  // The scene is synchronized once per display refresh, even when no simulation step ran.
+  updateBackgroundLayer();
+  if (state.camera) {
+    state.camera.applyToLayer(worldLayer);
+  }
+  const interpolationAlpha = state.isPaused && !state.isInMenu
+    ? 1
+    : fixedStepClock.alpha;
+  renderInterpolator.render(worldLayer, interpolationAlpha);
+}
+
+function updateFixedStep(dt) {
+  renderInterpolator.beginStep(worldLayer);
+  advanceSimulation(dt);
+  if (state.camera) state.camera.applyToLayer(worldLayer);
+  renderInterpolator.captureStep(worldLayer);
+  return !(state.isPaused && !state.isInMenu);
+}
+
+function syncPauseTransition() {
+  if (state.isInMenu || state.isPaused === state.wasPaused) return;
+
+  if (state.isPaused && state.player && typeof state.player.onPause === 'function') {
+    state.player.onPause();
+  }
+  renderInterpolator.snapToCurrent(worldLayer);
+  state.wasPaused = state.isPaused;
+}
+
+function advanceSimulation(dt) {
   // =========================================================================
   // START SCREEN / MAIN MENU MODE
   // =========================================================================
@@ -653,23 +711,11 @@ export function loop(timestamp) {
       state.camera.targetY = 960 + Math.cos(time * 0.18) * 50;
       state.camera.x += (state.camera.targetX - state.camera.x) * (dt * 2.0);
       state.camera.y += (state.camera.targetY - state.camera.y) * (dt * 2.0);
-      state.camera.applyToLayer(worldLayer);
     }
 
     audioManager.playMusic('music_main');
 
-    updateBackgroundLayer();
-
     return;
-  }
-
-  if (state.isPaused !== state.wasPaused) {
-    if (state.isPaused) {
-      if (state.player && typeof state.player.onPause === 'function') {
-        state.player.onPause();
-      }
-    }
-    state.wasPaused = state.isPaused;
   }
 
   if (!state.isPaused) {
@@ -707,10 +753,6 @@ export function loop(timestamp) {
 
     // === 2. CINEMATIC PAUSE GATE ===
     if (state.isCinematic) {
-      updateBackgroundLayer();
-      if (state.camera) {
-        state.camera.applyToLayer(worldLayer);
-      }
       return; // Skip gameplay updates
     }
 
@@ -1200,14 +1242,6 @@ export function loop(timestamp) {
     audioManager.playMusic(desiredMusic);
 
     
-  }
-
-  // =========================================================================
-  // PIXI SYNC PHASE
-  // =========================================================================
-  updateBackgroundLayer();
-  if (state.camera) {
-    state.camera.applyToLayer(worldLayer);
   }
 
 }

@@ -192,6 +192,13 @@ if (loadingScreen) {
   loadingScreen.style.display = 'none';
 }
 
+if (new URLSearchParams(window.location.search).has('synthetic-test')) {
+  import('./engine/SyntheticFrameRateTest.js').then(({ runSyntheticFrameRateTest }) => {
+    window.runSyntheticFrameRateTest = runSyntheticFrameRateTest;
+    console.info('Synthetic frame-rate test ready. Run window.runSyntheticFrameRateTest() in the console.');
+  });
+}
+
 app.ticker.add(() => {
   loop(performance.now());
 });
