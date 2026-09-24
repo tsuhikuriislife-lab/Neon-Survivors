@@ -1,208 +1,144 @@
 import { Weapon } from './Weapon.js';
 import { state } from '../../../engine/gameState.js';
-import { mouse, aimInput } from '../../../engine/Input.js';
 import { LaserBeam } from '../../projectiles/LaserBeam.js';
+import { acquireNearestLaserTarget } from '../../projectiles/LaserTargeting.js';
 import { audioManager } from '../../../engine/AudioManager.js';
 
+const FRAMES_PER_SECOND = 60;
+
+/**
+ * Fires world-anchored laser paths at the nearest valid enemy on an automatic cadence.
+ * The weapon owns firing timing and upgrade stats; each beam owns its path and damage ticks.
+ */
 export class LaserCannonSystem extends Weapon {
   constructor(player) {
     super(player);
     this.level = 0;
-    this.chargeTimer = 0;
-    this.maxCharge = 1140;
-    this.fullyCharged = false;
-    this.damage = 250; // default for reset
-    this.width = 25;
-    this.duration = 24;
-    this.chargeSpeedMult = 1;
-    this.damageMult = 1;
-    this.widthMult = 1;
+
+    // The six-second base cadence keeps the new persistent beam distinct from fast weapons.
+    this.cooldown = 9 * FRAMES_PER_SECOND;
+    this.cooldownMult = 1.0;
+    this.timer = 0;
+
+    this.damage = 55;
+    this.width = 50;
+    this.damageMult = 1.0;
+    this.widthMult = 1.0;
+
+    // Base beams last three seconds and pulse damage twice per second.
+    this.beamLife = 1.5 * FRAMES_PER_SECOND;
+    this.baseDamageInterval = 0.5 * FRAMES_PER_SECOND;
+    this.damageIntervalMult = 1.0;
+    this.bounceCount = 0;
+
     this.subLasers = false;
     this.dot = false;
     this.dotDamage = 20;
     this.dotDuration = 5;
-    this.tickDamage = false;
-    this.soundNode = null;
-    this.chargeUpgrades = 0;
+
+    this.bounceUpgrades = 0;
     this.dmgUpgrades = 0;
     this.widthUpgrades = 0;
-    this.lifeUpgrades = 0;
+    this.damageIntervalUpgrades = 0;
+    this.durationUpgrades = 0;
     this.dotUpgrades = 0;
 
-    this.heat = 0;
-    this.maxHeat = 240; // 4 seconds to overheat
-    this.overheated = false;
-    this.activeLaser = null;
-    this.activeSubLasers = [];
-    this.tickDamage = true;
-    this.duration = 9999;
-    this.chargeTimer = 0;
-    this.chargeRequired = 90; // 1.5 seconds at 60fps
-    this.timeNotFiring = 0;
-    this.timeFiring = 0;
+    // Active beams are tracked so resetting or destroying this weapon clears their graphics.
+    this.activeBeams = new Set();
   }
 
+  /**
+   * Advances the cooldown and fires when a valid target is available.
+   * @param {number} dt - Fixed simulation delta in seconds (weapon timing uses 60 Hz frames).
+   * @returns {void}
+   */
   update(dt) {
     if (this.level <= 0) return;
 
-    const isFiring = (mouse.down || aimInput.active);
+    const globalCooldownMult = this.player.getEffectiveCooldownMult
+      ? this.player.getEffectiveCooldownMult()
+      : 1.0;
+    const effectiveCooldown = Math.max(
+      1,
+      Math.round((this.cooldown / (this.cooldownMult || 1.0)) * globalCooldownMult)
+    );
 
-    if (isFiring && !this.overheated) {
-      this.timeNotFiring = 0;
-      if (this.chargeTimer < this.chargeRequired) {
-        // Charging phase
-        this.chargeTimer++;
-        
-        // Ensure laser is off while charging
-        this.destroyActiveLasers();
-        if (state.camera && typeof state.camera.setAimOffset === 'function') state.camera.setAimOffset(0, 0);
+    // Clamp at ready so a missing target does not reset the cadence or delay the next valid shot.
+    this.timer = Math.min(this.timer + 1, effectiveCooldown);
+    if (this.timer < effectiveCooldown) return;
 
-        
-        if (!this.player.laserChargeGraphics) {
-          this.player.laserChargeGraphics = new PIXI.Graphics();
-          if (this.player.container) this.player.container.addChild(this.player.laserChargeGraphics);
-        }
-        
-        this.player.laserChargeGraphics.clear();
-        const radius = (this.chargeTimer / this.chargeRequired) * 20; 
-        
-        const tipX = Math.cos(this.player.angle) * this.player.radius;
-        const tipY = Math.sin(this.player.angle) * this.player.radius;
-        
-        this.player.laserChargeGraphics.beginFill(0xffff00, 0.8);
-        this.player.laserChargeGraphics.drawCircle(tipX, tipY, radius);
-        this.player.laserChargeGraphics.endFill();
+    const target = acquireNearestLaserTarget(this.player.x, this.player.y);
+    if (!target) return;
 
-      } else {
-        // Firing phase
-        if (this.player.laserChargeGraphics) this.player.laserChargeGraphics.clear();
-
-        // Heating up
-        this.timeFiring = (this.timeFiring || 0) + 1;
-        const n = Math.floor(this.timeFiring / 120);
-        const exponentialHeat = Math.pow(1.4, n);
-
-        const tradeOffMult = 1.0 
-                             + (this.subLasers ? 0.5 : 0) 
-                             + ((this.dmgUpgrades || 0) * 0.1) 
-                             + ((this.widthUpgrades || 0) * 0.1);
-
-        const heatRate = this.player.hasActiveShield() ? (1 - (this.player.shield.rateBonusUpgrades || 0) * 0.05) : 1;
-        
-        this.heat += 1.0 * heatRate * (this.heatGenMult || 1.0) * tradeOffMult * exponentialHeat;
-        
-        if (this.heat >= this.maxHeat) {
-          // Overheat trigger
-          this.heat = this.maxHeat; 
-          this.overheated = true;
-          const batteryRatio = this.maxHeat / 240;
-          this.overheatLockTimer = Math.floor(120 * batteryRatio); 
-          this.destroyActiveLasers();
-          if (state.camera && typeof state.camera.setAimOffset === 'function') state.camera.setAimOffset(0, 0);
-          audioManager.playSound('error', { volume: 0.5, throttleMs: 200 }); 
-        } else {
-          // Firing logic
-          let angle = this.player.angle; 
-
-          if (state.camera && typeof state.camera.setAimOffset === 'function') {
-             const aimDist = 160;
-             state.camera.setAimOffset(Math.cos(angle) * aimDist, Math.sin(angle) * aimDist);
-          }
-
-          const effectiveLaserDmg = (this.damage * this.damageMult * this.player.getEffectiveDamageMult()) * 0.5;
-
-          if (!this.activeLaser) {
-             this.activeLaser = new LaserBeam(this.player.x, this.player.y, angle, effectiveLaserDmg, this.width * this.widthMult, 9999, false, this.dot ? this.dotDamage : 0, this.dot ? this.dotDuration : 0, true);
-             state.laserBeams.push(this.activeLaser);
-             
-             if (this.subLasers) {
-               const subWidth = (this.width * this.widthMult) * 0.25;
-               const subDmg = effectiveLaserDmg * 0.25;
-               this.activeSubLasers = [
-                 new LaserBeam(this.player.x, this.player.y, angle - Math.PI / 6, subDmg, subWidth, 9999, true, this.dot ? this.dotDamage : 0, this.dot ? this.dotDuration : 0, true),
-                 new LaserBeam(this.player.x, this.player.y, angle + Math.PI / 6, subDmg, subWidth, 9999, true, this.dot ? this.dotDamage : 0, this.dot ? this.dotDuration : 0, true)
-               ];
-               state.laserBeams.push(...this.activeSubLasers);
-             }
-          } else {
-             // Update coordinates of continuous beam
-             this.activeLaser.startX = this.player.x;
-             this.activeLaser.startY = this.player.y;
-             this.activeLaser.angle = angle;
-             this.activeLaser.damage = effectiveLaserDmg;
-             this.activeLaser.life = 9999;
-             
-             if (this.subLasers && this.activeSubLasers && this.activeSubLasers.length === 2) {
-               this.activeSubLasers[0].startX = this.player.x; this.activeSubLasers[0].startY = this.player.y; this.activeSubLasers[0].angle = angle - Math.PI / 6; this.activeSubLasers[0].life = 9999; this.activeSubLasers[0].damage = effectiveLaserDmg * 0.25;
-               this.activeSubLasers[1].startX = this.player.x; this.activeSubLasers[1].startY = this.player.y; this.activeSubLasers[1].angle = angle + Math.PI / 6; this.activeSubLasers[1].life = 9999; this.activeSubLasers[1].damage = effectiveLaserDmg * 0.25;
-             }
-          }
-          
-          if (state.particlePool && Math.random() < 0.2) {
-             const p = state.particlePool.acquire(this.player.x, this.player.y, "#00ff00", 3, 0.05, 3);
-             if (p) {
-               p.vx = Math.cos(angle + (Math.random()-0.5)) * 4;
-               p.vy = Math.sin(angle + (Math.random()-0.5)) * 4;
-             }
-          }
-          audioManager.playSound('hit_laser_cannon', { volume: 0.2, throttleMs: 80 }); 
-        }
-      }
-    } else {
-      // Cooling down or not firing
-      this.chargeTimer = 0;
-
-      if (state.camera && typeof state.camera.setAimOffset === 'function') {
-         state.camera.setAimOffset(0, 0);
-      }
-      this.destroyActiveLasers();
-      this.timeNotFiring++; 
-      
-      this.timeFiring = Math.max(0, (this.timeFiring || 0) - 2);
-
-      if (this.overheated && this.overheatLockTimer > 0) {
-        this.overheatLockTimer--; 
-      } else {
-        if (!this.overheated && this.timeNotFiring < 90) {
-          // Aún reteniendo calor...
-        } else {
-          let baseCoolRate = this.overheated ? 0.35 : 0.75;
-          if (this.coolantInstalled) baseCoolRate *= 2.0;
-
-          const extraFrames = Math.max(0, this.timeNotFiring - (this.overheated ? 0 : 90));
-          let acceleration = 1.0 + (extraFrames / 60) * 0.25;
-          acceleration = Math.min(acceleration, 5.0); 
-
-          const finalCoolRate = baseCoolRate * acceleration;
-          this.heat = Math.max(0, this.heat - finalCoolRate);
-          
-          if (this.heat === 0) {
-            this.overheated = false;
-            this.timeFiring = 0; 
-          }
-        }
-      }
-    }
+    this.timer = 0;
+    this.fire(target);
   }
 
-  destroyActiveLasers() {
-    if (this.activeLaser) {
-      this.activeLaser.life = 0;
-      this.activeLaser = null;
+  /**
+   * Creates one main ray and, when unlocked, two weaker diagonal rays from the same world point.
+   * @param {object} target - The closest living target selected for this shot.
+   * @returns {void}
+   */
+  fire(target) {
+    const angle = Math.atan2(target.y - this.player.y, target.x - this.player.x);
+    const damage = this.damage * this.damageMult * this.player.getEffectiveDamageMult() * 0.5;
+    const width = this.width * this.widthMult;
+
+    // Beam constructors capture player coordinates now, then retain that path as a map-space object.
+    this.spawnBeam(angle, damage, width, false);
+    if (this.subLasers) {
+      this.spawnBeam(angle - Math.PI / 6, damage * 0.25, width * 0.25, true);
+      this.spawnBeam(angle + Math.PI / 6, damage * 0.25, width * 0.25, true);
     }
-    if (this.activeSubLasers) {
-      this.activeSubLasers.forEach(l => { if(l) l.life = 0; });
-      this.activeSubLasers = [];
-    }
+
+    audioManager.playSound('hit_laser_cannon', { volume: 0.35, throttleMs: 150 });
   }
+
+  /**
+   * Creates and registers an independent reflected beam at the player's current map position.
+   * @param {number} angle - Launch direction in radians.
+   * @param {number} damage - Damage applied on each beam pulse.
+   * @param {number} width - Collision and visual width of this beam.
+   * @param {boolean} isSubLaser - Whether this is one of the auxiliary rays.
+   * @returns {LaserBeam} The newly created beam.
+   */
+  spawnBeam(angle, damage, width, isSubLaser) {
+    const beam = new LaserBeam(
+      this.player.x,
+      this.player.y,
+      angle,
+      damage,
+      width,
+      this.beamLife,
+      {
+        bounceCount: this.bounceCount,
+        damageInterval: this.getDamageIntervalFrames(),
+        dotDamage: this.dot ? this.dotDamage : 0,
+        dotDuration: this.dot ? this.dotDuration : 0,
+        isSubLaser,
+        owner: this
+      }
+    );
+
+    state.laserBeams.push(beam);
+    this.activeBeams.add(beam);
+    return beam;
+  }
+
+  /**
+   * Returns the damage pulse interval after percentage-based interval upgrades.
+   * @returns {number} Number of fixed simulation frames between damage pulses.
+   */
+  getDamageIntervalFrames() {
+    return Math.max(8, Math.round(this.baseDamageInterval * this.damageIntervalMult));
+  }
+
+  /**
+   * Removes every beam belonging to this weapon when the player resets or is destroyed.
+   * @returns {void}
+   */
   destroy() {
-    this.destroyActiveLasers();
-    if (this.soundNode) {
-      try {
-        this.soundNode.stop();
-        this.soundNode.disconnect();
-      } catch (e) {}
-      this.soundNode = null;
-    }
+    for (const beam of this.activeBeams) beam.destroy();
+    this.activeBeams.clear();
   }
 }

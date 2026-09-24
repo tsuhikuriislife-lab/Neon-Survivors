@@ -2,8 +2,8 @@ import { MissileProjectile } from './MissileProjectile.js';
 import { state } from '../../engine/gameState.js';
 
 export class ClusterBombMissile extends MissileProjectile {
-  constructor(x, y, vx, vy, damage, homingStrength, aoeRadius) {
-    super(x, y, vx, vy, damage, homingStrength, aoeRadius);
+  constructor(x, y, vx, vy, damage, homingStrength, aoeRadius, targetAssignment = null) {
+    super(x, y, vx, vy, damage, homingStrength, aoeRadius, targetAssignment);
     // Hacer que el misil principal se vea más grande y peligroso
     if (this.sprite && this.sprite.scale) {
       this.sprite.scale.set(1.5);

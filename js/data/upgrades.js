@@ -1,5 +1,4 @@
 import { state } from "../engine/gameState.js";
-import { updateAimJoystickUI } from "../engine/Input.js";
 export const upgradeDatabase = [
   {
     id: 'blaster_count',
@@ -120,12 +119,42 @@ export const upgradeDatabase = [
     name: 'Quantum Amplifier',
     maxCount: 5,
     icon: '<img src="assets/upgrades/quantum-amplifier.png" alt="icon">',
-    desc: '+25% damage.',
+    desc: '+5% damage to all weapons.',
     isAvailable: (p) => (p.damageUpgradesCount || 0) < 5,
-    apply: (p) => { 
-        p.damageMult += 0.25; 
-        p.damageUpgradesCount = (p.damageUpgradesCount || 0) + 1;
+    apply: (p) => {
+      p.damageMult += 0.05;
+      p.damageUpgradesCount = (p.damageUpgradesCount || 0) + 1;
     }
+  },
+  {
+    id: 'damage_boost_2',
+    rarity: 'uncommon',
+    name: 'Quantum Amplifier II',
+    maxCount: 5,
+    icon: '<img src="assets/upgrades/plasma-optimization.png" alt="icon">',
+    desc: '+10% damage to all weapons.',
+    isAvailable: (p) => (p.damageUpgradesCount || 0) >= 5,
+    apply: (p) => { p.damageMult += 0.10; }
+  },
+  {
+    id: 'damage_boost_3',
+    rarity: 'rare',
+    name: 'Quantum Amplifier III',
+    maxCount: 5,
+    icon: '<img src="assets/upgrades/weapon-tuning.png" alt="icon">',
+    desc: '+15% damage to all weapons.',
+    isAvailable: (p) => (p.acquiredUpgrades?.['damage_boost_2'] || 0) >= 5,
+    apply: (p) => { p.damageMult += 0.15; }
+  },
+  {
+    id: 'damage_boost_legendary',
+    rarity: 'legendary',
+    name: 'Quantum Apex',
+    maxCount: 1,
+    icon: '<img src="assets/upgrades/quantum-amplifier.png" alt="icon" style="filter: hue-rotate(100deg) brightness(1.2);">',
+    desc: '+100% damage to all weapons.',
+    isAvailable: (p) => (p.acquiredUpgrades?.['damage_boost_3'] || 0) >= 5,
+    apply: (p) => { p.damageMult += 1.0; }
   },
   {
     id: 'repair_hull',
@@ -392,11 +421,10 @@ export const upgradeDatabase = [
     name: 'Cluster Warhead',
     maxCount: 1,
     icon: '<img src="assets/upgrades/missile-battery-aoe-size.png" alt="icon" style="filter: hue-rotate(90deg) brightness(1.2);">',
-    desc: 'Missiles deploy non-homing shrapnel on impact. +25% Base Damage & AoE.',
+    desc: 'Missiles deploy non-homing shrapnel on impact. +25% AoE radius.',
     isAvailable: (p) => p.weapons.missiles.level > 0 && !p.weapons.missiles.isCluster,
     apply: (p) => {
       p.weapons.missiles.isCluster = true;
-      p.weapons.missiles.damage *= 1.25;
       p.weapons.missiles.aoeMult += 0.25;
     }
   },
@@ -420,37 +448,21 @@ export const upgradeDatabase = [
     name: 'Laser Cannon',
     maxCount: 1,
     icon: '<img src="assets/upgrades/laser-cannon.png" alt="icon">',
-    desc: 'A manually aimed cannon with heavy piercing damage.',
+    desc: 'Automatically fires a persistent piercing beam at the nearest valid enemy.',
     isAvailable: (p) => p.weapons.laserCannon.level === 0,
-    apply: (p) => { 
-      p.weapons.laserCannon.level = 1; 
-      updateAimJoystickUI();
-    }
+    apply: (p) => { p.weapons.laserCannon.level = 1; }
   },
   {
     id: 'laser_charge',
     rarity: 'common',
-    name: 'Cooling System',
-    maxCount: 4,
+    name: 'Ricochet Lens',
+    maxCount: 5,
     icon: '<img src="assets/upgrades/laser-cannon-cooldown.png" alt="icon">',
-    desc: 'Reduces Laser Cannon heat generation by 15%.',
-    isAvailable: (p) => p.weapons.laserCannon.level > 0 && (p.weapons.laserCannon.chargeUpgrades || 0) < 4,
+    desc: '+1 wall bounce per level, up to 5 bounces.',
+    isAvailable: (p) => p.weapons.laserCannon.level > 0 && (p.weapons.laserCannon.bounceUpgrades || 0) < 5,
     apply: (p) => {
-      p.weapons.laserCannon.heatGenMult = (p.weapons.laserCannon.heatGenMult || 1.0) * 0.85;
-      p.weapons.laserCannon.chargeUpgrades = (p.weapons.laserCannon.chargeUpgrades || 0) + 1;
-    }
-  },
-  {
-    id: 'laser_damage',
-    rarity: 'common',
-    name: 'Laser Intensity',
-    maxCount: 3,
-    icon: '<img src="assets/upgrades/laser-cannon-damage.png" alt="icon">',
-    desc: '+25% Laser Cannon damage.',
-    isAvailable: (p) => p.weapons.laserCannon.level > 0 && (p.weapons.laserCannon.dmgUpgrades || 0) < 3,
-    apply: (p) => {
-      p.weapons.laserCannon.damageMult += 0.25;
-      p.weapons.laserCannon.dmgUpgrades = (p.weapons.laserCannon.dmgUpgrades || 0) + 1;
+      p.weapons.laserCannon.bounceCount += 1;
+      p.weapons.laserCannon.bounceUpgrades = (p.weapons.laserCannon.bounceUpgrades || 0) + 1;
     }
   },
   {
@@ -469,14 +481,27 @@ export const upgradeDatabase = [
   {
     id: 'laser_lifespan',
     rarity: 'uncommon',
-    name: 'Thermal Battery',
+    name: 'Rapid Pulse',
+    maxCount: 5,
+    icon: '<img src="assets/upgrades/laser-cannon-cooldown.png" alt="icon">',
+    desc: 'Reduces Laser Cannon damage interval by 10%.',
+    isAvailable: (p) => p.weapons.laserCannon.level > 0 && (p.weapons.laserCannon.damageIntervalUpgrades || 0) < 5,
+    apply: (p) => {
+      p.weapons.laserCannon.damageIntervalMult *= 0.9;
+      p.weapons.laserCannon.damageIntervalUpgrades = (p.weapons.laserCannon.damageIntervalUpgrades || 0) + 1;
+    }
+  },
+  {
+    id: 'laser_duration',
+    rarity: 'uncommon',
+    name: 'Extended Emission',
     maxCount: 5,
     icon: '<img src="assets/upgrades/laser-cannon-duration.png" alt="icon">',
-    desc: '+25% Maximum Heat Capacity before overheating.',
-    isAvailable: (p) => p.weapons.laserCannon.level > 0 && (p.weapons.laserCannon.lifeUpgrades || 0) < 5,
+    desc: '+0.5 seconds to Laser Cannon beam duration.',
+    isAvailable: (p) => p.weapons.laserCannon.level > 0 && (p.weapons.laserCannon.durationUpgrades || 0) < 5,
     apply: (p) => {
-      p.weapons.laserCannon.maxHeat *= 1.25;
-      p.weapons.laserCannon.lifeUpgrades = (p.weapons.laserCannon.lifeUpgrades || 0) + 1;
+      p.weapons.laserCannon.beamLife += 30;
+      p.weapons.laserCannon.durationUpgrades = (p.weapons.laserCannon.durationUpgrades || 0) + 1;
     }
   },
   {
@@ -506,30 +531,17 @@ export const upgradeDatabase = [
   {
     id: 'laser_dot_up',
     rarity: 'uncommon',
-    name: 'Deep Corrosion',
+    name: 'Lingering Corrosion',
     maxCount: 4,
     icon: '<img src="assets/upgrades/laser-cannon-deep-corrosion.png" alt="icon">',
-    desc: '+5 Corrosion damage, +0.5s duration.',
+    desc: '+0.5 seconds to Laser Cannon corrosion duration.',
     isAvailable: (p) => p.weapons.laserCannon.dot && (p.weapons.laserCannon.dotUpgrades || 0) < 4,
     apply: (p) => {
-      p.weapons.laserCannon.dotDamage += 5;
       p.weapons.laserCannon.dotDuration += 0.5;
       p.weapons.laserCannon.dotUpgrades = (p.weapons.laserCannon.dotUpgrades || 0) + 1;
     }
   },
-  {
-    id: 'laser_tick',
-    rarity: 'legendary',
-    name: 'Thermal Coolant',
-    maxCount: 1,
-    icon: '<img src="assets/upgrades/laser-cannon-continuous-beam.png" alt="icon">',
-    desc: 'Laser Cannon takes 50% longer to overheat and cools down twice as fast.',
-    isAvailable: (p) => p.weapons.laserCannon.level > 0 && !p.weapons.laserCannon.coolantInstalled,
-    apply: (p) => {
-      p.weapons.laserCannon.maxHeat *= 1.5;
-      p.weapons.laserCannon.coolantInstalled = true;
-    }
-  },
+  // The Laser Cannon legendary remains out of the pool until its new effect is designed.
 
   // CAMPO DE FUERZA (ESCUDO)
   {
@@ -623,16 +635,6 @@ export const upgradeDatabase = [
 
   // INFINITE SCALING UPGRADES
   {
-    id: 'damage_small',
-    isInfinite: true,
-    rarity: 'common',
-    name: 'Weapon Tuning',
-    icon: '<img src="assets/upgrades/weapon-tuning.png" alt="icon">',
-    desc: '+5% Damage.',
-    isAvailable: (p) => (p.damageUpgradesCount || 0) >= 5, // Only if max dmg upgrades reached
-    apply: (p) => { p.damageMult += 0.05; }
-  },
-  {
     id: 'heal_small',
     isInfinite: true,
     rarity: 'common',
@@ -651,16 +653,6 @@ export const upgradeDatabase = [
     desc: '+5% Critical Hit Chance.',
     isAvailable: (p) => (p.critChance || 0) < 0.99,
     apply: (p) => { p.critChance = (p.critChance || 0) + 0.05; }
-  },
-  {
-    id: 'damage_med',
-    isInfinite: true,
-    rarity: 'uncommon',
-    name: 'Plasma Optimization',
-    icon: '<img src="assets/upgrades/plasma-optimization.png" alt="icon">',
-    desc: '+10% Damage.',
-    isAvailable: (p) => (p.damageUpgradesCount || 0) >= 5, // Only if max dmg upgrades reached
-    apply: (p) => { p.damageMult += 0.10; }
   },
   {
     id: 'heal_med',

@@ -23,13 +23,28 @@ export class Boss {
       set(val) { this._texture = val; if(this.sprite) this.sprite.texture = val; }
     });
     this._spatialStamp = 0;
-    this.hitCooldowns = new Map();
+    // El primer nivel separa armas y el segundo conserva cooldown independiente por hitbox estable.
+    this.hitCooldowns = new WeakMap();
   }
 
-  canBeHitBy(source, cooldownSeconds) {
-    const lastHit = this.hitCooldowns.get(source) || -9999;
-    if (state.gameTime - lastHit >= cooldownSeconds) {
-      this.hitCooldowns.set(source, state.gameTime);
+  /**
+   * Comprueba el cooldown de un arma contra el jefe o uno de sus hitboxes.
+   * @param {object} source - Instancia del arma, rayo o satélite que inflige el daño.
+   * @param {number} cooldownSeconds - Tiempo mínimo entre impactos de esa fuente.
+   * @param {object} hitRegion - Identidad estable del segmento; por defecto, el jefe completo.
+   * @returns {boolean} Indica si la fuente puede dañar esta región.
+   */
+  canBeHitBy(source, cooldownSeconds, hitRegion = this) {
+    // WeakMaps permiten que rayos y proyectiles destruidos se liberen sin quedar retenidos por el jefe.
+    let regionCooldowns = this.hitCooldowns.get(source);
+    if (!regionCooldowns) {
+      regionCooldowns = new WeakMap();
+      this.hitCooldowns.set(source, regionCooldowns);
+    }
+
+    const lastHit = regionCooldowns.get(hitRegion);
+    if (state.gameTime - (lastHit ?? -Infinity) >= cooldownSeconds) {
+      regionCooldowns.set(hitRegion, state.gameTime);
       return true;
     }
     return false;

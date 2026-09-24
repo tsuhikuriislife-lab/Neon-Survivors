@@ -1,3 +1,5 @@
+import { ENEMY_BASE_BALANCE } from '../data/enemyBalance.js';
+
 export class SaveManager {
   static SAVE_KEY = 'neon_survivors_save';
   static PROFILE_KEY = 'neon_survivors_profile';
@@ -53,6 +55,7 @@ export class SaveManager {
     });
 
     const saveData = {
+      enemyBalanceVersion: ENEMY_BASE_BALANCE.version,
       gameTime: state.gameTime,
       killCount: state.killCount,
       phaseTime: state.phaseTime,

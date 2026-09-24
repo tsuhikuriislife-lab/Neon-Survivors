@@ -1,4 +1,5 @@
 import { AmalgamNode } from './AmalgamNode.js';
+import { ENEMY_BASE_BALANCE } from '../../data/enemyBalance.js';
 import { state } from '../../engine/gameState.js';
 import { dist, drawPolygon } from '../../engine/Utils.js';
 import { spawnExplosion } from '../effects/spawnExplosion.js';
@@ -20,7 +21,7 @@ export class AmalgamBossRoot {
     const multiplier = state.bossScaling['AmalgamBossRoot'] || 1.0;
     const startX = x !== undefined ? x : state.width / 2;
     const startY = y !== undefined ? y : state.height / 2;
-    const initialNode = new AmalgamNode("Amalgam", startX, startY, 14000 * multiplier, 14000 * multiplier, 1);
+    const initialNode = new AmalgamNode("Amalgam", startX, startY, 14000 * ENEMY_BASE_BALANCE.healthMultiplier * multiplier, 14000 * ENEMY_BASE_BALANCE.healthMultiplier * multiplier, 1);
     initialNode.root = this;
     this.nodes = [initialNode];
     this.dead = false;

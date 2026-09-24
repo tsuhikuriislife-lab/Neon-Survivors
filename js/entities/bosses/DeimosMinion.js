@@ -1,4 +1,5 @@
 import { state } from '../../engine/gameState.js';
+import { ENEMY_BASE_BALANCE } from '../../data/enemyBalance.js';
 import { dist } from '../../engine/Utils.js';
 import { spawnExplosion } from '../effects/spawnExplosion.js';
 import { AcceleratingProjectile } from '../projectiles/AcceleratingProjectile.js';
@@ -37,8 +38,8 @@ export class DeimosMinion extends Boss {
     this.maxTurnRate = 0.048;
     this.turnRateFactor = 0.11;
 
-    this.headDamage = 22;
-    this.bodyDamage = 10;
+    this.headDamage = 22 * ENEMY_BASE_BALANCE.damageMultiplier;
+    this.bodyDamage = 10 * ENEMY_BASE_BALANCE.damageMultiplier;
     this.bodyHitRadius = this.radius * 0.7;
     this.bodyHitCooldown = 0;
     this.bodyHitCooldownMax = 30;
@@ -80,6 +81,8 @@ export class DeimosMinion extends Boss {
           y: seg.y,
           radius: this.radius,
           parent: this,
+          // getTargetables() recrea el wrapper; esta referencia conserva la identidad del segmento.
+          stableTargetKey: seg,
           takeDamage: (amt, color) => this.takeDamage(amt, color, seg.x, seg.y)
         });
       });
@@ -307,8 +310,8 @@ export class DeimosMinion extends Boss {
     this.vx = Math.cos(newAngle) * this.speed;
     this.vy = Math.sin(newAngle) * this.speed;
 
-    this.x += this.vx;
-    this.y += this.vy;
+    this.x += this.vx * ENEMY_BASE_BALANCE.speedMultiplier;
+    this.y += this.vy * ENEMY_BASE_BALANCE.speedMultiplier;
 
     // 4. Cinematica de segmentos
     this.segments[0].x = this.x;

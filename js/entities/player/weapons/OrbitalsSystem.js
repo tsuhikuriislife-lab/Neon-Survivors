@@ -33,6 +33,10 @@ export class OrbitalsSystem extends Weapon {
     this.orbitalSprites2 = [];
   }
 
+  /** Actualiza las órbitas y aplica colisiones usando cooldown por arma y segmento.
+   * @param {number} dt - Tiempo transcurrido del paso de simulación.
+   * @returns {void}
+   */
   update(dt) {
     if (this.level <= 0) {
       this.orbitalContainer.visible = false;
@@ -176,8 +180,9 @@ export class OrbitalsSystem extends Weapon {
             for (let b of state.bosses) {
                 for (let t of b.getTargetables()) {
                     const actualTarget = t.parent || t;
+                    const hitRegion = t.stableTargetKey || actualTarget;
                     if (dist(ox, oy, t.x, t.y) < orbRadius + t.radius) {
-                        if (actualTarget.canBeHitBy && actualTarget.canBeHitBy(sourceSprite, cooldownSeconds)) {
+                        if (actualTarget.canBeHitBy && actualTarget.canBeHitBy(sourceSprite, cooldownSeconds, hitRegion)) {
                             t.takeDamage(orbDmg, colorHexStr);
                             state.recordDamage('orbitals', orbDmg);
                             spawnExplosion(ox, oy, colorHexStr, 3, 1.5);

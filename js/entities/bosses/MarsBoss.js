@@ -1,4 +1,5 @@
 import { DeimosMinion } from './DeimosMinion.js';
+import { ENEMY_BASE_BALANCE } from '../../data/enemyBalance.js';
 import { FobosMinion } from './FobosMinion.js';
 import { state } from '../../engine/gameState.js';
 import { dist } from '../../engine/Utils.js';
@@ -24,7 +25,7 @@ function hslToHex(h, s, l) {
 export class MarsBoss extends Boss {
   constructor(x, y, hp, maxHp) {
     const multiplier = state.bossScaling['MarsBoss'] || 1.0;
-    const defaultMaxHp = 20000 * multiplier;
+    const defaultMaxHp = 20000 * ENEMY_BASE_BALANCE.healthMultiplier * multiplier;
     const finalMaxHp = maxHp !== undefined ? maxHp : defaultMaxHp;
     const finalHp = hp !== undefined ? hp : finalMaxHp;
     super(0, 0, "Mars", finalMaxHp, 36, "#39ff14", finalHp);
@@ -61,8 +62,8 @@ export class MarsBoss extends Boss {
     this.turnRateFactor = 0.11;     // Factor de escala turnRate = turnRateFactor / speed dentro del mapa
 
     // Balance de Colisiones y Dano
-    this.headDamage = 28;           // Dano directo de impacto de la cabeza
-    this.bodyDamage = 12;           // Dano reducido del cuerpo
+    this.headDamage = 28 * ENEMY_BASE_BALANCE.damageMultiplier;           // Dano directo de impacto de la cabeza
+    this.bodyDamage = 12 * ENEMY_BASE_BALANCE.damageMultiplier;           // Dano reducido del cuerpo
     this.bodyHitRadius = this.radius * 0.7; // Radio permisivo de los segmentos del cuerpo
     this.bodyHitCooldown = 0;       // Temporizador de cooldown de dano del cuerpo
     this.bodyHitCooldownMax = 30;   // Cooldown en frames (0.5s) entre impactos del cuerpo
@@ -107,6 +108,8 @@ export class MarsBoss extends Boss {
           y: seg.y,
           radius: this.radius,
           parent: this,
+          // getTargetables() recrea el wrapper; esta referencia conserva la identidad del segmento.
+          stableTargetKey: seg,
           takeDamage: (amt, color) => this.takeDamage(amt, color, seg.x, seg.y)
         });
       });
@@ -397,8 +400,8 @@ export class MarsBoss extends Boss {
     this.vx = Math.cos(newAngle) * this.speed;
     this.vy = Math.sin(newAngle) * this.speed;
 
-    this.x += this.vx;
-    this.y += this.vy;
+    this.x += this.vx * ENEMY_BASE_BALANCE.speedMultiplier;
+    this.y += this.vy * ENEMY_BASE_BALANCE.speedMultiplier;
 
     // 4. Actualizacion cinematica de segmentos
     this.segments[0].x = this.x;

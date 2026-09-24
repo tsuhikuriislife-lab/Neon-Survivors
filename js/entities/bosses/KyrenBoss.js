@@ -1,4 +1,5 @@
 import { DenzelBoss } from './DenzelBoss.js';
+import { ENEMY_BASE_BALANCE } from '../../data/enemyBalance.js';
 import { state } from '../../engine/gameState.js';
 import { dist } from '../../engine/Utils.js';
 import { spawnExplosion } from '../effects/spawnExplosion.js';
@@ -12,7 +13,7 @@ import { worldLayer } from '../../main.js';
 export class KyrenBoss extends Boss {
   constructor(x, y, hp, maxHp) {
     const multiplier = state.bossScaling['KyrenBoss'] || 1.0;
-    const defaultMaxHp = 16000 * multiplier;
+    const defaultMaxHp = 16000 * ENEMY_BASE_BALANCE.healthMultiplier * multiplier;
     const finalMaxHp = maxHp !== undefined ? maxHp : defaultMaxHp;
     const finalHp = hp !== undefined ? hp : finalMaxHp;
     super(0, 0, "Kyren", finalMaxHp, 150, "#00ffcc", finalHp);
@@ -175,7 +176,7 @@ export class KyrenBoss extends Boss {
     const cy = state.height / 2;
 
     if (this.state === 0) {
-      this.orbitAngle += 0.015 * this.orbitDirection;
+      this.orbitAngle += 0.015 * ENEMY_BASE_BALANCE.speedMultiplier * this.orbitDirection;
       this.x = cx + Math.cos(this.orbitAngle) * this.orbitRadius;
       this.y = cy + Math.sin(this.orbitAngle) * this.orbitRadius;
 
@@ -230,7 +231,7 @@ export class KyrenBoss extends Boss {
         if (this.dashIndicatorGraphics) this.dashIndicatorGraphics.clear();
       }
     } else if (this.state === 2) {
-      const progress = Math.min(1, this.stateTimer / 25);
+      const progress = Math.min(1, (this.stateTimer * ENEMY_BASE_BALANCE.speedMultiplier) / 25);
       this.x = this.chargeStartX + (this.chargeTargetX - this.chargeStartX) * progress;
       this.y = this.chargeStartY + (this.chargeTargetY - this.chargeStartY) * progress;
 
@@ -243,7 +244,7 @@ export class KyrenBoss extends Boss {
     }
 
     if (dist(this.x, this.y, player.x, player.y) < this.radius + player.radius) {
-      player.takeDamage(35, this.color, this);
+      player.takeDamage(35 * ENEMY_BASE_BALANCE.damageMultiplier, this.color, this);
     }
     
     if (this.innerSprite) {

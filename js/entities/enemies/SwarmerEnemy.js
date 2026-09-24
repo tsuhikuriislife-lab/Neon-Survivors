@@ -1,4 +1,5 @@
 import { state } from '../../engine/gameState.js';
+import { ENEMY_BASE_BALANCE } from '../../data/enemyBalance.js';
 import { Enemy } from './Enemy.js';
 import { getOrCachePolygon, textures } from '../../engine/TextureCache.js';
 import { worldLayer } from '../../main.js';
@@ -10,13 +11,13 @@ export class SwarmerEnemy extends Enemy {
     this.type = 'swarmer';
     this.radius = 12;
     this.sides = 3;
-    this.speed = 3.2 + Math.random() * 0.8;
-    this.maxHp = 10;
+    this.speed = (3.2 + Math.random() * 0.8) * ENEMY_BASE_BALANCE.speedMultiplier;
+    this.maxHp = 10 * ENEMY_BASE_BALANCE.healthMultiplier;
     this.hp = this.maxHp;
     this.color = "#ff9900";
     this.rgb = { r: 255, g: 153, b: 0 };
     this.xpValue = 5;
-    this.damage = 12;
+    this.damage = 12 * ENEMY_BASE_BALANCE.damageMultiplier;
     this.deathSoundKey = 'enemy_death_small';
     this.texture = textures['enemy_swarmer'];
     this.hasEnteredArena = (this.x >= 0 && this.x <= state.width && this.y >= 0 && this.y <= state.height);

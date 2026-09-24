@@ -3,6 +3,7 @@
 // ============================================================================
 
 import { state } from '../engine/gameState.js';
+import { ENEMY_BASE_BALANCE } from '../data/enemyBalance.js';
 import { spawnExplosion } from '../entities/effects/spawnExplosion.js';
 import { StandardEnemy } from '../entities/enemies/StandardEnemy.js';
 import { SwarmerEnemy } from '../entities/enemies/SwarmerEnemy.js';
@@ -377,7 +378,7 @@ export function handleSpawning() {
     baseInterval = Math.max(9, 16 - Math.floor(((state.gameTime - 1200) / 600) * 7));
   }
 
-  const mult = state.spawnRateMultiplier || 1.0;
+  const mult = ENEMY_BASE_BALANCE.spawnRateMultiplier * (state.spawnRateMultiplier || 1.0);
   // Durante una oleada (Wave), la cadencia de spawn es 2.5 VECES más rápida
   const waveMult = state.isWaveActive ? 2.5 : 1.0;
   baseInterval = Math.max(2, Math.floor(baseInterval / (mult * waveMult)));

@@ -1,4 +1,5 @@
 import { state } from '../../engine/gameState.js';
+import { ENEMY_BASE_BALANCE } from '../../data/enemyBalance.js';
 import { dist } from '../../engine/Utils.js';
 import { audioManager } from '../../engine/AudioManager.js';
 import { Boss } from './Boss.js';
@@ -288,7 +289,7 @@ export class CerberoFuturoMinion extends Boss {
 
         const d = this.distToSegment(player.x, player.y, this.x, this.y, rayEndX, rayEndY);
         if (d < 15 + player.radius) {
-          player.takeDamage(15, "#ff0000", this);
+          player.takeDamage(15 * ENEMY_BASE_BALANCE.damageMultiplier, "#ff0000", this);
         }
       }
 
@@ -299,8 +300,8 @@ export class CerberoFuturoMinion extends Boss {
       }
     }
 
-    this.x += this.vx;
-    this.y += this.vy;
+    this.x += this.vx * ENEMY_BASE_BALANCE.speedMultiplier;
+    this.y += this.vy * ENEMY_BASE_BALANCE.speedMultiplier;
 
     if (this.sprite) {
       this.sprite.x = this.x;
@@ -592,8 +593,8 @@ export class CerberoPasadoMinion extends Boss {
       }
     }
 
-    this.x += this.vx;
-    this.y += this.vy;
+    this.x += this.vx * ENEMY_BASE_BALANCE.speedMultiplier;
+    this.y += this.vy * ENEMY_BASE_BALANCE.speedMultiplier;
     
     if (this.sprite) {
       this.sprite.x = this.x;
@@ -612,7 +613,7 @@ export class CerberoPasadoMinion extends Boss {
 // CerberoBossRoot (Presente - Ancla y Vórtice)
 // ============================================================================
 export class CerberoBossRoot extends Boss {
-  constructor(x, y, hp = 45000, maxHp = 45000) {
+  constructor(x, y, hp = 45000 * ENEMY_BASE_BALANCE.healthMultiplier, maxHp = 45000 * ENEMY_BASE_BALANCE.healthMultiplier) {
     const multiplier = state.bossScaling['CerberoBossRoot'] || 1.0;
     const finalMaxHp = maxHp * multiplier;
     super(960, 960, "Present", finalMaxHp, 90, "#ffffff", finalMaxHp);
@@ -751,7 +752,7 @@ export class CerberoBossRoot extends Boss {
 
       if (!this.isSnapping && d > this.tetherMaxDist) {
         this.isSnapping = true;
-        player.takeDamage(25, "#ff0055", this);
+        player.takeDamage(25 * ENEMY_BASE_BALANCE.damageMultiplier, "#ff0055", this);
         
         if (state.camera && typeof state.camera.shake === 'function') {
           state.camera.shake({ strength: 15, duration: 0.5 });

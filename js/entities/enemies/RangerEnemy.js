@@ -1,4 +1,5 @@
 import { state } from '../../engine/gameState.js';
+import { ENEMY_BASE_BALANCE } from '../../data/enemyBalance.js';
 import { Enemy } from './Enemy.js';
 import { dist } from '../../engine/Utils.js';
 import { Projectile } from '../projectiles/Projectile.js';
@@ -14,13 +15,13 @@ export class RangerEnemy extends Enemy {
     this.radius = 18;
     this.sides = 4;
     const scaleLevel = state.bossDefeatTimes.kyren ? Math.floor((state.gameTime - state.bossDefeatTimes.kyren) / 150) : 0;
-    this.speed = 1.0 + (scaleLevel * 0.2);
-    this.maxHp = 60;
+    this.speed = (1.0 + (scaleLevel * 0.2)) * ENEMY_BASE_BALANCE.speedMultiplier;
+    this.maxHp = 60 * ENEMY_BASE_BALANCE.healthMultiplier;
     this.hp = this.maxHp;
     this.color = "#00ccff";
     this.rgb = { r: 0, g: 204, b: 255 };
     this.xpValue = 20; 
-    this.damage = 15;
+    this.damage = 15 * ENEMY_BASE_BALANCE.damageMultiplier;
     this.fireRate = Math.max(30, 90 - (scaleLevel * 10)); 
     this.fireTimer = this.fireRate;
     this.projectileSpeed = 4 + (scaleLevel * 0.5);

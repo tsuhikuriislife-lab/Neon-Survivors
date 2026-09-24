@@ -59,6 +59,10 @@ let adminToolsEnabled = false;
 let endRunTimer = null;
 let pendingRewardTimers = new Set();
 let runActionGeneration = 0;
+let autoUpgradePanelTimeout = null;
+let autoUpgradePanelGeneration = 0;
+const AUTO_UPGRADE_PANEL_DURATION_MS = 3000;
+const AUTO_UPGRADE_PREFERENCE_KEY = "neon-survivors-auto-upgrade";
 
 /** Cancela acciones UI diferidas para que no afecten una partida posterior. */
 export function clearPendingUIActions() {
@@ -82,6 +86,8 @@ export function resetRunUI() {
     if (modal) modal.style.display = "none";
   }
 
+  clearAutoUpgradeSelectionPanel();
+
   const testingPanel = document.getElementById("testing-panel");
   if (testingPanel) testingPanel.style.display = "none";
   const testingToggle = document.getElementById("adminToggleTestingPanel");
@@ -101,6 +107,7 @@ export function initDOM() {
   if (DOM) return;
   DOM = {
     hudLevel: document.getElementById("hudLevel"),
+    autoUpgradeSelection: document.getElementById("autoUpgradeSelection"),
     hudXpBar: document.getElementById("hudXpBar"),
     hudXpText: document.getElementById("hudXpText"),
     hudHpBar: document.getElementById("hudHpBar"),
@@ -206,7 +213,21 @@ export function renderBossBars() {
   container.innerHTML = html;
 }
 
+/**
+ * Offers three upgrades, applying one immediately when automatic selection is enabled.
+ * @returns {void}
+ */
 export function showUpgradeMenu() {
+  const choices = getLevelUpChoices();
+  if (state.autoUpgradeEnabled && choices.length > 0) {
+    const selectedIndex = Math.floor(Math.random() * choices.length);
+    if (applyLevelUpUpgrade(choices[selectedIndex])) {
+      renderAutoUpgradeSelection(choices, selectedIndex);
+      audioManager.playSound('level_up', { volume: 0.8, throttleMs: 500, randomPitch: false });
+      return;
+    }
+  }
+
   state.isPaused = true;
   cancelAiming();
   const modal = document.getElementById("levelModal");
@@ -223,34 +244,8 @@ export function showUpgradeMenu() {
       btnReroll.style.display = "none";
     }
   }
-  // btnReroll logic handled above
 
   container.innerHTML = "";
-
-  const available = upgradeDatabase.filter(u => canAcquireUpgrade(u, state.player));
-
-  const choices = [];
-  for (let i = 0; i < 3; i++) {
-    const finiteAvailable = available.filter(u => !u.isInfinite && !choices.includes(u));
-    const r = getDynamicRarityRoll(finiteAvailable, false);
-    
-    let pool;
-    if (finiteAvailable.length > 0) {
-       pool = finiteAvailable.filter(u => u.rarity === r);
-    } else {
-       // Sólo permitir infinitas cuando TODAS las finitas se agotaron
-       pool = available.filter(u => u.isInfinite && !choices.includes(u) && u.rarity === r);
-       if (pool.length === 0) {
-          pool = available.filter(u => u.isInfinite && !choices.includes(u));
-       }
-    }
-    
-    if (pool.length > 0) {
-      const upg = pool[Math.floor(Math.random() * pool.length)];
-      choices.push(upg);
-    }
-  }
-
   choices.forEach(upg => {
     const card = document.createElement("div");
     card.className = "card rarity-" + (upg.rarity || 'common');
@@ -262,11 +257,8 @@ export function showUpgradeMenu() {
       <div class="upgrade-count">Current: ${currentCount}${getUpgradeMaxCount(upg) !== null ? `/${getUpgradeMaxCount(upg)}` : ''}</div>
     `;
     card.onclick = () => {
-      if (!acquireUpgrade(upg, state.player)) return;
-      if (state.player && typeof state.player.grantUpgradeInvulnerability === 'function') {
-        state.player.grantUpgradeInvulnerability();
-      }
-      modal.style.display = "none"; 
+      if (!applyLevelUpUpgrade(upg)) return;
+      modal.style.display = "none";
       audioManager.setMusicMuffled(false);
       state.isPaused = false;
     };
@@ -276,6 +268,145 @@ export function showUpgradeMenu() {
   modal.style.display = "flex";
   audioManager.playSound('level_up', { volume: 0.8, throttleMs: 500, randomPitch: false });
   audioManager.setMusicMuffled(true);
+}
+
+/**
+ * Selects the same three rarity-weighted candidates used by the manual level-up menu.
+ * @returns {Array<object>} Upgrade definitions currently offered to the player.
+ */
+function getLevelUpChoices() {
+  const available = upgradeDatabase.filter(upgrade => canAcquireUpgrade(upgrade, state.player));
+  const choices = [];
+
+  for (let i = 0; i < 3; i++) {
+    const finiteAvailable = available.filter(upgrade => !upgrade.isInfinite && !choices.includes(upgrade));
+    const rarity = getDynamicRarityRoll(finiteAvailable, false);
+    let pool;
+
+    if (finiteAvailable.length > 0) {
+      pool = finiteAvailable.filter(upgrade => upgrade.rarity === rarity);
+    } else {
+      // Infinite upgrades stay out of the offer until all finite upgrades are exhausted.
+      pool = available.filter(upgrade => upgrade.isInfinite && !choices.includes(upgrade) && upgrade.rarity === rarity);
+      if (pool.length === 0) pool = available.filter(upgrade => upgrade.isInfinite && !choices.includes(upgrade));
+    }
+
+    if (pool.length > 0) choices.push(pool[Math.floor(Math.random() * pool.length)]);
+  }
+
+  return choices;
+}
+
+/**
+ * Applies an upgrade and preserves the brief protection granted by normal level-ups.
+ * @param {object} upgrade Upgrade definition to acquire.
+ * @returns {boolean} True when the upgrade was successfully applied.
+ */
+function applyLevelUpUpgrade(upgrade) {
+  if (!acquireUpgrade(upgrade, state.player)) return false;
+  if (state.player && typeof state.player.grantUpgradeInvulnerability === 'function') {
+    state.player.grantUpgradeInvulnerability();
+  }
+  return true;
+}
+
+/**
+ * Shows the latest automatic pick in the center, with only rarity-colored skipped cards at its sides.
+ * @param {Array<object>} choices The three offers shown for this level-up.
+ * @param {number} selectedIndex Index of the automatically acquired offer.
+ * @returns {void}
+ */
+function renderAutoUpgradeSelection(choices, selectedIndex) {
+  clearAutoUpgradeSelectionPanel();
+  initDOM();
+  const panel = DOM.autoUpgradeSelection;
+  if (!panel) return;
+
+  let leftSkipped = null;
+  let rightSkipped = null;
+  for (let i = 0; i < choices.length; i++) {
+    if (i === selectedIndex) continue;
+    if (leftSkipped === null) leftSkipped = choices[i];
+    else rightSkipped = choices[i];
+  }
+
+  /** Draws a blank rarity-colored placeholder without exposing the skipped upgrade itself. */
+  const skippedCard = (upgrade) => upgrade
+    ? `<div class="auto-upgrade-skipped rarity-${upgrade.rarity || 'common'}" aria-hidden="true"></div>`
+    : '<div class="auto-upgrade-skipped is-empty" aria-hidden="true"></div>';
+  const selected = choices[selectedIndex];
+  panel.innerHTML = `
+    ${skippedCard(leftSkipped)}
+    <div class="auto-upgrade-selected rarity-${selected.rarity || 'common'}" role="img" aria-label="Selected upgrade: ${selected.name}" title="Selected: ${selected.name}">
+      <div class="auto-upgrade-icon">${selected.icon}</div>
+      <div class="auto-upgrade-name">${selected.name}</div>
+    </div>
+    ${skippedCard(rightSkipped)}
+  `;
+  panel.style.display = "flex";
+
+  // A new level-up replaces the old message and starts a fresh three-second visibility window.
+  const panelGeneration = autoUpgradePanelGeneration;
+  autoUpgradePanelTimeout = setTimeout(() => {
+    if (panelGeneration !== autoUpgradePanelGeneration) return;
+    panel.replaceChildren();
+    panel.style.display = "none";
+    autoUpgradePanelTimeout = null;
+  }, AUTO_UPGRADE_PANEL_DURATION_MS);
+}
+
+/**
+ * Removes the previous automatic-selection message and invalidates its pending hide callback.
+ * @returns {void}
+ */
+function clearAutoUpgradeSelectionPanel() {
+  autoUpgradePanelGeneration++;
+  if (autoUpgradePanelTimeout !== null) {
+    clearTimeout(autoUpgradePanelTimeout);
+    autoUpgradePanelTimeout = null;
+  }
+
+  const panel = DOM?.autoUpgradeSelection || document.getElementById("autoUpgradeSelection");
+  if (!panel) return;
+  panel.replaceChildren();
+  panel.style.display = "none";
+}
+
+/**
+ * Changes the saved automatic level-up preference and updates the accessible toggle state.
+ * @param {boolean} enabled Whether future level-ups should be selected automatically.
+ * @returns {void}
+ */
+function setAutoUpgradeMode(enabled) {
+  state.autoUpgradeEnabled = Boolean(enabled);
+
+  // Store the player's preference separately so run resets cannot turn the mode off.
+  try {
+    window.localStorage.setItem(AUTO_UPGRADE_PREFERENCE_KEY, String(state.autoUpgradeEnabled));
+  } catch {
+    // Keep the current in-memory setting when browser storage is unavailable.
+  }
+
+  const toggle = document.getElementById("autoUpgradeToggle");
+  if (!toggle) return;
+
+  const status = state.autoUpgradeEnabled ? "on" : "off";
+  toggle.classList.toggle("is-active", state.autoUpgradeEnabled);
+  toggle.setAttribute("aria-pressed", String(state.autoUpgradeEnabled));
+  toggle.setAttribute("aria-label", `Automatic upgrade selection: ${status}`);
+  toggle.title = `Automatic upgrade selection: ${status}`;
+}
+
+/**
+ * Reads the saved automatic-upgrade preference, defaulting to off on first use.
+ * @returns {boolean} Previously selected mode, or false when no preference is stored.
+ */
+function loadAutoUpgradePreference() {
+  try {
+    return window.localStorage.getItem(AUTO_UPGRADE_PREFERENCE_KEY) === "true";
+  } catch {
+    return false;
+  }
 }
 
 function renderAcquiredUpgradeCards(container, context) {
@@ -373,7 +504,16 @@ export function returnToMainMenu() {
 
 export function initUIListeners() {
   initAdminConsole();
-  
+
+  const autoUpgradeToggle = document.getElementById("autoUpgradeToggle");
+  if (autoUpgradeToggle) {
+    setAutoUpgradeMode(loadAutoUpgradePreference());
+    autoUpgradeToggle.onclick = (event) => {
+      event.stopPropagation();
+      setAutoUpgradeMode(!state.autoUpgradeEnabled);
+    };
+  }
+
   const btnStartGame = document.getElementById("btnStartGame");
   if (btnStartGame) {
     btnStartGame.onclick = () => {
@@ -655,13 +795,25 @@ export function initUIListeners() {
       bar.style.width = '0%';
     };
 
-    endRunArea.addEventListener('mousedown', startEndRun);
-    endRunArea.addEventListener('touchstart', startEndRun, { passive: false });
-    
-    endRunArea.addEventListener('mouseup', cancelEndRun);
-    endRunArea.addEventListener('mouseleave', cancelEndRun);
-    endRunArea.addEventListener('touchend', cancelEndRun);
-    endRunArea.addEventListener('touchcancel', cancelEndRun);
+    // Pointer capture mantiene la pulsación activa aunque el dedo se deslice fuera del control.
+    endRunArea.addEventListener('pointerdown', (e) => {
+      if (e.pointerType === 'mouse' && e.button !== 0) return;
+      if (endRunArea.setPointerCapture) endRunArea.setPointerCapture(e.pointerId);
+      startEndRun(e);
+    });
+    endRunArea.addEventListener('pointerup', cancelEndRun);
+    endRunArea.addEventListener('pointercancel', cancelEndRun);
+    endRunArea.addEventListener('lostpointercapture', cancelEndRun);
+
+    // El control de mantener pulsado también se puede usar con teclado.
+    endRunArea.addEventListener('keydown', (e) => {
+      if ((e.key !== ' ' && e.key !== 'Enter') || e.repeat) return;
+      startEndRun(e);
+    });
+    endRunArea.addEventListener('keyup', (e) => {
+      if (e.key === ' ' || e.key === 'Enter') cancelEndRun(e);
+    });
+    endRunArea.addEventListener('blur', () => cancelEndRun());
   }
 
   window.addEventListener("keydown", (e) => {
@@ -1049,17 +1201,11 @@ export function revivePlayer() {
   // 3. Otorgar 3.0s de inmunidad total con parpadeo
   state.player.invulnerabilityTimer = 3.0;
 
-  // 4. Cancelar apuntado y recargas de armas activas
+  // 4. Reiniciar la cadencia del laser; sus rayos se limpian unas lineas mas abajo
   cancelAiming();
   if (state.player.weapons && state.player.weapons.laserCannon) {
-    const lc = state.player.weapons.laserCannon;
-    lc.heat = 0;
-    lc.overheated = false;
-    if (state.player.destroyActiveLasers) state.player.destroyActiveLasers(lc);
-    if (lc.soundNode) {
-      try { lc.soundNode.stop(); lc.soundNode.disconnect(); } catch(e){}
-      lc.soundNode = null;
-    }
+    // Existing map beams are destroyed below; restart cadence to avoid an immediate post-revive shot.
+    state.player.weapons.laserCannon.timer = 0;
   }
   if (state.player.uiGraphics) {
     state.player.uiGraphics.clear();
@@ -1171,7 +1317,11 @@ function updateTestingPanelHUD() {
   }
   
   if (w && w.level > 0) {
-    testSig += `_L_${Math.round(w.heat || 0)}_${w.overheated}_${w.overheatLockTimer}_${w.chargeTimer}_${w.timeFiring}_${w.timeNotFiring}`;
+    const cooldownFrames = Math.max(
+      1,
+      Math.round((w.cooldown / (w.cooldownMult || 1.0)) * p.getEffectiveCooldownMult())
+    );
+    testSig += `_L_${Math.floor(w.timer / 6)}_${cooldownFrames}_${w.beamLife}_${w.getDamageIntervalFrames()}_${w.bounceCount}`;
   }
 
   if (_uiCache.testSignature === testSig) return;
@@ -1211,43 +1361,26 @@ function updateTestingPanelHUD() {
   }
 
   if (w && w.level > 0) {
-    const n = Math.floor((w.timeFiring || 0) / 120);
-    const expMult = Math.pow(1.4, n).toFixed(2);
-    const tradeOffMult = 1.0 + (w.subLasers ? 0.5 : 0) + ((w.dmgUpgrades || 0) * 0.1) + ((w.widthUpgrades || 0) * 0.1);
-    
-    const heatRate = p.hasActiveShield() ? (1 - (p.shield.rateBonusUpgrades || 0) * 0.05) : 1;
-    const finalHeatGen = (1.0 * heatRate * (w.heatGenMult || 1.0) * tradeOffMult * Math.pow(1.4, n)).toFixed(3);
-
-    let baseCoolRate = w.overheated ? 0.35 : 0.75;
-    if (w.coolantInstalled) baseCoolRate *= 2.0;
-    const extraFrames = Math.max(0, (w.timeNotFiring || 0) - (w.overheated ? 0 : 90));
-    let acceleration = 1.0 + (extraFrames / 60) * 0.25;
-    acceleration = Math.min(acceleration, 5.0);
-    const finalCoolRate = (baseCoolRate * acceleration).toFixed(3);
-
-    let stateText = '<span style="color:lime">READY</span>';
-    if (w.overheated) stateText = '<span style="color:red">OVERHEATED</span>';
-    else if (w.chargeTimer < w.chargeRequired && w.chargeTimer > 0) stateText = '<span style="color:yellow">CHARGING</span>';
+    const cooldownFrames = Math.max(
+      1,
+      Math.round((w.cooldown / (w.cooldownMult || 1.0)) * p.getEffectiveCooldownMult())
+    );
+    const cooldownProgress = Math.min(1, w.timer / cooldownFrames);
+    const cooldownSeconds = (cooldownFrames / 60).toFixed(1);
+    const beamSeconds = (w.beamLife / 60).toFixed(1);
+    const intervalSeconds = (w.getDamageIntervalFrames() / 60).toFixed(2);
+    const activeBeamCount = w.activeBeams ? w.activeBeams.size : 0;
 
     weaponsHtml += `
       <div style="margin-top: 12px; font-size: 10px; color: #ccc; background: rgba(0,0,0,0.6); padding: 8px; border-radius: 4px; border: 1px solid #444;">
-        <div style="color: #00ff66; font-weight: bold; margin-bottom: 4px;">[LASER HEAT DEBUG]</div>
+        <div style="color: #00ff66; font-weight: bold; margin-bottom: 4px;">[LASER DEBUG]</div>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px;">
-          <div><b>Heat:</b> ${Math.round(w.heat || 0)} / ${w.maxHeat}</div>
-          <div><b>State:</b> ${stateText}</div>
-          <div><b>Charge:</b> ${w.chargeTimer} / ${w.chargeRequired}</div>
-          <div><b>LockTimer:</b> ${w.overheatLockTimer || 0}</div>
-          <div><b>timeFiring:</b> ${w.timeFiring || 0}</div>
-          <div><b>Exp Mult:</b> x${expMult}</div>
-          <div><b>timeNotFiring:</b> ${w.timeNotFiring || 0}</div>
-          <div><b>Accel Mult:</b> x${acceleration.toFixed(2)}</div>
-        </div>
-        <hr style="border: 0; border-top: 1px solid #555; margin: 6px 0;" />
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px;">
-          <div><b>TradeOff:</b> x${tradeOffMult.toFixed(2)}</div>
-          <div><b>BaseGen:</b> x${(w.heatGenMult || 1.0).toFixed(2)}</div>
-          <div style="color:#ff6666"><b>Heat Gen:</b> +${finalHeatGen}/f</div>
-          <div style="color:#66ff66"><b>Cool Rate:</b> -${finalCoolRate}/f</div>
+          <div><b>Cooldown:</b> ${(w.timer / 60).toFixed(1)} / ${cooldownSeconds}s</div>
+          <div><b>Ready:</b> ${(cooldownProgress * 100).toFixed(0)}%</div>
+          <div><b>Beam duration:</b> ${beamSeconds}s</div>
+          <div><b>Damage interval:</b> ${intervalSeconds}s</div>
+          <div><b>Wall bounces:</b> ${w.bounceCount} / 5</div>
+          <div><b>Active beams:</b> ${activeBeamCount}</div>
         </div>
       </div>
     `;
@@ -1612,8 +1745,10 @@ export function initAdminConsole() {
 
   adminToolsEnabled = false;
   const adminButton = document.getElementById("optionsBtnDev");
+  const adminToolsSection = document.getElementById("optionsAdminToolsSection");
   const quickTestButton = document.getElementById("quick-test-btn");
   if (adminButton) adminButton.style.display = "none";
+  if (adminToolsSection) adminToolsSection.style.display = "none";
   if (quickTestButton) quickTestButton.style.display = "none";
 
   function printLog(msg, type = 'info') {
@@ -1669,6 +1804,7 @@ export function initAdminConsole() {
       const mode = args[1]?.toLowerCase();
       adminToolsEnabled = mode === 'off' ? false : mode === 'on' ? true : !adminToolsEnabled;
       if (adminButton) adminButton.style.display = adminToolsEnabled ? '' : 'none';
+      if (adminToolsSection) adminToolsSection.style.display = adminToolsEnabled ? '' : 'none';
       if (quickTestButton) quickTestButton.style.display = adminToolsEnabled ? '' : 'none';
       if (!adminToolsEnabled) {
         const adminModal = document.getElementById("adminModal");

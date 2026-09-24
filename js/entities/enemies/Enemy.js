@@ -1,4 +1,5 @@
 import { state } from '../../engine/gameState.js';
+import { ENEMY_BASE_BALANCE } from '../../data/enemyBalance.js';
 import { dist } from '../../engine/Utils.js';
 import { spawnExplosion } from '../effects/spawnExplosion.js';
 import { audioManager } from '../../engine/AudioManager.js';
@@ -35,13 +36,13 @@ export class Enemy {
     // Default stats to be overridden by subclasses
     this.radius = 15;
     this.sides = 3;
-    this.speed = 1;
-    this.maxHp = 10;
-    this.hp = 10;
+    this.speed = ENEMY_BASE_BALANCE.speedMultiplier;
+    this.maxHp = 10 * ENEMY_BASE_BALANCE.healthMultiplier;
+    this.hp = this.maxHp;
     this.color = "#ffffff";
     this.rgb = { r: 255, g: 255, b: 255 };
     this.xpValue = 1;
-    this.damage = 10;
+    this.damage = 10 * ENEMY_BASE_BALANCE.damageMultiplier;
     this.deathSoundKey = 'enemy_death_small';
     this.hitCooldowns = new Map();
     this.sprite = new PIXI.Sprite();

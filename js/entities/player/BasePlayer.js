@@ -1,5 +1,5 @@
 import { state } from '../../engine/gameState.js';
-import { keys, mouse, getMovementVector, aimInput, updateAimJoystickUI } from '../../engine/Input.js';
+import { keys, getMovementVector } from '../../engine/Input.js';
 import { dist } from '../../engine/Utils.js';
 import { spawnExplosion } from '../effects/spawnExplosion.js';
 import { Shockwave } from '../projectiles/Shockwave.js';
@@ -218,6 +218,11 @@ export class BasePlayer {
     return mult;
   }
 
+  /**
+   * Updates player movement, defenses, weapons, and skill state for one simulation step.
+   * @param {number} dt - Fixed simulation delta in seconds.
+   * @returns {void}
+   */
   update(dt) {
     if (this.invulnerabilityTimer > 0) {
       this.invulnerabilityTimer -= dt;
@@ -264,11 +269,6 @@ export class BasePlayer {
       this.speed = this.baseSpeed * this.speedMult;
     }
     
-    const isFiringLaser = (this.weapons.laserCannon && this.weapons.laserCannon.level > 0 && !this.weapons.laserCannon.overheated && (aimInput.active || mouse.down));
-    if (isFiringLaser) {
-      this.speed *= 0.45; // 55% movement speed penalty while firing
-    }
-
     if (this.activeSkill && this.activeSkill.isActive && this.activeSkill.id === 'dash') {
       this.speed *= 2.5;
       if (state.particlePool && Math.random() < 0.65) {
@@ -312,39 +312,7 @@ export class BasePlayer {
     this.x = Math.max(this.radius, Math.min(state.width - this.radius, this.x));
     this.y = Math.max(this.radius, Math.min(state.height - this.radius, this.y));
 
-    if (aimInput.active && this.weapons.laserCannon && this.weapons.laserCannon.level > 0 && !this.weapons.laserCannon.overheated) {
-      const targetAngle = aimInput.angle;
-      let diff = targetAngle - this.angle;
-      while (diff < -Math.PI) diff += Math.PI * 2;
-      while (diff > Math.PI) diff -= Math.PI * 2;
-      
-      if (!this.weapons.laserCannon.activeLaser) {
-        this.angle = targetAngle; // Snap immediately on first shot
-      } else {
-        const turnRate = 0.015; // Constant turn speed
-        if (Math.abs(diff) <= turnRate) {
-          this.angle = targetAngle;
-        } else {
-          this.angle += Math.sign(diff) * turnRate;
-        }
-      }
-    } else if (mouse.down && this.weapons.laserCannon && this.weapons.laserCannon.level > 0 && !this.weapons.laserCannon.overheated) {
-      const targetAngle = Math.atan2(mouse.y - this.y, mouse.x - this.x);
-      let diff = targetAngle - this.angle;
-      while (diff < -Math.PI) diff += Math.PI * 2;
-      while (diff > Math.PI) diff -= Math.PI * 2;
-      
-      if (!this.weapons.laserCannon.activeLaser) {
-        this.angle = targetAngle; // Snap immediately on first shot
-      } else {
-        const turnRate = 0.015; // Constant turn speed
-        if (Math.abs(diff) <= turnRate) {
-          this.angle = targetAngle;
-        } else {
-          this.angle += Math.sign(diff) * turnRate;
-        }
-      }
-    } else if (dx !== 0 || dy !== 0) {
+    if (dx !== 0 || dy !== 0) {
       const targetAngle = Math.atan2(dy, dx);
       let diff = targetAngle - this.angle;
       while (diff < -Math.PI) diff += Math.PI * 2;
@@ -695,7 +663,6 @@ export class BasePlayer {
       }
     }
     this.initWeapons();
-    updateAimJoystickUI();
   }
 
   updateShieldAura() {
@@ -725,68 +692,42 @@ export class BasePlayer {
     }
   }
 
+  /**
+   * Draws the automatic Laser Cannon cooldown and shield recharge indicators.
+   * @returns {void}
+   */
   updateUIBars() {
     this.uiGraphics.clear();
 
-    // 1. Aiming Line
-    let isAiming = false;
-    let aimAngle = 0;
     const w = this.weapons.laserCannon;
-    
-    if (w && w.level > 0 && !w.overheated && (aimInput.active || mouse.down)) {
-      isAiming = true;
-      aimAngle = aimInput.active ? aimInput.angle : Math.atan2(mouse.y - this.y, mouse.x - this.x);
-    }
-    
-    if (isAiming) {
-      const maxLen = 2000;
-      const endX = Math.cos(aimAngle) * maxLen;
-      const endY = Math.sin(aimAngle) * maxLen;
-      
-      const isYellow = (this.weapons.laserCannon.level > 0 && this.weapons.laserCannon.tickDamage);
-      this.uiGraphics.lineStyle(1.2, isYellow ? 0xffffaa : 0xb4ffb4, 0.85);
-      this.uiGraphics.moveTo(0, 0);
-      this.uiGraphics.lineTo(endX, endY);
-      
-      if (this.weapons.laserCannon.level > 0 && this.weapons.laserCannon.subLasers) {
-        this.uiGraphics.lineStyle(1.5, isYellow ? 0xffff00 : 0x00ff00, 0.25);
-        for (let offset of [-Math.PI / 6, Math.PI / 6]) {
-          const subEndX = Math.cos(aimAngle + offset) * maxLen;
-          const subEndY = Math.sin(aimAngle + offset) * maxLen;
-          this.uiGraphics.moveTo(0, 0);
-          this.uiGraphics.lineTo(subEndX, subEndY);
-        }
-      }
-    }
 
-    // 2. Laser Heat Bar
+    // The bar fills as the automatic shot cooldown elapses.
     if (w && w.level > 0) {
       const barWidth = 36;
       const barHeight = 4;
       const barX = -barWidth / 2;
       const barY = 24;
       const radius = 2;
-      const heatRatio = Math.min(1.0, Math.max(0.0, (w.heat || 0) / (w.maxHeat || 1)));
+      const effectiveCooldown = Math.max(
+        1,
+        Math.round((w.cooldown / (w.cooldownMult || 1.0)) * this.getEffectiveCooldownMult())
+      );
+      const cooldownRatio = Math.min(1.0, Math.max(0.0, w.timer / effectiveCooldown));
 
-      const frameCount = (Date.now() / 100) % 2;
-      const isFlashing = w.overheated && frameCount < 1.0;
-      const outlineColor = w.overheated ? 0xff0000 : 0xffaa00;
-      const fillColor = w.overheated ? (isFlashing ? 0xff0000 : 0xaa0000) : (heatRatio > 0.75 ? 0xffaa00 : 0x00ff66);
-
-      this.uiGraphics.lineStyle(1, outlineColor, 0.6);
+      this.uiGraphics.lineStyle(1, 0x00ff66, 0.7);
       this.uiGraphics.beginFill(0x0a140f, 0.7);
       this.uiGraphics.drawRoundedRect(barX, barY, barWidth, barHeight, radius);
       this.uiGraphics.endFill();
 
-      const fillW = Math.max(0.01, barWidth * heatRatio);
-      if (fillW > 0) {
-        this.uiGraphics.beginFill(fillColor, 1.0);
-        this.uiGraphics.drawRoundedRect(barX, barY, fillW, barHeight, radius);
+      const fillWidth = barWidth * cooldownRatio;
+      if (fillWidth > 0) {
+        this.uiGraphics.beginFill(0x00ff66, 1.0);
+        this.uiGraphics.drawRoundedRect(barX, barY, fillWidth, barHeight, radius);
         this.uiGraphics.endFill();
       }
     }
 
-    // 3. Shield Recharge Bar
+    // 2. Shield Recharge Bar
     if (this.shield && this.shield.unlocked && this.shield.charges < this.shield.maxCharges) {
       const hasLaser = w && w.level > 0;
       const barWidth = 36;
@@ -840,6 +781,5 @@ export class BasePlayer {
     }
     this.shieldGraphics = null;
     this.uiGraphics = null;
-    this.laserChargeGraphics = null;
   }
 }

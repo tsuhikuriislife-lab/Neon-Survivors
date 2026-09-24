@@ -3,6 +3,7 @@ import { state } from '../../../engine/gameState.js';
 import { MissileProjectile } from '../../projectiles/MissileProjectile.js';
 import { ClusterBombMissile } from '../../projectiles/ClusterBombMissile.js';
 import { audioManager } from '../../../engine/AudioManager.js';
+import { acquireMissileTarget } from '../../projectiles/MissileTargeting.js';
 
 export class MissilesSystem extends Weapon {
   constructor(player) {
@@ -49,6 +50,9 @@ export class MissilesSystem extends Weapon {
     const effSpeed = this.speed * this.speedMult;
     
     const MissileClass = this.isCluster ? ClusterBombMissile : MissileProjectile;
+    const targetAssignment = this.homing > 0
+      ? acquireMissileTarget(this.player.x, this.player.y)
+      : null;
     
     state.projectiles.push(new MissileClass(
       this.player.x,
@@ -57,7 +61,8 @@ export class MissilesSystem extends Weapon {
       Math.sin(angle) * effSpeed,
       this.damage * this.player.getEffectiveDamageMult(),
       this.homing,
-      this.aoe * this.aoeMult
+      this.aoe * this.aoeMult,
+      targetAssignment
     ));
     audioManager.playSound('fire_missile', { volume: 0.5, throttleMs: 50 });
   }

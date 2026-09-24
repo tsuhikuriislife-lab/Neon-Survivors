@@ -1,4 +1,5 @@
 import { Boss } from './Boss.js';
+import { ENEMY_BASE_BALANCE } from '../../data/enemyBalance.js';
 import { state } from '../../engine/gameState.js';
 import { getOrCachePolygon, textures, drawCachedTexture } from '../../engine/TextureCache.js';
 import { worldLayer } from '../../main.js';
@@ -6,7 +7,7 @@ import { worldLayer } from '../../main.js';
 
 export class TestingBoss extends Boss {
   constructor() {
-    super(state.width / 2, state.height / 2, "Dummy Target", 999999, 160, "#00ffff");
+    super(state.width / 2, state.height / 2, "Dummy Target", 999999 * ENEMY_BASE_BALANCE.healthMultiplier, 160, "#00ffff");
     this.texture = textures['boss_testing'];
   }
 

@@ -5,9 +5,10 @@ import { spawnExplosion } from '../effects/spawnExplosion.js';
 import { audioManager } from '../../engine/AudioManager.js';
 import { textures } from '../../engine/TextureCache.js';
 import { worldLayer } from '../../main.js';
+import { acquireMissileTarget, isMissileTargetValid } from './MissileTargeting.js';
 
 export class MissileProjectile extends Projectile {
-  constructor(x, y, vx, vy, damage, homingStrength, aoeRadius) {
+  constructor(x, y, vx, vy, damage, homingStrength, aoeRadius, targetAssignment = null) {
     super(x, y, vx, vy, damage, "#ff4400", 6, false, homingStrength);
     this.aoeRadius = aoeRadius;
     this.radius = 6;
@@ -15,6 +16,10 @@ export class MissileProjectile extends Projectile {
     this.color = "#ff4400";
     this.pierce = false;
     this.isEnemy = false;
+    this.isTargetSeekingMissile = homingStrength > 0;
+    this.targetKey = targetAssignment ? targetAssignment.key : null;
+    this.targetOwner = targetAssignment ? targetAssignment.owner : null;
+    this.targetSearchTimer = 0;
     
     if (this.sprite) {
       worldLayer.removeChild(this.sprite);
@@ -117,60 +122,27 @@ export class MissileProjectile extends Projectile {
     }
   }
 
-  findTarget() {
-    let closest = null;
-    let minD = Infinity;
-
-    // 1. Search regular enemies
-    if (state.spatialGrid) {
-      const nearestEnemy = state.spatialGrid.getNearest(this.x, this.y, 3000);
-      if (nearestEnemy && !nearestEnemy.dead && nearestEnemy.hp > 0) {
-        closest = nearestEnemy;
-        minD = dist(this.x, this.y, nearestEnemy.x, nearestEnemy.y);
-      }
-    }
-
-    if (!closest && state.enemies && state.enemies.length > 0) {
-      const len = state.enemies.length;
-      for (let i = 0; i < len; i++) {
-        const e = state.enemies[i];
-        if (e.dead || e.hp <= 0) continue;
-        const d = dist(this.x, this.y, e.x, e.y);
-        if (d < minD) {
-          minD = d;
-          closest = e;
-        }
-      }
-    }
-
-    // 2. Search all boss targetables
-    if (state.bosses && state.bosses.length > 0) {
-      const bossLen = state.bosses.length;
-      for (let i = 0; i < bossLen; i++) {
-        const b = state.bosses[i];
-        const targetables = b.getTargetables ? b.getTargetables() : (b.dead ? [] : [b]);
-        const tLen = targetables.length;
-        for (let j = 0; j < tLen; j++) {
-          const t = targetables[j];
-          if (t.dead || t.hp <= 0) continue;
-          const d = dist(this.x, this.y, t.x, t.y);
-          if (d < minD) {
-            minD = d;
-            closest = t;
-          }
-        }
-      }
-    }
-
-    return closest;
-  }
-
+  /** Mantiene el blanco reservado y solo busca otro si el asignado deja de ser válido. */
   update() {
     if (this.homingStrength > 0) {
-      const closest = this.findTarget();
-      if (closest) {
+      if (this.targetKey && !isMissileTargetValid(this.targetKey, this.targetOwner)) {
+        this.targetKey = null;
+        this.targetOwner = null;
+        this.targetSearchTimer = 0;
+      }
+
+      if (!this.targetKey && this.targetSearchTimer <= 0) {
+        const assignment = acquireMissileTarget(this.x, this.y, this);
+        this.targetKey = assignment ? assignment.key : null;
+        this.targetOwner = assignment ? assignment.owner : null;
+        this.targetSearchTimer = 12;
+      } else if (!this.targetKey) {
+        this.targetSearchTimer--;
+      }
+
+      if (this.targetKey) {
         const speed = Math.hypot(this.vx, this.vy) || 7;
-        const targetAngle = Math.atan2(closest.y - this.y, closest.x - this.x);
+        const targetAngle = Math.atan2(this.targetKey.y - this.y, this.targetKey.x - this.x);
         const curAngle = Math.atan2(this.vy, this.vx);
         let diff = targetAngle - curAngle;
         while (diff < -Math.PI) diff += Math.PI * 2;

@@ -1,4 +1,5 @@
 import { state } from '../../engine/gameState.js';
+import { ENEMY_BASE_BALANCE } from '../../data/enemyBalance.js';
 import { dist } from '../../engine/Utils.js';
 import { spawnExplosion } from '../effects/spawnExplosion.js';
 import { ClusterProjectile } from '../projectiles/ClusterProjectile.js';
@@ -14,7 +15,7 @@ export class DenzelBoss extends Boss {
     this.targetY = 300;
     this.radius = 75;
     this.color = "#ffffff";
-    this.vx = 4.2;
+    this.vx = 4.2 * ENEMY_BASE_BALANCE.speedMultiplier;
     this.angle = 0;
     this.fireTimer = 0;
     this.dead = false;
@@ -69,7 +70,7 @@ export class DenzelBoss extends Boss {
     this.angle -= 0.05;
 
     if (Math.abs(this.y - this.targetY) > 3) {
-      this.y += Math.sign(this.targetY - this.y) * 2;
+      this.y += Math.sign(this.targetY - this.y) * 2 * ENEMY_BASE_BALANCE.speedMultiplier;
     } else {
       this.y = this.targetY;
     }
@@ -99,7 +100,7 @@ export class DenzelBoss extends Boss {
     }
 
     if (dist(this.x, this.y, player.x, player.y) < this.radius + player.radius) {
-      player.takeDamage(22, this.color, this);
+      player.takeDamage(22 * ENEMY_BASE_BALANCE.damageMultiplier, this.color, this);
     }
     super.update(player);
   }

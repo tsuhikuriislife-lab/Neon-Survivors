@@ -1,4 +1,5 @@
 import { state } from '../../engine/gameState.js';
+import { ENEMY_BASE_BALANCE } from '../../data/enemyBalance.js';
 import { dist } from '../../engine/Utils.js';
 import { spawnExplosion } from '../effects/spawnExplosion.js';
 import { Projectile } from '../projectiles/Projectile.js';
@@ -12,7 +13,7 @@ import { worldLayer } from '../../main.js';
 export class AmalgamNode extends Boss {
   constructor(name, x, y, hp, maxHp, stage, vx, vy) {
     const baseRadius = 160;
-    const baseSpeed = 1.6;
+    const baseSpeed = 1.6 * ENEMY_BASE_BALANCE.speedMultiplier;
     let radius = baseRadius;
     let speed = baseSpeed;
     let sprayCount = 20;
@@ -253,7 +254,7 @@ export class AmalgamNode extends Boss {
     }
 
     if (dist(this.x, this.y, player.x, player.y) < this.radius + player.radius) {
-      player.takeDamage(20, this.color, this);
+      player.takeDamage(20 * ENEMY_BASE_BALANCE.damageMultiplier, this.color, this);
     }
     super.update(player);
   }

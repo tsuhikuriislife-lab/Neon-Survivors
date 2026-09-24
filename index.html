@@ -36,18 +36,17 @@
       <div id="virtual-joystick-knob" class="virtual-joystick-knob"></div>
     </div>
 
-    <!-- Virtual Aim Joystick (Right) -->
-    <div id="virtual-aim-joystick-base" class="virtual-aim-joystick-base" style="display: none;">
-      <div id="virtual-aim-joystick-knob" class="virtual-aim-joystick-knob"></div>
-    </div>
-
-    <!-- Laser Cancel Zone (Mobile) -->
-    <div id="laser-cancel-zone" class="laser-cancel-zone" style="display: none;" title="Drag here to cancel shot">
-      <span class="laser-cancel-icon">✕</span>
-    </div>
-
     <div id="ui-layer" style="display: none;">
       <div class="level-badge" id="hudLevel">LVL 1</div>
+      <button id="autoUpgradeToggle" class="auto-upgrade-toggle" type="button" aria-label="Automatic upgrade selection: off" aria-pressed="false" title="Automatic upgrade selection: off">
+        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          <path d="M20 7v5h-5"></path>
+          <path d="M4 17v-5h5"></path>
+          <path d="M5.64 9A7 7 0 0 1 18.36 7L20 12"></path>
+          <path d="M4 12l1.64 5A7 7 0 0 0 18.36 15"></path>
+        </svg>
+      </button>
+      <div id="autoUpgradeSelection" class="auto-upgrade-selection" style="display: none;" role="status" aria-live="polite" aria-atomic="true"></div>
       <div class="xp-container">
         <div class="xp-bar" id="hudXpBar"></div>
       </div>
@@ -127,7 +126,7 @@
         </button>
       </div>
       <button id="btn-customize" title="Customize Ship" style="position: absolute; bottom: 20px; right: 20px; background: none; border: 2px solid #ff00ff; border-radius: 50%; width: 50px; height: 50px; font-size: 24px; cursor: pointer; pointer-events: auto; color: #ff00ff; box-shadow: 0 0 10px rgba(255, 0, 255, 0.5); z-index: 10;">🎨</button>
-      <div class="version-indicator">v1.4.2</div>
+      <div class="version-indicator">v1.4.7</div>
     </div>
     
     <!-- Customize Modal -->
@@ -270,13 +269,13 @@
             <input type="range" id="optionsCameraZoom" min="0.6" max="2.0" step="0.05" value="1.0" style="width: 60%;">
           </div>
         </div>
-        <div class="admin-section">
+        <div class="admin-section" id="optionsAdminToolsSection" style="display: none;">
           <h3>Tools</h3>
-          <button id="optionsBtnDev" class="admin-action-btn" style="display: none; border-color: #00ffff; color: #00ffff; background: rgba(0, 255, 255, 0.15);">🛠️ ADMIN / DEV PANEL</button>
+          <button id="optionsBtnDev" class="admin-action-btn" style="border-color: #00ffff; color: #00ffff; background: rgba(0, 255, 255, 0.15);">🛠️ ADMIN / DEV PANEL</button>
         </div>
-        <div id="optionsBtnEndRunArea" style="position: relative; width: 100%; height: 40px; background: rgba(255,0,0,0.1); border: 2px solid #ff0055; border-radius: 4px; overflow: hidden; cursor: pointer; pointer-events: auto; user-select: none; margin-top: 15px;">
-          <div id="optionsBtnEndRunProgress" style="position: absolute; top: 0; left: 0; height: 100%; width: 0%; background: rgba(255,0,85,0.5); pointer-events: none; transition: none;"></div>
-          <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: #ff0055; font-weight: bold; font-size: 16px; pointer-events: none; text-shadow: 0 0 5px #ff0055; z-index: 2;">HOLD TO END RUN</div>
+        <div id="optionsBtnEndRunArea" class="pause-end-run" role="button" tabindex="0" aria-label="Hold for 1.5 seconds to end the current run">
+          <div id="optionsBtnEndRunProgress" class="pause-end-run-progress" aria-hidden="true"></div>
+          <div class="pause-end-run-label" aria-hidden="true">HOLD TO END RUN</div>
         </div>
       </div>
       <section class="pause-upgrades-panel">

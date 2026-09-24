@@ -1,4 +1,5 @@
 import { state } from '../../engine/gameState.js';
+import { ENEMY_BASE_BALANCE } from '../../data/enemyBalance.js';
 import { dist } from '../../engine/Utils.js';
 import { textures } from '../../engine/TextureCache.js';
 import { worldLayer } from '../../main.js';
@@ -9,7 +10,7 @@ export class Projectile {
     this.y = y;
     this.vx = vx;
     this.vy = vy;
-    this.damage = damage;
+    this.damage = isEnemy ? damage * ENEMY_BASE_BALANCE.damageMultiplier : damage;
     this.color = color;
     this.radius = radius;
     this.isEnemy = isEnemy;

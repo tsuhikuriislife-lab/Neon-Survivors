@@ -18,6 +18,7 @@ export const state = {
   lastFrameTime: performance.now(),
   renderEpoch: 0,
   rerollsUsed: 0,
+  autoUpgradeEnabled: false, // Player preference, preserved when match state resets.
 
   // Phase System
   phaseTime: 300,

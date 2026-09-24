@@ -1,4 +1,5 @@
 import { state } from '../../engine/gameState.js';
+import { ENEMY_BASE_BALANCE } from '../../data/enemyBalance.js';
 import { Enemy } from './Enemy.js';
 import { Projectile } from '../projectiles/Projectile.js';
 import { getOrCachePolygon, textures } from '../../engine/TextureCache.js';
@@ -11,13 +12,13 @@ export class MotherChildEnemy extends Enemy {
     this.type = 'mother_child';
     this.radius = 10;
     this.sides = 3;
-    this.speed = 3.5;
-    this.maxHp = 25;
+    this.speed = 3.5 * ENEMY_BASE_BALANCE.speedMultiplier;
+    this.maxHp = 25 * ENEMY_BASE_BALANCE.healthMultiplier;
     this.hp = this.maxHp;
     this.color = "#00ff00";
     this.rgb = { r: 0, g: 255, b: 0 };
     this.xpValue = 10; 
-    this.damage = 15;
+    this.damage = 15 * ENEMY_BASE_BALANCE.damageMultiplier;
     this.directionChangeTimer = 0;
     this.targetAngle = 0;
     this.fireRate = 60 + Math.random() * 60;

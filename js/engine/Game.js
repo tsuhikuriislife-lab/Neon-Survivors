@@ -157,8 +157,8 @@ function generateFloorControlsCanvas() {
       bitmapFont.drawCachedText(offCtx, "LASER CANNON", rx, ry + 55, 15, "#00ff88", true, "center", "alphabetic", 0.75);
 
       bitmapFont.drawCachedText(offCtx, "WASD / ARROW KEYS", mx, my + 75, 12, "#a0aec0", false, "center", "alphabetic", 0.5);
-      bitmapFont.drawCachedText(offCtx, "HOLD CLICK: AIM", rx, ry + 75, 12, "#a0aec0", false, "center", "alphabetic", 0.5);
-      bitmapFont.drawCachedText(offCtx, "RELEASE: FIRE", rx, ry + 93, 12, "#a0aec0", false, "center", "alphabetic", 0.5);
+      bitmapFont.drawCachedText(offCtx, "AUTO-TARGETS NEAREST ENEMY", rx, ry + 75, 11, "#a0aec0", false, "center", "alphabetic", 0.5);
+      bitmapFont.drawCachedText(offCtx, "BEAM STAYS IN PLACE", rx, ry + 93, 11, "#a0aec0", false, "center", "alphabetic", 0.5);
     }
   } else {
     const mx = cx - 360;
@@ -214,11 +214,11 @@ function generateFloorControlsCanvas() {
 
     if (bitmapFont) {
       bitmapFont.drawCachedText(offCtx, "LEFT ZONE", mx, my + 55, 15, "#00ffff", true, "center", "alphabetic", 0.75);
-      bitmapFont.drawCachedText(offCtx, "RIGHT ZONE", rx, ry + 55, 15, "#00ff88", true, "center", "alphabetic", 0.75);
+      bitmapFont.drawCachedText(offCtx, "AUTO LASER", rx, ry + 55, 15, "#00ff88", true, "center", "alphabetic", 0.75);
 
       bitmapFont.drawCachedText(offCtx, "JOYSTICK: MOVE", mx, my + 75, 12, "#a0aec0", false, "center", "alphabetic", 0.5);
-      bitmapFont.drawCachedText(offCtx, "DRAG: AIM LASER", rx, ry + 75, 12, "#a0aec0", false, "center", "alphabetic", 0.5);
-      bitmapFont.drawCachedText(offCtx, "RELEASE: FIRE", rx, ry + 93, 12, "#a0aec0", false, "center", "alphabetic", 0.5);
+      bitmapFont.drawCachedText(offCtx, "FIRES AUTOMATICALLY", rx, ry + 75, 11, "#a0aec0", false, "center", "alphabetic", 0.5);
+      bitmapFont.drawCachedText(offCtx, "TARGETS NEAREST ENEMY", rx, ry + 93, 10, "#a0aec0", false, "center", "alphabetic", 0.5);
     }
   }
 }
@@ -1049,17 +1049,34 @@ function advanceSimulation(dt) {
       }
     }
 
+    /** Applies corrosion ticks to entities and stable boss-segment wrappers.
+     * @param {object} t - Enemy or current boss targetable.
+     * @returns {void}
+     */
     const processDot = (t) => {
-      if (t.laserDot && t.laserDot.duration > 0) {
-        t.laserDot.timer--;
-        if (t.laserDot.timer <= 0) {
-          t.laserDot.timer = 60;
-          t.laserDot.duration--;
-          t.takeDamage(t.laserDot.damage, t.laserDot.color || "#00ff00");
+      const dotOwner = t.stableTargetKey ? (t.parent || t) : t;
+      const dot = t.laserDot || (
+        t.stableTargetKey && dotOwner.laserDotRegions
+          ? dotOwner.laserDotRegions.get(t.stableTargetKey)
+          : null
+      );
+      if (!dot || dot.duration <= 0) return;
+
+      dot.timer--;
+      if (dot.timer <= 0) {
+        dot.timer = 60;
+        dot.duration--;
+        t.takeDamage(dot.damage, dot.color || "#00ff00");
+      }
+      if (dot.duration <= 0) {
+        if (t.stableTargetKey && dotOwner.laserDotRegions) {
+          dotOwner.laserDotRegions.delete(t.stableTargetKey);
+        } else {
+          t.laserDot = null;
         }
-        if (Math.random() < 0.1 && state.particlePool) {
-          state.particlePool.acquire(t.x, t.y, t.laserDot.color || "#00ff00", 2, 0.05, 2);
-        }
+      }
+      if (Math.random() < 0.1 && state.particlePool) {
+        state.particlePool.acquire(t.x, t.y, dot.color || "#00ff00", 2, 0.05, 2);
       }
     };
     state.enemies.forEach(processDot);
@@ -1248,6 +1265,22 @@ function advanceSimulation(dt) {
 export function resumeGame() {
   const saveData = SaveManager.loadGame();
   if (!saveData) return;
+
+  // Conserva el nuevo balance al reanudar partidas guardadas antes del cambio.
+  if ((saveData.enemyBalanceVersion || 0) < ENEMY_BASE_BALANCE.version) {
+    const hpMultiplier = ENEMY_BASE_BALANCE.healthMultiplier;
+    for (const bossData of saveData.bosses || []) {
+      if (Number.isFinite(bossData.hp)) bossData.hp *= hpMultiplier;
+      if (Number.isFinite(bossData.maxHp)) bossData.maxHp *= hpMultiplier;
+      if (Array.isArray(bossData.nodes)) {
+        for (const nodeData of bossData.nodes) {
+          if (Number.isFinite(nodeData.hp)) nodeData.hp *= hpMultiplier;
+          if (Number.isFinite(nodeData.maxHp)) nodeData.maxHp *= hpMultiplier;
+        }
+      }
+    }
+    saveData.enemyBalanceVersion = ENEMY_BASE_BALANCE.version;
+  }
 
   const startOverlay = document.getElementById("start-screen-overlay");
   const uiLayer = document.getElementById("ui-layer");

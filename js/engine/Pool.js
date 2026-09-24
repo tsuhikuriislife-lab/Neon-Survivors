@@ -5,6 +5,7 @@
 import { textures } from './TextureCache.js';
 import { dist } from './Utils.js';
 import { state } from './gameState.js';
+import { ENEMY_BASE_BALANCE } from '../data/enemyBalance.js';
 
 let particleTex;
 function getParticleTexture() {
@@ -172,7 +173,7 @@ class PooledProjectile {
     this.y = y;
     this.vx = vx;
     this.vy = vy;
-    this.damage = damage;
+    this.damage = isEnemy ? damage * ENEMY_BASE_BALANCE.damageMultiplier : damage;
     this.color = color;
     this.radius = radius;
     this.isEnemy = isEnemy;

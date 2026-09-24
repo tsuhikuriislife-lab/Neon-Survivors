@@ -1,4 +1,5 @@
 import { state } from '../engine/gameState.js';
+import { ENEMY_BASE_BALANCE } from './enemyBalance.js';
 import { drawPolygon } from '../engine/Utils.js';
 import { KyrenBoss } from '../entities/bosses/KyrenBoss.js';
 import { DenzelBoss } from '../entities/bosses/DenzelBoss.js';
@@ -132,7 +133,7 @@ registerBoss({
   defaultSpawnX: () => state.width / 2,
   defaultSpawnY: () => 250,
   instantiate: (x, y) => {
-    const b = new DenzelBoss(x || state.width / 2, y || 250, 6000, 6000);
+    const b = new DenzelBoss(x || state.width / 2, y || 250, 6000 * ENEMY_BASE_BALANCE.healthMultiplier, 6000 * ENEMY_BASE_BALANCE.healthMultiplier);
     state.bosses.push(b);
     return b;
   },
@@ -159,7 +160,7 @@ registerBoss({
   defaultSpawnX: () => state.width / 2 - 100,
   defaultSpawnY: () => state.height / 2,
   instantiate: (x, y) => {
-    const b = new DeimosMinion(x || state.width / 2 - 100, y || state.height / 2, 3500);
+    const b = new DeimosMinion(x || state.width / 2 - 100, y || state.height / 2, 3500 * ENEMY_BASE_BALANCE.healthMultiplier);
     state.bosses.push(b);
     return b;
   },
@@ -186,7 +187,7 @@ registerBoss({
   defaultSpawnX: () => state.width / 2 + 100,
   defaultSpawnY: () => state.height / 2,
   instantiate: (x, y) => {
-    const b = new FobosMinion(x || state.width / 2 + 100, y || state.height / 2, 3500);
+    const b = new FobosMinion(x || state.width / 2 + 100, y || state.height / 2, 3500 * ENEMY_BASE_BALANCE.healthMultiplier);
     state.bosses.push(b);
     return b;
   },

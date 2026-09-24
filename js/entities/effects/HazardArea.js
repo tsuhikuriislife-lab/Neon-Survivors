@@ -1,4 +1,5 @@
 import { dist } from '../../engine/Utils.js';
+import { ENEMY_BASE_BALANCE } from '../../data/enemyBalance.js';
 import { audioManager } from '../../engine/AudioManager.js';
 import { worldLayer } from '../../main.js';
 
@@ -10,7 +11,7 @@ export class HazardArea {
     this.maxDuration = duration;
     this.duration = duration;
     this.color = color;
-    this.damage = damage;
+    this.damage = damage * ENEMY_BASE_BALANCE.damageMultiplier;
     this.isAcid = isAcid;
     this.pulse = 0;
     
